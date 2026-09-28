@@ -2698,19 +2698,14 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     ],
   };
   const updateChannel = resolveDesktopUpdateChannel(version);
-  if (!isDesktopPreviewVersion(version)) {
-    const publishConfig = yield* resolveGitHubPublishConfig(updateChannel);
-    if (publishConfig) {
-      buildConfig.publish = [publishConfig];
-    } else if (mockUpdates) {
-      buildConfig.publish = [
-        {
-          provider: "generic",
-          url: resolveMockUpdateServerUrl(mockUpdateServerPort),
-        },
-      ];
-    }
-  }
+  // rooms-patches: this fork never ships an update feed. An explicit null also
+  // stops electron-builder from inferring GitHub from GH_TOKEN/GITHUB_TOKEN.
+  // Without `app-update.yml` the app reports that no update feed is configured
+  // and never replaces itself with an upstream release.
+  buildConfig.publish =
+    mockUpdates && !isDesktopPreviewVersion(version)
+      ? [{ provider: "generic", url: resolveMockUpdateServerUrl(mockUpdateServerPort) }]
+      : null;
 
   if (platform === "mac") {
     const path = yield* Path.Path;
