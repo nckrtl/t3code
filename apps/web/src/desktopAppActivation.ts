@@ -4,8 +4,11 @@ import type {
   DesktopAppActivationResponse,
   EnvironmentId,
   ExecutionEnvironmentPlatformOs,
+  DesktopAppOpenThreadRequest,
+  DesktopAppOpenWorkspaceRequest,
   ProjectId,
   ScopedProjectRef,
+  ScopedThreadRef,
   ThreadId,
 } from "@t3tools/contracts";
 
@@ -34,6 +37,9 @@ export interface DesktopAppActivationDependencies {
   readonly openThread: (
     projectRef: ScopedProjectRef,
   ) => Promise<{ readonly threadId: ThreadId } | null>;
+  /** The project of an existing thread, or null when the thread isn't known. */
+  readonly findThread: (threadRef: ScopedThreadRef) => { readonly projectId: ProjectId } | null;
+  readonly showThread: (threadRef: ScopedThreadRef) => Promise<void>;
 }
 
 function failure(
@@ -45,7 +51,7 @@ function failure(
 }
 
 function desktopPlatformToEnvironmentOs(
-  platform: DesktopAppActivationRequest["platform"],
+  platform: DesktopAppOpenWorkspaceRequest["platform"],
 ): ExecutionEnvironmentPlatformOs {
   return platform === "win32" ? "windows" : platform;
 }
@@ -54,10 +60,43 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
 }
 
+async function handleOpenThreadRequest(
+  request: DesktopAppOpenThreadRequest,
+  dependencies: DesktopAppActivationDependencies,
+): Promise<DesktopAppActivationResponse> {
+  const threadRef = { environmentId: request.environmentId, threadId: request.threadId };
+  const thread = dependencies.findThread(threadRef);
+  if (thread === null) {
+    return failure(
+      request.requestId,
+      "thread-not-found",
+      `T3 Code has no thread ${request.threadId} in environment ${request.environmentId}.`,
+    );
+  }
+  try {
+    await dependencies.showThread(threadRef);
+  } catch (error) {
+    return failure(
+      request.requestId,
+      "thread-open-failed",
+      errorMessage(error, "T3 Code could not show the thread."),
+    );
+  }
+  return {
+    version: 1,
+    requestId: request.requestId,
+    ok: true,
+    projectId: thread.projectId,
+    threadId: request.threadId,
+  };
+}
+
 export async function handleDesktopAppActivationRequest(
   request: DesktopAppActivationRequest,
   dependencies: DesktopAppActivationDependencies,
 ): Promise<DesktopAppActivationResponse> {
+  if (request.type === "open-thread") return handleOpenThreadRequest(request, dependencies);
+
   const target = dependencies.getTarget();
   if (target === null) {
     return failure(
