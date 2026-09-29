@@ -1,6 +1,13 @@
 import { Debouncer } from "@tanstack/react-pacer";
 import type { PullRequestMergeMethod } from "@t3tools/contracts";
 import { create } from "zustand";
+import {
+  diffIncomingRecord,
+  isAdditionalDesktopWindow,
+  markChangedRecordKeys,
+  onOtherWindowStorageChange,
+  RecentKeyChanges,
+} from "./lib/desktopWindowContext";
 import { normalizeProjectPathForComparison } from "./lib/projectPaths";
 
 export const PERSISTED_STATE_KEY = "t3code:ui-state:v1";
@@ -211,6 +218,17 @@ function sanitizePersistedThreadChangedFilesExpanded(
   return nextState;
 }
 
+function readStoredSidebarProjectScopeKey(): string | null {
+  try {
+    const raw = window.localStorage.getItem(PERSISTED_STATE_KEY);
+    return raw
+      ? sanitizeOptionalKey((JSON.parse(raw) as PersistedUiState).sidebarProjectScopeKey)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function persistState(state: UiState): void {
   if (typeof window === "undefined") {
     return;
@@ -228,7 +246,10 @@ export function persistState(state: UiState): void {
         projectOrder: state.projectOrder,
         threadLastVisitedAtById: state.threadLastVisitedAtById,
         defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
-        sidebarProjectScopeKey: state.sidebarProjectScopeKey,
+        // rooms-patches: the stored project scope belongs to the main window.
+        sidebarProjectScopeKey: isAdditionalDesktopWindow()
+          ? readStoredSidebarProjectScopeKey()
+          : state.sidebarProjectScopeKey,
         threadChangedFilesExpansionVersion: THREAD_CHANGED_FILES_EXPANSION_VERSION,
         threadChangedFilesExpandedById: state.threadChangedFilesExpandedById,
         pullRequestMergeMethod: state.pullRequestMergeMethod,
@@ -440,6 +461,8 @@ interface UiStateStore extends UiState {
 
 export const useUiStateStore = create<UiStateStore>((set) => ({
   ...readPersistedState(),
+  // rooms-patches: an extra window starts without the main window's project scope.
+  ...(isAdditionalDesktopWindow() ? { sidebarProjectScopeKey: null } : {}),
   markThreadVisited: (threadId, visitedAt) =>
     set((state) => markThreadVisited(state, threadId, visitedAt)),
   markThreadUnread: (threadId, latestTurnCompletedAt) =>
@@ -460,6 +483,124 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
 }));
 
 useUiStateStore.subscribe((state) => debouncedPersistState.maybeExecute(state));
+
+// rooms-patches: share sidebar state across desktop windows. Each window
+// writes the whole state, so a window first takes in the other windows'
+// writes per key. Keys changed here in the last two seconds keep the local
+// value. The project scope stays per window.
+function sharedUiRecord(state: UiState): Record<string, unknown> {
+  const record: Record<string, unknown> = {
+    projectOrder: state.projectOrder,
+    defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
+    pullRequestMergeMethod: state.pullRequestMergeMethod,
+  };
+  for (const [key, value] of Object.entries(state.projectExpandedById)) {
+    if (key !== LEGACY_PROJECT_EXPANSION_DEFAULT_KEY) record[`e:${key}`] = value;
+  }
+  for (const [key, value] of Object.entries(state.threadLastVisitedAtById)) {
+    record[`v:${key}`] = value;
+  }
+  for (const [key, value] of Object.entries(state.threadChangedFilesExpandedById)) {
+    record[`f:${key}`] = value;
+  }
+  return record;
+}
+
+export function trackLocalUiStateChanges(
+  changes: RecentKeyChanges,
+): (next: UiState, previous: UiState) => void {
+  return (next, previous) => {
+    if (applyingOtherWindowUiState) return;
+    markChangedRecordKeys(changes, "e:", previous.projectExpandedById, next.projectExpandedById);
+    markChangedRecordKeys(
+      changes,
+      "v:",
+      previous.threadLastVisitedAtById,
+      next.threadLastVisitedAtById,
+    );
+    markChangedRecordKeys(
+      changes,
+      "f:",
+      previous.threadChangedFilesExpandedById,
+      next.threadChangedFilesExpandedById,
+    );
+    for (const key of [
+      "projectOrder",
+      "defaultAdvertisedEndpointKey",
+      "pullRequestMergeMethod",
+    ] as const) {
+      if (previous[key] !== next[key]) changes.mark(key);
+    }
+  };
+}
+
+/** Merges another window's UI state write into `local`; null when nothing changes. */
+export function mergeOtherWindowUiState(
+  local: UiState,
+  incoming: UiState,
+  isLocallyChanged: (key: string) => boolean,
+): { readonly state: UiState | null; readonly localAhead: boolean } {
+  const diff = diffIncomingRecord(
+    sharedUiRecord(local),
+    sharedUiRecord(incoming),
+    isLocallyChanged,
+  );
+  if (diff.replace.length + diff.remove.length === 0) {
+    return { state: null, localAhead: diff.localAhead };
+  }
+  const next: UiState = {
+    ...local,
+    projectExpandedById: { ...local.projectExpandedById },
+    threadLastVisitedAtById: { ...local.threadLastVisitedAtById },
+    threadChangedFilesExpandedById: { ...local.threadChangedFilesExpandedById },
+  };
+  const target = (key: string) => {
+    const field = key.slice(2);
+    if (key.startsWith("e:")) return { record: next.projectExpandedById, field };
+    if (key.startsWith("v:")) return { record: next.threadLastVisitedAtById, field };
+    if (key.startsWith("f:")) return { record: next.threadChangedFilesExpandedById, field };
+    return null;
+  };
+  for (const [key, value] of diff.replace) {
+    const entry = target(key);
+    if (entry) (entry.record as Record<string, unknown>)[entry.field] = value;
+    else (next as unknown as Record<string, unknown>)[key] = value;
+  }
+  for (const key of diff.remove) {
+    const entry = target(key);
+    if (entry) delete (entry.record as Record<string, unknown>)[entry.field];
+  }
+  return { state: next, localAhead: diff.localAhead };
+}
+
+const uiStateLocalChanges = new RecentKeyChanges(2_000);
+let applyingOtherWindowUiState = false;
+
+if (typeof window !== "undefined" && window.desktopBridge?.windowContext !== undefined) {
+  useUiStateStore.subscribe(trackLocalUiStateChanges(uiStateLocalChanges));
+  onOtherWindowStorageChange(PERSISTED_STATE_KEY, (raw) => {
+    let incoming: UiState;
+    try {
+      incoming = parsePersistedState(JSON.parse(raw) as PersistedUiState);
+    } catch {
+      return;
+    }
+    const merged = mergeOtherWindowUiState(useUiStateStore.getState(), incoming, (key) =>
+      uiStateLocalChanges.has(key),
+    );
+    if (merged.state === null) {
+      // Storage holds an older copy of keys changed here: write them again.
+      if (merged.localAhead) debouncedPersistState.maybeExecute(useUiStateStore.getState());
+      return;
+    }
+    applyingOtherWindowUiState = true;
+    try {
+      useUiStateStore.setState(merged.state);
+    } finally {
+      applyingOtherWindowUiState = false;
+    }
+  });
+}
 
 if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
   window.addEventListener("beforeunload", () => {

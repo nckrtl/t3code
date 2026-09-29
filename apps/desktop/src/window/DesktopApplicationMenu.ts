@@ -137,6 +137,15 @@ export const make = Effect.gen(function* () {
     const settingsClick = () => {
       runMenuEffect("open-settings", dispatchMenuAction("open-settings"));
     };
+    // An extra window showing all projects (rooms-patches).
+    const newWindowClick = () => {
+      runMenuEffect(
+        "new-window",
+        Effect.flatMap(DesktopWindow.DesktopWindow, (desktopWindow) =>
+          desktopWindow.createAdditional({ workspace: null }),
+        ).pipe(Effect.asVoid),
+      );
+    };
     // Chromium already pastes as plain text for this chord, so the accelerator
     // needs nothing from the menu: the composer and the terminal each arm
     // themselves from the same keydown. Routing it through the renderer anyway
@@ -186,6 +195,8 @@ export const make = Effect.gen(function* () {
       {
         label: "File",
         submenu: [
+          { label: "New Window", accelerator: "Alt+CmdOrCtrl+N", click: newWindowClick },
+          { type: "separator" as const },
           ...(environment.platform === "darwin"
             ? []
             : [
