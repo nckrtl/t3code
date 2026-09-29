@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { ImageIcon } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 
 import { cn } from "../../lib/utils";
+import { workspaceImageFromFile } from "../../lib/workspaceImage";
 import { useWorkspaceStore } from "../../workspaceStore";
 import {
   groupProjectsByConnection,
@@ -52,6 +54,22 @@ export function WorkspaceDialog({
     () => editing?.color ?? nextWorkspaceColor(workspaces),
   );
   const [icon, setIcon] = useState<string | null>(editing?.icon ?? null);
+  // An uploaded picture replaces the icon and letter; choosing either clears it.
+  const [image, setImage] = useState<string | null>(editing?.image ?? null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const chooseIcon = (next: string | null) => {
+    setIcon(next);
+    setImage(null);
+  };
+  const pickImage = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setImage(await workspaceImageFromFile(file));
+      setError(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
   const [projectKeys, setProjectKeys] = useState<string[]>(() => [...(editing?.projectKeys ?? [])]);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +89,7 @@ export function WorkspaceDialog({
   const sections = useMemo(() => groupProjectsByConnection(projects), [projects]);
 
   const save = () => {
-    const draft = { name, color, icon, projectKeys };
+    const draft = { name, color, icon, image, projectKeys };
     try {
       if (editing) {
         updateWorkspace(editing.id, draft);
@@ -106,7 +124,10 @@ export function WorkspaceDialog({
             }}
           >
             <div className="flex items-end gap-3">
-              <WorkspaceBadge workspace={{ name: name || "?", color, icon }} className="size-9" />
+              <WorkspaceBadge
+                workspace={{ name: name || "?", color, icon, image }}
+                className="size-9"
+              />
               <div className="grid flex-1 gap-1.5">
                 <Label htmlFor="workspace-name">Name</Label>
                 <Input
@@ -144,25 +165,52 @@ export function WorkspaceDialog({
               <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
-                  aria-pressed={icon === null}
-                  onClick={() => setIcon(null)}
+                  aria-pressed={icon === null && image === null}
+                  onClick={() => chooseIcon(null)}
                   className={cn(
                     "flex h-7 items-center rounded-md border border-border px-2 text-xs",
-                    icon === null && "border-foreground",
+                    icon === null && image === null && "border-foreground",
                   )}
                 >
                   Letter
                 </button>
+                <button
+                  type="button"
+                  aria-label={image ? "Replace image" : "Upload image"}
+                  aria-pressed={image !== null}
+                  onClick={() => imageInputRef.current?.click()}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-xs",
+                    image !== null && "border-foreground",
+                  )}
+                >
+                  {image ? (
+                    <img alt="" src={image} className="size-4 rounded-sm object-cover" />
+                  ) : (
+                    <ImageIcon className="size-4" />
+                  )}
+                  Image
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  className="hidden"
+                  onChange={(event) => {
+                    void pickImage(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
                 {Object.entries(WORKSPACE_ICONS).map(([key, Icon]) => (
                   <button
                     key={key}
                     type="button"
                     aria-label={key}
-                    aria-pressed={icon === key}
-                    onClick={() => setIcon(key)}
+                    aria-pressed={icon === key && image === null}
+                    onClick={() => chooseIcon(key)}
                     className={cn(
                       "flex size-7 items-center justify-center rounded-md border border-border",
-                      icon === key && "border-foreground",
+                      icon === key && image === null && "border-foreground",
                     )}
                   >
                     <Icon className="size-4" />

@@ -57,15 +57,26 @@ export const WORKSPACE_COLOR_CLASSES: Record<WorkspaceColor, string> = {
   pink: "bg-pink-500 text-white",
 };
 
-/** A workspace's badge: its icon, or the first letter of its name, on its color. */
+/** A workspace's badge: its image, or its icon or first letter on its color. */
 export function WorkspaceBadge({
   workspace,
   className,
 }: {
-  workspace: Pick<Workspace, "name" | "color" | "icon">;
+  workspace: Pick<Workspace, "name" | "color" | "icon" | "image">;
   className?: string;
 }) {
   const Icon = workspace.icon ? WORKSPACE_ICONS[workspace.icon] : undefined;
+  if (workspace.image) {
+    return (
+      <img
+        alt=""
+        aria-hidden="true"
+        src={workspace.image}
+        draggable={false}
+        className={cn("size-7.5 rounded object-cover select-none", className)}
+      />
+    );
+  }
   return (
     <span
       aria-hidden="true"
