@@ -11,6 +11,7 @@ import { readProjects, readThreadShell, waitForProject } from "../../state/entit
 import { usePrimaryEnvironment } from "../../state/environments";
 import { projectEnvironment } from "../../state/projects";
 import { useEnvironmentQuery } from "../../state/query";
+import { useWorkspaceStore } from "../../workspaceStore";
 import { environmentShell } from "../../state/shell";
 import { useAtomCommand } from "../../state/use-atom-command";
 
@@ -77,6 +78,7 @@ export function DesktopAppActivationCoordinator() {
         const thread = readThreadShell(threadRef);
         return thread === null ? null : { projectId: thread.projectId };
       },
+      selectWorkspace: (idOrName) => useWorkspaceStore.getState().selectWorkspaceByName(idOrName),
       showThread: async (threadRef) => {
         await router.navigate({
           to: "/$environmentId/$threadId",

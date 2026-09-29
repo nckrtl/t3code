@@ -16,7 +16,7 @@ import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect } from "vite-plus/test";
 
-import { startDesktopAppControlServer } from "./DesktopAppActivation.ts";
+import { startDesktopAppControlServer, workspaceFromLink } from "./DesktopAppActivation.ts";
 
 const openServers: Array<{ close: () => Promise<void> }> = [];
 
@@ -204,4 +204,21 @@ describe("desktop app control server", () => {
       });
     }),
   );
+});
+
+describe("workspace links", () => {
+  it("reads the workspace a t3code://workspace link names", () => {
+    expect(workspaceFromLink("t3code://workspace/orbit")).toBe("orbit");
+    expect(workspaceFromLink("t3code://workspace/Desktop%20apps/")).toBe("Desktop apps");
+    expect(workspaceFromLink("t3code-dev://workspace/orbit")).toBe("orbit");
+    expect(workspaceFromLink("t3code://workspace/")).toBe("all");
+    expect(workspaceFromLink("t3code://workspace")).toBe("all");
+  });
+
+  it("leaves every other link alone, including Clerk's sign-in callback", () => {
+    expect(workspaceFromLink("t3code://app/?code=abc")).toBeNull();
+    expect(workspaceFromLink("https://workspace/orbit")).toBeNull();
+    expect(workspaceFromLink("t3code://workspace/%E0%A4%A")).toBeNull();
+    expect(workspaceFromLink("not a url")).toBeNull();
+  });
 });
