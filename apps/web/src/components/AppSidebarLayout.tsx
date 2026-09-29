@@ -24,6 +24,7 @@ import LegacyThreadSidebar from "./LegacySidebar";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { WorkspaceRail } from "./sidebar/WorkspaceRail";
 import {
   resolveSidebarStageFocusRingOffsetClass,
   useSidebarStageBackdropVariant,
@@ -250,7 +251,13 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           ) : legacySidebarEnabled ? (
             <LegacyThreadSidebar />
           ) : (
-            <ThreadSidebar />
+            // The workspace rail sits beside the thread sidebar (rooms-patches).
+            <div className="flex h-full min-h-0 w-full">
+              <WorkspaceRail isElectron={isElectron} />
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <ThreadSidebar />
+              </div>
+            </div>
           )}
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>

@@ -222,12 +222,23 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   );
 });
 
-export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+export const SidebarChromeFooter = memo(function SidebarChromeFooter({
+  utilities = true,
+}: {
+  /** False when the workspace rail shows the provider update and utility actions (rooms-patches). */
+  utilities?: boolean;
+}) {
   return (
     <SidebarFooter className="px-[var(--sidebar-content-inset)] py-1">
-      <SidebarProviderUpdatePill />
+      {utilities ? <SidebarProviderUpdatePill /> : null}
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      {utilities ? (
+        <SidebarUtilityMenu />
+      ) : (
+        <SidebarMenu className="flex-row items-center">
+          <SidebarUpdatePill />
+        </SidebarMenu>
+      )}
     </SidebarFooter>
   );
 });
