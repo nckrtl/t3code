@@ -95,7 +95,8 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             (project, index) =>
               project.projectKey === projects[index]!.projectKey &&
               project.displayName === projects[index]!.displayName &&
-              project.refs.join() === projects[index]!.refs.join(),
+              project.refs.join() === projects[index]!.refs.join() &&
+              JSON.stringify(project.connections) === JSON.stringify(projects[index]!.connections),
           );
         if (!same) set({ availableProjects: projects });
       },
