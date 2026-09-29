@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { useWorkspaceStore } from "./workspaceStore";
 import {
   groupProjectsByConnection,
+  isWorkspaceImage,
+  WORKSPACE_IMAGE_MAX_CHARS,
   findWorkspace,
   nextWorkspaceColor,
   resolveScopedProjectKeys,
@@ -109,6 +111,7 @@ describe("workspaces.logic", () => {
       projectKeys: ["a", "b"],
       color: "teal",
       icon: null,
+      image: null,
     });
     expect(() =>
       validateWorkspaceDraft({ name: " ", projectKeys: [], color: "teal", icon: null }),
@@ -255,5 +258,29 @@ describe("groupProjectsByConnection", () => {
       ["beast", ["rooms", "drift"]],
       [null, ["gone"]],
     ]);
+  });
+});
+
+describe("workspace images", () => {
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  const draft = { name: "Orbit", projectKeys: [], color: "violet", icon: null };
+
+  it("accepts small PNG, JPEG and WebP data URLs only", () => {
+    expect(isWorkspaceImage(png)).toBe(true);
+    expect(isWorkspaceImage(png.replace("image/png", "image/webp"))).toBe(true);
+    expect(isWorkspaceImage("data:image/svg+xml;base64,PHN2Zz4=")).toBe(false);
+    expect(isWorkspaceImage("https://example.com/icon.png")).toBe(false);
+    expect(isWorkspaceImage(`data:image/png;base64,${"A".repeat(WORKSPACE_IMAGE_MAX_CHARS)}`)).toBe(
+      false,
+    );
+  });
+
+  it("keeps a valid image, defaults to none and rejects others", () => {
+    expect(validateWorkspaceDraft({ ...draft, image: png }).image).toBe(png);
+    expect(validateWorkspaceDraft(draft).image).toBeNull();
+    expect(() => validateWorkspaceDraft({ ...draft, image: "javascript:alert(1)" })).toThrow(
+      "That image can't be used.",
+    );
   });
 });
