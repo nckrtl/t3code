@@ -71,6 +71,12 @@ import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createDeferredStorage, createMemoryStorage } from "./lib/storage";
+import {
+  diffIncomingRecord,
+  markChangedRecordKeys,
+  onOtherWindowStorageChange,
+  RecentKeyChanges,
+} from "./lib/desktopWindowContext";
 import { getDefaultServerModel } from "./providerModels";
 import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import { UnifiedSettings } from "@t3tools/contracts/settings";
@@ -4071,6 +4077,151 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
 );
 
 export const useComposerDraftStore = composerDraftStore;
+
+// rooms-patches: keep drafts in step across desktop windows. Each window
+// writes its whole draft state, so a window first takes in the other
+// windows' writes per thread. Threads edited here in the last two seconds
+// keep the local version, which reaches storage with this window's next write.
+const composerDraftLocalChanges = new RecentKeyChanges(2_000);
+let applyingOtherWindowDrafts = false;
+
+function trackLocalComposerDraftChanges(
+  changes: RecentKeyChanges,
+): (next: ComposerDraftStoreState, previous: ComposerDraftStoreState) => void {
+  return (next, previous) => {
+    if (applyingOtherWindowDrafts) return;
+    markChangedRecordKeys(changes, "d:", previous.draftsByThreadKey, next.draftsByThreadKey);
+    markChangedRecordKeys(
+      changes,
+      "t:",
+      previous.draftThreadsByThreadKey,
+      next.draftThreadsByThreadKey,
+    );
+    markChangedRecordKeys(
+      changes,
+      "l:",
+      previous.logicalProjectDraftThreadKeyByLogicalProjectKey,
+      next.logicalProjectDraftThreadKeyByLogicalProjectKey,
+    );
+    if (
+      previous.stickyModelSelectionByProvider !== next.stickyModelSelectionByProvider ||
+      previous.stickyActiveProvider !== next.stickyActiveProvider
+    ) {
+      changes.mark("sticky");
+    }
+  };
+}
+
+/** Takes in another window's write of the draft storage key. */
+export function applyOtherWindowComposerDrafts(
+  raw: string,
+  changes: RecentKeyChanges = composerDraftLocalChanges,
+): void {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (!parsed || typeof parsed !== "object") return;
+  const { state: incomingState, version } = parsed as { state?: unknown; version?: unknown };
+  if (version !== COMPOSER_DRAFT_STORAGE_VERSION) return;
+  const incoming = normalizeCurrentPersistedComposerDraftStoreState(incomingState);
+  const local = partializeComposerDraftStoreState(useComposerDraftStore.getState());
+  const changedHere = (prefix: string) => (key: string) => changes.has(prefix + key);
+
+  const drafts = diffIncomingRecord(
+    local.draftsByThreadKey,
+    incoming.draftsByThreadKey,
+    changedHere("d:"),
+  );
+  const draftThreads = diffIncomingRecord(
+    local.draftThreadsByThreadKey,
+    incoming.draftThreadsByThreadKey,
+    changedHere("t:"),
+  );
+  const logical = diffIncomingRecord(
+    local.logicalProjectDraftThreadKeyByLogicalProjectKey,
+    incoming.logicalProjectDraftThreadKeyByLogicalProjectKey,
+    changedHere("l:"),
+  );
+  const sticky = diffIncomingRecord(
+    {
+      sticky: {
+        models: local.stickyModelSelectionByProvider ?? {},
+        active: local.stickyActiveProvider ?? null,
+      },
+    },
+    {
+      sticky: {
+        models: incoming.stickyModelSelectionByProvider ?? {},
+        active: incoming.stickyActiveProvider ?? null,
+      },
+    },
+    (key) => changes.has(key),
+  );
+
+  const parts = [drafts, draftThreads, logical, sticky];
+  const incomingChanges = parts.some((part) => part.replace.length + part.remove.length > 0);
+  if (!incomingChanges) {
+    // Storage holds an older copy of threads edited here: write them again.
+    if (parts.some((part) => part.localAhead)) useComposerDraftStore.setState({});
+    return;
+  }
+
+  applyingOtherWindowDrafts = true;
+  try {
+    useComposerDraftStore.setState((state) => {
+      const draftsByThreadKey = { ...state.draftsByThreadKey };
+      for (const [threadKey, draft] of drafts.replace) {
+        revokeDraftThreadPreviewUrls(draftsByThreadKey[threadKey]);
+        draftsByThreadKey[threadKey] = toHydratedThreadDraft(draft);
+      }
+      for (const threadKey of drafts.remove) {
+        revokeDraftThreadPreviewUrls(draftsByThreadKey[threadKey]);
+        delete draftsByThreadKey[threadKey];
+      }
+      const draftThreadsByThreadKey = { ...state.draftThreadsByThreadKey };
+      for (const [threadKey, draftThread] of draftThreads.replace) {
+        draftThreadsByThreadKey[threadKey] = toHydratedDraftThreadState(draftThread);
+      }
+      for (const threadKey of draftThreads.remove) delete draftThreadsByThreadKey[threadKey];
+      const logicalProjectDraftThreadKeyByLogicalProjectKey = {
+        ...state.logicalProjectDraftThreadKeyByLogicalProjectKey,
+      };
+      for (const [projectKey, threadKey] of logical.replace) {
+        logicalProjectDraftThreadKeyByLogicalProjectKey[projectKey] = threadKey;
+      }
+      for (const projectKey of logical.remove) {
+        delete logicalProjectDraftThreadKeyByLogicalProjectKey[projectKey];
+      }
+      const stickyValue = sticky.replace[0]?.[1];
+      return {
+        draftsByThreadKey,
+        draftThreadsByThreadKey,
+        logicalProjectDraftThreadKeyByLogicalProjectKey,
+        ...(stickyValue
+          ? {
+              stickyModelSelectionByProvider: stickyValue.models,
+              stickyActiveProvider: stickyValue.active,
+            }
+          : {}),
+      };
+    });
+  } finally {
+    applyingOtherWindowDrafts = false;
+  }
+}
+
+if (typeof window !== "undefined" && window.desktopBridge?.windowContext !== undefined) {
+  useComposerDraftStore.subscribe(trackLocalComposerDraftChanges(composerDraftLocalChanges));
+  onOtherWindowStorageChange(COMPOSER_DRAFT_STORAGE_KEY, (raw) =>
+    applyOtherWindowComposerDrafts(raw),
+  );
+}
+
+/** Test hook: the local change tracker for a store subscription. */
+export const trackLocalComposerDraftChangesForTest = trackLocalComposerDraftChanges;
 
 export function beginBackgroundDraftSubmissionByRef(threadRef: ScopedThreadRef): void {
   const threadKey = scopedThreadKey(threadRef);

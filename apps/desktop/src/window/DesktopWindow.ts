@@ -95,6 +95,10 @@ export class DesktopWindow extends Context.Service<
   DesktopWindow,
   {
     readonly createMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
+    /** Opens an extra window showing `workspace` (an id or name; null = all projects). */
+    readonly createAdditional: (input: {
+      readonly workspace: string | null;
+    }) => Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
     readonly ensureMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
     readonly revealOrCreateMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
     readonly activate: Effect.Effect<void, DesktopWindowError>;
@@ -358,13 +362,29 @@ export const make = Effect.gen(function* () {
       ),
     );
 
-  const currentMainWindow = electronWindow.currentMainOrFirst.pipe(Effect.flatMap(withoutSplash));
+  // Extra windows (rooms-patches) never stand in for the main window: with
+  // only extra windows open, activation opens a new main window.
+  const additionalWindows = new Set<Electron.BrowserWindow>();
+  const withoutAdditional = (window: Option.Option<Electron.BrowserWindow>) =>
+    Option.isSome(window) && additionalWindows.has(window.value)
+      ? Option.none<Electron.BrowserWindow>()
+      : window;
+
+  const currentMainWindow = electronWindow.currentMainOrFirst.pipe(
+    Effect.flatMap(withoutSplash),
+    Effect.map(withoutAdditional),
+  );
   const focusedMainWindow = electronWindow.focusedMainOrFirst.pipe(Effect.flatMap(withoutSplash));
 
-  const createWindow = Effect.fn("desktop.window.createWindow")(function* (): Effect.fn.Return<
-    Electron.BrowserWindow,
-    DesktopWindowError
-  > {
+  /**
+   * `additional` makes an extra window (rooms-patches): it opens offset from the
+   * main one with the given workspace, and leaves the main window's state alone
+   * (bounds, preview browser, maximized state, DevTools).
+   */
+  const createWindow = Effect.fn("desktop.window.createWindow")(function* (options?: {
+    readonly additional?: { readonly workspace: string | null };
+  }): Effect.fn.Return<Electron.BrowserWindow, DesktopWindowError> {
+    const additional = options?.additional;
     yield* previewManager.getBrowserSession();
     const applicationUrl = getDesktopUrl(environment.isDevelopment);
     const iconPaths = yield* assets.iconPaths;
@@ -388,7 +408,19 @@ export const make = Effect.gen(function* () {
         : yield* logWindowWarning("failed to read connected displays; using defaults", {
             cause: displayBoundsResult.cause,
           }).pipe(Effect.as<readonly Electron.Rectangle[]>([]));
-    const initialBounds = resolveInitialMainWindowBounds(persistedBounds, displayBounds);
+    const anchor = additional === undefined ? Option.none() : yield* focusedMainWindow;
+    const initialBounds =
+      additional !== undefined && Option.isSome(anchor) && !anchor.value.isDestroyed()
+        ? (() => {
+            const bounds = anchor.value.getNormalBounds();
+            return {
+              x: bounds.x + 28,
+              y: bounds.y + 28,
+              width: bounds.width,
+              height: bounds.height,
+            };
+          })()
+        : resolveInitialMainWindowBounds(persistedBounds, displayBounds);
     const restoredPersistedBounds = persistedBounds !== null && initialBounds === persistedBounds;
     if (persistedBounds !== null && initialBounds === DesktopAppSettings.DEFAULT_MAIN_WINDOW_SIZE) {
       yield* logWindowWarning("saved main window bounds could not be restored; using defaults");
@@ -416,6 +448,17 @@ export const make = Effect.gen(function* () {
         nodeIntegration: false,
         sandbox: true,
         webviewTag: true,
+        // Read by the preload script (desktopBridge.windowContext).
+        ...(additional === undefined
+          ? {}
+          : {
+              additionalArguments: [
+                "--t3code-window=additional",
+                ...(additional.workspace === null
+                  ? []
+                  : [`--t3code-window-workspace=${encodeURIComponent(additional.workspace)}`]),
+              ],
+            }),
       },
     });
 
@@ -424,7 +467,8 @@ export const make = Effect.gen(function* () {
     }
     let boundsPersistFiber: Fiber.Fiber<void, never> | undefined;
     let pendingBoundsPersistFiber: Fiber.Fiber<void, never> | undefined;
-    let boundsPersistenceEnabled = persistedBounds === null || restoredPersistedBounds;
+    let boundsPersistenceEnabled =
+      additional === undefined && (persistedBounds === null || restoredPersistedBounds);
     const readPersistableBounds = (): DesktopAppSettings.DesktopWindowBounds | null => {
       if (window.isDestroyed()) {
         return null;
@@ -507,9 +551,10 @@ export const make = Effect.gen(function* () {
         fiber === undefined ? Effect.void : Fiber.join(fiber).pipe(Effect.asVoid),
       ),
     );
-    flushMainWindowBounds = flushBoundsPersist;
-
-    yield* previewManager.setMainWindow(window);
+    if (additional === undefined) {
+      flushMainWindowBounds = flushBoundsPersist;
+      yield* previewManager.setMainWindow(window);
+    }
     window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
       if (
         typeof params.partition !== "string" ||
@@ -666,13 +711,15 @@ export const make = Effect.gen(function* () {
       event.preventDefault();
       window.setTitle(environment.displayName);
     });
-    window.on("resize", scheduleBoundsPersist);
-    window.on("move", scheduleBoundsPersist);
-    window.on("maximize", scheduleBoundsPersist);
-    window.on("unmaximize", scheduleBoundsPersist);
-    window.on("close", () => {
-      runFork(flushBoundsPersist);
-    });
+    if (additional === undefined) {
+      window.on("resize", scheduleBoundsPersist);
+      window.on("move", scheduleBoundsPersist);
+      window.on("maximize", scheduleBoundsPersist);
+      window.on("unmaximize", scheduleBoundsPersist);
+      window.on("close", () => {
+        runFork(flushBoundsPersist);
+      });
+    }
 
     if (environment.platform === "darwin") {
       window.on("enter-full-screen", () => {
@@ -818,23 +865,33 @@ export const make = Effect.gen(function* () {
       }
       // Reveal the real window, then close the connecting splash (if any) so the
       // two don't overlap and there's no blank gap between them.
-      if (persistedSettings.mainWindowMaximized) {
+      if (additional === undefined && persistedSettings.mainWindowMaximized) {
         window.maximize();
       }
       void runPromise(Effect.andThen(electronWindow.reveal(window), dismissConnectingSplash));
     });
 
     loadApplication();
-    if (environment.isDevelopment) {
+    if (environment.isDevelopment && additional === undefined) {
       window.webContents.openDevTools({ mode: "detach" });
     }
 
+    if (additional !== undefined) additionalWindows.add(window);
     window.on("closed", () => {
+      additionalWindows.delete(window);
       clearDevelopmentLoadRetry();
       clearBoundsPersist();
       void runPromise(electronWindow.clearMain(Option.some(window)));
     });
 
+    return window;
+  });
+
+  const createAdditional = Effect.fn("desktop.window.createAdditional")(function* (input: {
+    readonly workspace: string | null;
+  }) {
+    const window = yield* createWindow({ additional: { workspace: input.workspace } });
+    yield* logWindowInfo("additional window created", { workspace: input.workspace });
     return window;
   });
 
@@ -922,9 +979,16 @@ export const make = Effect.gen(function* () {
   const dispatchRendererEvent = Effect.fn("desktop.window.dispatchRendererEvent")(function* (
     channel: string,
     payload: unknown,
-    { reveal = true }: { readonly reveal?: boolean } = {},
+    {
+      reveal = true,
+      mainOnly = false,
+    }: { readonly reveal?: boolean; readonly mainOnly?: boolean } = {},
   ) {
-    const existingWindow = yield* reveal ? focusedMainWindow : electronWindow.main;
+    const existingWindow = yield* mainOnly
+      ? currentMainWindow
+      : reveal
+        ? focusedMainWindow
+        : electronWindow.main;
     if (Option.isNone(existingWindow) && (!reveal || (yield* waitingForBackend))) return;
     const targetWindow = Option.isSome(existingWindow) ? existingWindow.value : yield* ensureMain;
     if (targetWindow.isDestroyed()) return;
@@ -945,6 +1009,7 @@ export const make = Effect.gen(function* () {
 
   return DesktopWindow.of({
     createMain,
+    createAdditional,
     ensureMain,
     revealOrCreateMain,
     prepareCaptureReveal: Effect.gen(function* () {
@@ -996,8 +1061,10 @@ export const make = Effect.gen(function* () {
         event: event.type,
         captureId: "id" in event ? (event.id ?? null) : null,
       });
+      // Only the main window runs snapshots (rooms-patches: not extra windows).
       yield* dispatchRendererEvent(SNAP_SHOT_EVENT_CHANNEL, event, {
         reveal: event.type === "started",
+        mainOnly: true,
       });
     }),
     zoomMain: Effect.fn("desktop.window.zoomMain")(function* (direction) {

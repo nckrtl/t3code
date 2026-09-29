@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 
+import {
+  isAdditionalDesktopWindow,
+  onOtherWindowStorageChange,
+  readDesktopWindowContext,
+} from "./lib/desktopWindowContext";
 import { resolveStorage } from "./lib/storage";
 import { randomUUID } from "./lib/utils";
 import {
@@ -40,6 +45,40 @@ function assertUniqueName(workspaces: readonly Workspace[], name: string, except
 
 function newWorkspaceId(): string {
   return `ws-${randomUUID()}`;
+}
+
+export const WORKSPACE_STORAGE_KEY = "t3code:workspaces:v1";
+
+/**
+ * The stored selection belongs to the main window. An extra window keeps its
+ * selection in memory and writes back the stored one unchanged.
+ */
+export function keepStoredSelection(stored: string | null, next: string): string {
+  try {
+    const nextValue = JSON.parse(next) as { state?: Record<string, unknown> };
+    const storedValue = stored === null ? null : (JSON.parse(stored) as typeof nextValue);
+    if (nextValue.state === undefined) return next;
+    nextValue.state.activeWorkspaceId = storedValue?.state?.activeWorkspaceId ?? null;
+    return JSON.stringify(nextValue);
+  } catch {
+    return next;
+  }
+}
+
+function workspaceStorage(): StateStorage {
+  const base = resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!isAdditionalDesktopWindow()) return base;
+  return {
+    getItem: (name) => base.getItem(name),
+    setItem: (name, value) => {
+      const stored = base.getItem(name);
+      return base.setItem(
+        name,
+        keepStoredSelection(typeof stored === "string" ? stored : null, value),
+      );
+    },
+    removeItem: (name) => base.removeItem(name),
+  };
 }
 
 export const useWorkspaceStore = create<WorkspaceStoreState>()(
@@ -98,11 +137,27 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         })),
     }),
     {
-      name: "t3code:workspaces:v1",
+      name: WORKSPACE_STORAGE_KEY,
       version: 1,
-      storage: createJSONStorage(() =>
-        resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
-      ),
+      storage: createJSONStorage(workspaceStorage),
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<
+          Pick<WorkspaceStoreState, "workspaces" | "activeWorkspaceId">
+        >;
+        const workspaces = Array.isArray(stored.workspaces)
+          ? stored.workspaces
+          : current.workspaces;
+        const activeWorkspaceId = isAdditionalDesktopWindow()
+          ? current.activeWorkspaceId
+          : (stored.activeWorkspaceId ?? null);
+        return {
+          ...current,
+          workspaces,
+          activeWorkspaceId: workspaces.some((workspace) => workspace.id === activeWorkspaceId)
+            ? activeWorkspaceId
+            : null,
+        };
+      },
       partialize: (state) => ({
         workspaces: state.workspaces,
         activeWorkspaceId: state.activeWorkspaceId,
@@ -110,6 +165,18 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
     },
   ),
 );
+
+// rooms-patches: an extra window starts on the workspace it was opened for,
+// and every window picks up workspace edits made in the others.
+{
+  const context = readDesktopWindowContext();
+  if (context.additional && context.workspace !== null) {
+    useWorkspaceStore.getState().selectWorkspaceByName(context.workspace);
+  }
+  onOtherWindowStorageChange(WORKSPACE_STORAGE_KEY, () => {
+    void useWorkspaceStore.persist.rehydrate();
+  });
+}
 
 /** The selected workspace, or null for all projects. */
 export function useActiveWorkspace(): Workspace | null {

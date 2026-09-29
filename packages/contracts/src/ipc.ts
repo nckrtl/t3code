@@ -1314,6 +1314,10 @@ export interface DesktopBridge {
   probeRemoteEditors?: () => Promise<readonly EditorId[]>;
   /** Present when the desktop shell can perform an ordered plain-text paste. */
   pasteAsText?: () => Promise<void>;
+  /** Opens an extra desktop window showing a workspace (id or name; null = all projects). */
+  openWorkspaceWindow?: (workspace: string | null) => Promise<void>;
+  /** Which window this is: extra windows carry their starting workspace. Absent in older shells. */
+  windowContext?: { readonly additional: boolean; readonly workspace: string | null };
   onMenuAction: (listener: (action: string) => void) => () => void;
   onSnapShotEvent?: (listener: (event: DesktopSnapShotEvent) => void) => () => void;
   /**

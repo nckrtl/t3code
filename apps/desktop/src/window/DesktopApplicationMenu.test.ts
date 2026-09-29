@@ -76,6 +76,10 @@ const desktopUpdatesLayer = Layer.succeed(DesktopUpdates.DesktopUpdates, {
 const makeDesktopWindowLayer = (selectedAction: Deferred.Deferred<string>) =>
   Layer.succeed(DesktopWindow.DesktopWindow, {
     createMain: Effect.die("unexpected createMain"),
+    createAdditional: (input) =>
+      Deferred.succeed(selectedAction, `new-window:${input.workspace}`).pipe(
+        Effect.as({} as Electron.BrowserWindow),
+      ),
     ensureMain: Effect.die("unexpected ensureMain"),
     revealOrCreateMain: Effect.die("unexpected revealOrCreateMain"),
     activate: Effect.void,
@@ -150,6 +154,31 @@ describe("DesktopApplicationMenu", () => {
 
       settingsClick({} as Electron.MenuItem, {} as Electron.BrowserWindow, {} as KeyboardEvent);
       assert.equal(yield* Deferred.await(selectedAction), "open-settings");
+    }),
+  );
+
+  it.effect("opens an extra window for all projects from File > New Window", () =>
+    Effect.gen(function* () {
+      const selectedAction = yield* Deferred.make<string>();
+      const applicationMenuTemplate =
+        yield* Deferred.make<readonly Electron.MenuItemConstructorOptions[]>();
+
+      yield* configureMenu(selectedAction, applicationMenuTemplate);
+
+      const template = yield* Deferred.await(applicationMenuTemplate);
+      const fileMenu = template.find((item) => item.label === "File");
+      if (!fileMenu || !Array.isArray(fileMenu.submenu)) {
+        throw new Error("Expected a File menu with a submenu.");
+      }
+      const [newWindowItem] = fileMenu.submenu;
+      assert.equal(newWindowItem?.label, "New Window");
+      assert.equal(newWindowItem?.accelerator, "Alt+CmdOrCtrl+N");
+      const click = newWindowItem?.click;
+      if (typeof click !== "function") {
+        throw new Error("Expected New Window to have a click handler.");
+      }
+      click({} as Electron.MenuItem, {} as Electron.BrowserWindow, {} as KeyboardEvent);
+      assert.equal(yield* Deferred.await(selectedAction), "new-window:null");
     }),
   );
 
