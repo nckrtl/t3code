@@ -195,6 +195,7 @@ import {
 import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
+import { useActiveWorkspace } from "../workspaceStore";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -935,13 +936,21 @@ function OpenCommandPaletteDialog(props: {
       }),
     [activeDraftThread, activeThread, defaultProjectRef, handleNewThread],
   );
+  // A selected workspace limits picking to its projects (rooms-patches): a
+  // thread elsewhere would be hidden from the sidebar.
+  const activeWorkspace = useActiveWorkspace();
   const projectPickerEntries = useMemo(
     () =>
       buildSidebarProjectPickerEntries({
-        groups: projectGroups,
+        groups:
+          activeWorkspace === null
+            ? projectGroups
+            : projectGroups.filter((group) =>
+                activeWorkspace.projectKeys.includes(group.projectKey),
+              ),
         preferredProjectRef: contextualProjectRef,
       }),
-    [contextualProjectRef, projectGroups],
+    [activeWorkspace, contextualProjectRef, projectGroups],
   );
   const pickerProjects = useMemo(
     () =>

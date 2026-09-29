@@ -8,6 +8,7 @@ import {
   validateWorkspaceDraft,
   workspaceLetter,
   workspaceNameKey,
+  workspaceProjectRefs,
   type Workspace,
 } from "./workspaces.logic";
 
@@ -125,6 +126,20 @@ describe("workspaces.logic", () => {
   });
 });
 
+describe("workspaceProjectRefs", () => {
+  it("lists the refs new threads may use in a workspace", () => {
+    const projects = [
+      { projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1", "beast:p9"] },
+      { projectKey: "repo:drift", displayName: "drift", refs: ["local:p2"] },
+    ];
+    expect(workspaceProjectRefs(null, projects)).toBeNull();
+    expect(workspaceProjectRefs(workspace("Orbit", ["repo:orbit"]), projects)).toEqual(
+      new Set(["local:p1", "beast:p9"]),
+    );
+    expect(workspaceProjectRefs(workspace("Empty", []), projects)).toEqual(new Set());
+  });
+});
+
 describe("workspaceStore", () => {
   beforeEach(() =>
     useWorkspaceStore.setState({ workspaces: [], activeWorkspaceId: null, availableProjects: [] }),
@@ -181,12 +196,12 @@ describe("workspaceStore", () => {
   });
 
   it("publishes the sidebar's projects only when they change", () => {
-    const projects = [{ projectKey: "repo:orbit", displayName: "orbit" }];
+    const projects = [{ projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1"] }];
     useWorkspaceStore.getState().publishProjects(projects);
     const first = useWorkspaceStore.getState().availableProjects;
     useWorkspaceStore
       .getState()
-      .publishProjects([{ projectKey: "repo:orbit", displayName: "orbit" }]);
+      .publishProjects([{ projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1"] }]);
     expect(useWorkspaceStore.getState().availableProjects).toBe(first);
   });
 });

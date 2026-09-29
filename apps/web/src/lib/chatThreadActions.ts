@@ -6,6 +6,8 @@ import type {
   ScopedProjectRef,
 } from "@t3tools/contracts";
 import type { ComposerThreadDraftState, DraftThreadEnvMode } from "../composerDraftStore";
+import { useWorkspaceStore } from "../workspaceStore";
+import { workspaceProjectRefs } from "../workspaces.logic";
 
 type ComposerModelSelectionState = Pick<
   ComposerThreadDraftState,
@@ -68,13 +70,25 @@ export function hasExplicitComposerModelSelection(
   );
 }
 
+/**
+ * Whether a project belongs to the selected sidebar workspace (rooms-patches);
+ * true when none is selected. A thread outside it would be hidden from the
+ * sidebar, so new threads skip such a context project.
+ */
+function inActiveWorkspace(thread: ThreadContextLike): boolean {
+  const { workspaces, activeWorkspaceId, availableProjects } = useWorkspaceStore.getState();
+  const workspace = workspaces.find((candidate) => candidate.id === activeWorkspaceId) ?? null;
+  const refs = workspaceProjectRefs(workspace, availableProjects);
+  return refs === null || refs.has(`${thread.environmentId}:${thread.projectId}`);
+}
+
 export function resolveThreadActionProjectRef(
   context: ChatThreadActionContext,
 ): ScopedProjectRef | null {
-  if (context.activeThread) {
+  if (context.activeThread && inActiveWorkspace(context.activeThread)) {
     return scopeProjectRef(context.activeThread.environmentId, context.activeThread.projectId);
   }
-  if (context.activeDraftThread) {
+  if (context.activeDraftThread && inActiveWorkspace(context.activeDraftThread)) {
     return scopeProjectRef(
       context.activeDraftThread.environmentId,
       context.activeDraftThread.projectId,
