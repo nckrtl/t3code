@@ -24,6 +24,7 @@ import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
+import { SidebarUpdatePill } from "./SidebarUpdatePill";
 import { WorkspaceDialog } from "./WorkspaceDialog";
 import { WorkspaceBadge } from "./workspaceVisuals";
 
@@ -199,8 +200,9 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
 
 /**
  * The app's utility actions at the bottom of the rail, top to bottom: a provider
- * update (only while there is one, so it never shifts the rest), usage, pull
- * requests and settings. They replace the thread sidebar's footer row.
+ * update (only while there is one), the app update button (always there in the
+ * desktop app, so an update never shifts the rest), usage, pull requests and
+ * settings. They replace the thread sidebar's footer row.
  */
 function RailActions() {
   const navigate = useNavigate();
@@ -226,6 +228,7 @@ function RailActions() {
     // 13px below Settings levels it with the thread sidebar's Settled row above the footer.
     <div className="flex w-full shrink-0 flex-col items-center gap-2 pb-3.25">
       <RailProviderUpdate />
+      <SidebarUpdatePill variant="rail" />
       <RailButton
         label="Usage"
         active={page === "usage"}
