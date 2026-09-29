@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -8,6 +9,7 @@ import {
   meansAllProjects,
   validateWorkspaceDraft,
   workspaceNameKey,
+  workspaceProjectRefs,
   type Workspace,
   type WorkspaceProject,
 } from "./workspaces.logic";
@@ -53,7 +55,8 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           current.every(
             (project, index) =>
               project.projectKey === projects[index]!.projectKey &&
-              project.displayName === projects[index]!.displayName,
+              project.displayName === projects[index]!.displayName &&
+              project.refs.join() === projects[index]!.refs.join(),
           );
         if (!same) set({ availableProjects: projects });
       },
@@ -114,4 +117,14 @@ export function useActiveWorkspace(): Workspace | null {
     (state) =>
       state.workspaces.find((workspace) => workspace.id === state.activeWorkspaceId) ?? null,
   );
+}
+
+/**
+ * The project refs ("<environmentId>:<projectId>") new threads may use while a
+ * workspace is selected; null means every project.
+ */
+export function useActiveWorkspaceProjectRefs(): ReadonlySet<string> | null {
+  const workspace = useActiveWorkspace();
+  const projects = useWorkspaceStore((state) => state.availableProjects);
+  return useMemo(() => workspaceProjectRefs(workspace, projects), [workspace, projects]);
 }

@@ -5,7 +5,8 @@ import {
   ProviderInstanceId,
   type ModelSelection,
 } from "@t3tools/contracts";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { useWorkspaceStore } from "../workspaceStore";
 import {
   resolveThreadActionProjectRef,
   hasExplicitComposerModelSelection,
@@ -167,5 +168,46 @@ describe("chatThreadActions", () => {
 
     expect(didStart).toBe(false);
     expect(handleNewThread).not.toHaveBeenCalled();
+  });
+});
+
+describe("new threads inside a workspace", () => {
+  afterEach(() =>
+    useWorkspaceStore.setState({ workspaces: [], activeWorkspaceId: null, availableProjects: [] }),
+  );
+
+  it("skips a context project outside the selected workspace", () => {
+    useWorkspaceStore.setState({
+      workspaces: [
+        { id: "ws-1", name: "Desk", projectKeys: ["repo:fallback"], color: "teal", icon: null },
+      ],
+      activeWorkspaceId: "ws-1",
+      availableProjects: [
+        {
+          projectKey: "repo:active",
+          displayName: "active",
+          refs: [`${ENVIRONMENT_ID}:${PROJECT_ID}`],
+        },
+        {
+          projectKey: "repo:fallback",
+          displayName: "fallback",
+          refs: [`${ENVIRONMENT_ID}:${FALLBACK_PROJECT_ID}`],
+        },
+      ],
+    });
+    const context = createContext({
+      activeThread: {
+        environmentId: ENVIRONMENT_ID,
+        projectId: PROJECT_ID,
+      } as ChatThreadActionContext["activeThread"],
+    });
+    expect(resolveThreadActionProjectRef(context)).toEqual(
+      scopeProjectRef(ENVIRONMENT_ID, FALLBACK_PROJECT_ID),
+    );
+
+    useWorkspaceStore.setState({ activeWorkspaceId: null });
+    expect(resolveThreadActionProjectRef(context)).toEqual(
+      scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID),
+    );
   });
 });

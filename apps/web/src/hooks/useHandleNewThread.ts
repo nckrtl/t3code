@@ -34,6 +34,7 @@ import { environmentServerConfigsAtom } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
 import { useClientSettings } from "./useSettings";
+import { useActiveWorkspaceProjectRefs } from "../workspaceStore";
 
 interface NewThreadWorkspaceOptions {
   branch?: string | null;
@@ -464,12 +465,19 @@ export function useHandleNewThread() {
     });
   }, [projectOrder, projects]);
   const handleNewThread = useNewThreadHandler();
+  // Inside a workspace, the default is its first project (rooms-patches).
+  const workspaceRefs = useActiveWorkspaceProjectRefs();
+  const defaultProject =
+    orderedProjects.find(
+      (project) =>
+        workspaceRefs === null || workspaceRefs.has(`${project.environmentId}:${project.id}`),
+    ) ?? orderedProjects[0];
 
   return {
     activeDraftThread,
     activeThread,
-    defaultProjectRef: orderedProjects[0]
-      ? scopeProjectRef(orderedProjects[0].environmentId, orderedProjects[0].id)
+    defaultProjectRef: defaultProject
+      ? scopeProjectRef(defaultProject.environmentId, defaultProject.id)
       : null,
     handleNewThread,
     routeDraftId,
