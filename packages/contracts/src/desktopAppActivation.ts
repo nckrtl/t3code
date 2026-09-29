@@ -26,9 +26,22 @@ export const DesktopAppOpenThreadRequest = Schema.Struct({
 });
 export type DesktopAppOpenThreadRequest = typeof DesktopAppOpenThreadRequest.Type;
 
+/**
+ * Selects a sidebar workspace (rooms-patches): a workspace id or name, or
+ * "all" for every project. Also sent for t3code://workspace/<name> links.
+ */
+export const DesktopAppSelectWorkspaceRequest = Schema.Struct({
+  version: Schema.Literal(DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION),
+  requestId: TrimmedNonEmptyString,
+  type: Schema.Literal("select-workspace"),
+  workspace: Schema.String,
+});
+export type DesktopAppSelectWorkspaceRequest = typeof DesktopAppSelectWorkspaceRequest.Type;
+
 export const DesktopAppActivationRequest = Schema.Union([
   DesktopAppOpenWorkspaceRequest,
   DesktopAppOpenThreadRequest,
+  DesktopAppSelectWorkspaceRequest,
 ]);
 export type DesktopAppActivationRequest = typeof DesktopAppActivationRequest.Type;
 
@@ -40,6 +53,7 @@ export const DesktopAppActivationErrorCode = Schema.Literals([
   "project-create-failed",
   "thread-open-failed",
   "thread-not-found",
+  "workspace-not-found",
   "request-timeout",
   "internal-error",
 ]);
@@ -63,8 +77,19 @@ export const DesktopAppActivationFailure = Schema.Struct({
 });
 export type DesktopAppActivationFailure = typeof DesktopAppActivationFailure.Type;
 
+/** The workspace now selected; null ids mean all projects. */
+export const DesktopAppSelectWorkspaceSuccess = Schema.Struct({
+  version: Schema.Literal(DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION),
+  requestId: TrimmedNonEmptyString,
+  ok: Schema.Literal(true),
+  workspaceId: Schema.NullOr(Schema.String),
+  workspaceName: Schema.NullOr(Schema.String),
+});
+export type DesktopAppSelectWorkspaceSuccess = typeof DesktopAppSelectWorkspaceSuccess.Type;
+
 export const DesktopAppActivationResponse = Schema.Union([
   DesktopAppActivationSuccess,
+  DesktopAppSelectWorkspaceSuccess,
   DesktopAppActivationFailure,
 ]);
 export type DesktopAppActivationResponse = typeof DesktopAppActivationResponse.Type;
