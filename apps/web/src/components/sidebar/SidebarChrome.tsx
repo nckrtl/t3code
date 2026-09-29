@@ -206,7 +206,9 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
 export const SidebarChromeFooter = memo(function SidebarChromeFooter({
   utilities = true,
 }: {
-  /** False when the workspace rail shows the provider update and utility actions (rooms-patches). */
+  /**
+   * False when the workspace rail shows the updates and utility actions (rooms-patches).
+   */
   utilities?: boolean;
 }) {
   return (
@@ -214,13 +216,7 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter({
       <SidebarThreadUndoNotice />
       {utilities ? <SidebarProviderUpdatePill /> : null}
       <SidebarUpdateArchitectureWarning />
-      {utilities ? (
-        <SidebarUtilityMenu />
-      ) : (
-        <SidebarMenu className="flex-row items-center">
-          <SidebarUpdatePill />
-        </SidebarMenu>
-      )}
+      {utilities ? <SidebarUtilityMenu /> : null}
     </SidebarFooter>
   );
 });
