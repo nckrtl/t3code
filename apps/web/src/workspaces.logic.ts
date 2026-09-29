@@ -31,6 +31,21 @@ export interface Workspace {
 export interface WorkspaceProject {
   readonly projectKey: string;
   readonly displayName: string;
+  /** The project's environment-scoped refs ("<environmentId>:<projectId>"). */
+  readonly refs: readonly string[];
+}
+
+/**
+ * The environment-scoped project refs a workspace covers, or null for all
+ * projects: what new threads may use while it is selected.
+ */
+export function workspaceProjectRefs(
+  workspace: Workspace | null,
+  projects: readonly WorkspaceProject[],
+): ReadonlySet<string> | null {
+  if (workspace === null) return null;
+  const keys = new Set(workspace.projectKeys);
+  return new Set(projects.filter((p) => keys.has(p.projectKey)).flatMap((p) => p.refs));
 }
 
 /** Folds case and diacritics and keeps letters and digits, the way Rooms matches names. */
