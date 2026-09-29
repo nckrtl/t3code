@@ -28,6 +28,20 @@ export interface Workspace {
   readonly color: WorkspaceColor;
   /** A name from WORKSPACE_ICON_NAMES, or null to show the name's first letter. */
   readonly icon: string | null;
+  /** An uploaded picture (a small data URL) shown instead of the icon or letter. */
+  readonly image?: string | null;
+}
+
+/** Longest image data URL a workspace keeps: a 96px square is far below it. */
+export const WORKSPACE_IMAGE_MAX_CHARS = 200_000;
+
+/** True for an image data URL a workspace may keep (PNG, JPEG or WebP, base64). */
+export function isWorkspaceImage(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= WORKSPACE_IMAGE_MAX_CHARS &&
+    /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)
+  );
 }
 
 export interface WorkspaceProject {
@@ -179,16 +193,26 @@ export function validateWorkspaceDraft(draft: {
   readonly projectKeys: readonly string[];
   readonly color: string;
   readonly icon: string | null;
-}): { name: string; projectKeys: string[]; color: WorkspaceColor; icon: string | null } {
+  readonly image?: string | null;
+}): {
+  name: string;
+  projectKeys: string[];
+  color: WorkspaceColor;
+  icon: string | null;
+  image: string | null;
+} {
   const name = draft.name.trim().replace(/\s+/g, " ");
   if (name.length === 0) throw new Error("Give the workspace a name.");
   if (name.length > 40) throw new Error("Keep the name to 40 characters.");
   if (meansAllProjects(name)) throw new Error(`"${name}" is reserved for all projects.`);
   if (!WORKSPACE_COLORS.includes(draft.color as WorkspaceColor)) throw new Error("Pick a color.");
+  const image = draft.image ?? null;
+  if (image !== null && !isWorkspaceImage(image)) throw new Error("That image can't be used.");
   return {
     name,
     projectKeys: [...new Set(draft.projectKeys)],
     color: draft.color as WorkspaceColor,
     icon: draft.icon,
+    image,
   };
 }
