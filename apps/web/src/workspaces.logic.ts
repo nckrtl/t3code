@@ -1,3 +1,5 @@
+import type { EnvironmentMachineKind } from "@t3tools/contracts";
+
 /**
  * Workspaces: named sets of sidebar projects, shown as a rail beside the
  * thread sidebar. Selecting one scopes the sidebar to its projects. They live
@@ -33,6 +35,50 @@ export interface WorkspaceProject {
   readonly displayName: string;
   /** The project's environment-scoped refs ("<environmentId>:<projectId>"). */
   readonly refs: readonly string[];
+  /** The connections (environments) the project lives on. */
+  readonly connections?: readonly WorkspaceConnection[];
+}
+
+/** A connection a project lives on, as the workspace editor shows it. */
+export interface WorkspaceConnection {
+  readonly environmentId: string;
+  readonly label: string;
+  readonly kind: EnvironmentMachineKind;
+  /** The primary connection: the machine this app talks to first. */
+  readonly primary: boolean;
+}
+
+export interface WorkspaceConnectionSection<P extends WorkspaceProject> {
+  /** Null holds projects with no known connection (for example one that is offline now). */
+  readonly connection: WorkspaceConnection | null;
+  readonly projects: readonly P[];
+}
+
+/**
+ * Groups projects under the connections they live on: this Mac first, then the
+ * others by label, then projects with no known connection. A project on two
+ * connections appears under both.
+ */
+export function groupProjectsByConnection<P extends WorkspaceProject>(
+  projects: readonly P[],
+): WorkspaceConnectionSection<P>[] {
+  const sections = new Map<string, { connection: WorkspaceConnection; projects: P[] }>();
+  const unknown: P[] = [];
+  for (const project of projects) {
+    const connections = project.connections ?? [];
+    if (connections.length === 0) unknown.push(project);
+    for (const connection of connections) {
+      const section = sections.get(connection.environmentId) ?? { connection, projects: [] };
+      section.projects.push(project);
+      sections.set(connection.environmentId, section);
+    }
+  }
+  const ordered: WorkspaceConnectionSection<P>[] = [...sections.values()].sort(
+    (a, b) =>
+      Number(b.connection.primary) - Number(a.connection.primary) ||
+      a.connection.label.localeCompare(b.connection.label),
+  );
+  return unknown.length > 0 ? [...ordered, { connection: null, projects: unknown }] : ordered;
 }
 
 /**

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { useWorkspaceStore } from "./workspaceStore";
 import {
+  groupProjectsByConnection,
   findWorkspace,
   nextWorkspaceColor,
   resolveScopedProjectKeys,
@@ -203,5 +204,56 @@ describe("workspaceStore", () => {
       .getState()
       .publishProjects([{ projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1"] }]);
     expect(useWorkspaceStore.getState().availableProjects).toBe(first);
+  });
+});
+
+describe("groupProjectsByConnection", () => {
+  const here = {
+    environmentId: "env-here",
+    label: "mini",
+    kind: "desktop",
+    primary: true,
+  } as const;
+  const beast = {
+    environmentId: "env-beast",
+    label: "beast",
+    kind: "server",
+    primary: false,
+  } as const;
+  const alpha = {
+    environmentId: "env-alpha",
+    label: "alpha",
+    kind: "server",
+    primary: false,
+  } as const;
+  const project = (
+    projectKey: string,
+    connections: readonly (typeof here | typeof beast | typeof alpha)[],
+  ) => ({
+    projectKey,
+    displayName: projectKey,
+    refs: [],
+    connections,
+  });
+
+  it("lists this machine first, then other connections by name, then unknown projects", () => {
+    const sections = groupProjectsByConnection([
+      project("rooms", [beast]),
+      project("drift", [here, beast]),
+      project("t3code", [here]),
+      project("orbit", [alpha]),
+      { projectKey: "gone", displayName: "gone", refs: [] },
+    ]);
+    expect(
+      sections.map((section) => [
+        section.connection?.label ?? null,
+        section.projects.map((p) => p.projectKey),
+      ]),
+    ).toEqual([
+      ["mini", ["drift", "t3code"]],
+      ["alpha", ["orbit"]],
+      ["beast", ["rooms", "drift"]],
+      [null, ["gone"]],
+    ]);
   });
 });
