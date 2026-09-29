@@ -33,6 +33,7 @@ function dependencies(
     openThread: vi.fn(async () => ({ threadId })),
     findThread: () => ({ projectId: existingProjectId }),
     showThread: vi.fn(async () => undefined),
+    selectWorkspace: vi.fn(() => ({ found: true, workspace: { id: "ws-1", name: "Orbit" } })),
     ...overrides,
   };
 }
@@ -155,6 +156,49 @@ describe("desktop app activation", () => {
         code: "thread-open-failed",
         message: "navigation failed",
       });
+    });
+  });
+
+  describe("select-workspace", () => {
+    const selectWorkspaceRequest = {
+      version: 1,
+      requestId: "request-3",
+      type: "select-workspace",
+      workspace: "orbit",
+    } as const;
+
+    it("selects the named workspace", async () => {
+      const deps = dependencies();
+
+      const response = await handleDesktopAppActivationRequest(selectWorkspaceRequest, deps);
+
+      expect(deps.selectWorkspace).toHaveBeenCalledWith("orbit");
+      expect(response).toEqual({
+        version: 1,
+        requestId: "request-3",
+        ok: true,
+        workspaceId: "ws-1",
+        workspaceName: "Orbit",
+      });
+    });
+
+    it("answers all projects with null ids", async () => {
+      const deps = dependencies({ selectWorkspace: () => ({ found: true, workspace: null }) });
+
+      const response = await handleDesktopAppActivationRequest(
+        { ...selectWorkspaceRequest, workspace: "all" },
+        deps,
+      );
+
+      expect(response).toMatchObject({ ok: true, workspaceId: null, workspaceName: null });
+    });
+
+    it("reports an unknown workspace", async () => {
+      const deps = dependencies({ selectWorkspace: () => ({ found: false, workspace: null }) });
+
+      const response = await handleDesktopAppActivationRequest(selectWorkspaceRequest, deps);
+
+      expect(response).toMatchObject({ ok: false, code: "workspace-not-found" });
     });
   });
 });

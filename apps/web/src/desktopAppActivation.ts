@@ -5,6 +5,7 @@ import type {
   EnvironmentId,
   ExecutionEnvironmentPlatformOs,
   DesktopAppOpenThreadRequest,
+  DesktopAppSelectWorkspaceRequest,
   DesktopAppOpenWorkspaceRequest,
   ProjectId,
   ScopedProjectRef,
@@ -40,6 +41,11 @@ export interface DesktopAppActivationDependencies {
   /** The project of an existing thread, or null when the thread isn't known. */
   readonly findThread: (threadRef: ScopedThreadRef) => { readonly projectId: ProjectId } | null;
   readonly showThread: (threadRef: ScopedThreadRef) => Promise<void>;
+  /** Selects a workspace by id or name ("all" clears); found is false for unknown names. */
+  readonly selectWorkspace: (idOrName: string) => {
+    readonly found: boolean;
+    readonly workspace: { readonly id: string; readonly name: string } | null;
+  };
 }
 
 function failure(
@@ -91,11 +97,34 @@ async function handleOpenThreadRequest(
   };
 }
 
+function handleSelectWorkspaceRequest(
+  request: DesktopAppSelectWorkspaceRequest,
+  dependencies: DesktopAppActivationDependencies,
+): DesktopAppActivationResponse {
+  const selected = dependencies.selectWorkspace(request.workspace);
+  if (!selected.found) {
+    return failure(
+      request.requestId,
+      "workspace-not-found",
+      `T3 Code has no single workspace named "${request.workspace}".`,
+    );
+  }
+  return {
+    version: 1,
+    requestId: request.requestId,
+    ok: true,
+    workspaceId: selected.workspace?.id ?? null,
+    workspaceName: selected.workspace?.name ?? null,
+  };
+}
+
 export async function handleDesktopAppActivationRequest(
   request: DesktopAppActivationRequest,
   dependencies: DesktopAppActivationDependencies,
 ): Promise<DesktopAppActivationResponse> {
   if (request.type === "open-thread") return handleOpenThreadRequest(request, dependencies);
+  if (request.type === "select-workspace")
+    return handleSelectWorkspaceRequest(request, dependencies);
 
   const target = dependencies.getTarget();
   if (target === null) {

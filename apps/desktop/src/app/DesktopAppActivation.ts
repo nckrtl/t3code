@@ -20,6 +20,7 @@ import * as Scope from "effect/Scope";
 
 import type * as Electron from "electron";
 
+import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import { DESKTOP_APP_ACTIVATION_REQUEST_CHANNEL } from "../ipc/channels.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
@@ -55,6 +56,26 @@ function invalidResponse(requestId: string, message: string): DesktopAppActivati
     code: "invalid-request",
     message,
   };
+}
+
+/**
+ * The workspace a `t3code://workspace/<name>` link names (rooms-patches);
+ * `t3code://workspace/` means all projects. Null for any other link, such as
+ * Clerk's `t3code://app/` sign-in callback.
+ */
+export function workspaceFromLink(link: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    return null;
+  }
+  if (!["t3code:", "t3code-dev:"].includes(url.protocol) || url.host !== "workspace") return null;
+  try {
+    return decodeURIComponent(url.pathname.replace(/^\/+|\/+$/g, "")) || "all";
+  } catch {
+    return null;
+  }
 }
 
 function requestIdFromUnknown(value: unknown): string {
@@ -217,6 +238,7 @@ const { logWarning } = makeComponentLogger("desktop-app-activation");
 export const make = Effect.gen(function* () {
   const desktopEnvironment = yield* DesktopEnvironment.DesktopEnvironment;
   const desktopWindow = yield* DesktopWindow.DesktopWindow;
+  const electronApp = yield* ElectronApp.ElectronApp;
   const electronWindow = yield* ElectronWindow.ElectronWindow;
   const path = yield* Path.Path;
   const userId = yield* HostProcessUserId;
@@ -229,6 +251,7 @@ export const make = Effect.gen(function* () {
     joinPath: path.join,
   });
   let registeredWebContents: Electron.WebContents | null = null;
+  let linkRequests = 0;
   let detachRendererListeners: (() => void) | null = null;
 
   const broker = new DesktopAppActivationBroker({
@@ -268,7 +291,31 @@ export const make = Effect.gen(function* () {
           ),
           Effect.ensuring(Effect.sync(() => broker.close())),
         ),
-    ).pipe(Effect.asVoid),
+    ).pipe(
+      Effect.andThen(
+        // t3code://workspace/<name> selects a workspace, like the socket's
+        // select-workspace request (rooms-patches).
+        electronApp.on("open-url", (event: Electron.Event, link: string) => {
+          const workspace = workspaceFromLink(link);
+          if (workspace === null) return;
+          event.preventDefault();
+          linkRequests += 1;
+          void broker
+            .request({
+              version: DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION,
+              requestId: `workspace-link-${linkRequests}`,
+              type: "select-workspace",
+              workspace,
+            })
+            .then((response) => {
+              if (!response.ok) {
+                void runPromise(logWarning("workspace link failed", { link, response }));
+              }
+            });
+        }),
+      ),
+      Effect.asVoid,
+    ),
     setRendererReady: Effect.fn("DesktopAppActivation.setRendererReady")(function* (ready) {
       if (!ready) {
         clearRegisteredRenderer();
