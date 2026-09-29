@@ -3,11 +3,14 @@ import { useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import { useWorkspaceStore } from "../../workspaceStore";
 import {
+  groupProjectsByConnection,
   nextWorkspaceColor,
   WORKSPACE_COLORS,
   type Workspace,
   type WorkspaceColor,
+  type WorkspaceProject,
 } from "../../workspaces.logic";
+import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import {
@@ -54,15 +57,18 @@ export function WorkspaceDialog({
 
   // Projects the workspace has but the sidebar doesn't show now (an environment
   // is offline) stay listed, so saving never drops them silently.
-  const projects = useMemo(() => {
+  const projects = useMemo((): WorkspaceProject[] => {
     const known = new Set(availableProjects.map((project) => project.projectKey));
     return [
       ...availableProjects,
       ...(editing?.projectKeys ?? [])
         .filter((key) => !known.has(key))
-        .map((key) => ({ projectKey: key, displayName: `${key} (not available now)` })),
+        .map((key) => ({ projectKey: key, displayName: `${key} (not available now)`, refs: [] })),
     ];
   }, [availableProjects, editing]);
+  // Listed under the connection each project lives on, so projects on this Mac
+  // and on other machines are told apart (rooms-patches).
+  const sections = useMemo(() => groupProjectsByConnection(projects), [projects]);
 
   const save = () => {
     const draft = { name, color, icon, projectKeys };
@@ -170,22 +176,69 @@ export function WorkspaceDialog({
               {projects.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No projects yet.</p>
               ) : (
-                <div className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-border p-2">
-                  {projects.map((project) => {
-                    const id = `workspace-project-${project.projectKey}`;
+                <div className="grid max-h-72 gap-3 overflow-y-auto rounded-md border border-border p-2">
+                  {sections.map(({ connection, projects: sectionProjects }) => {
+                    const sectionKeys = sectionProjects.map((project) => project.projectKey);
+                    const allSelected = sectionKeys.every((key) => projectKeys.includes(key));
+                    const sectionId = connection?.environmentId ?? "unknown";
                     return (
-                      <div key={project.projectKey} className="flex items-center gap-2">
-                        <Checkbox
-                          id={id}
-                          checked={projectKeys.includes(project.projectKey)}
-                          onCheckedChange={(checked) =>
-                            toggleProject(project.projectKey, checked === true)
-                          }
-                        />
-                        <Label htmlFor={id}>
-                          <span className="truncate">{project.displayName}</span>
-                        </Label>
-                      </div>
+                      <section
+                        key={sectionId}
+                        aria-label={connection?.label ?? "Not connected"}
+                        className="grid gap-1"
+                      >
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          {connection ? (
+                            <EnvironmentMachineIcon
+                              aria-hidden
+                              kind={connection.kind}
+                              className="size-3.5 shrink-0"
+                            />
+                          ) : null}
+                          <span className="truncate font-medium text-foreground">
+                            {connection?.label ?? "Not connected"}
+                          </span>
+                          {connection?.primary ? <span>· this machine</span> : null}
+                          <button
+                            type="button"
+                            className="ml-auto shrink-0 rounded px-1 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring outline-none"
+                            onClick={() =>
+                              setProjectKeys((current) =>
+                                allSelected
+                                  ? current.filter((key) => !sectionKeys.includes(key))
+                                  : [...new Set([...current, ...sectionKeys])],
+                              )
+                            }
+                          >
+                            {allSelected ? "Clear" : "Select all"}
+                          </button>
+                        </div>
+                        {sectionProjects.map((project) => {
+                          const id = `workspace-project-${sectionId}-${project.projectKey}`;
+                          const elsewhere = (project.connections ?? [])
+                            .filter((other) => other.environmentId !== connection?.environmentId)
+                            .map((other) => other.label);
+                          return (
+                            <div key={project.projectKey} className="flex items-center gap-2 pl-5">
+                              <Checkbox
+                                id={id}
+                                checked={projectKeys.includes(project.projectKey)}
+                                onCheckedChange={(checked) =>
+                                  toggleProject(project.projectKey, checked === true)
+                                }
+                              />
+                              <Label htmlFor={id} className="min-w-0">
+                                <span className="truncate">{project.displayName}</span>
+                                {elsewhere.length > 0 ? (
+                                  <span className="shrink-0 text-muted-foreground text-xs font-normal">
+                                    also on {elsewhere.join(", ")}
+                                  </span>
+                                ) : null}
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </section>
                     );
                   })}
                 </div>

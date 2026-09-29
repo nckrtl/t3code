@@ -2311,13 +2311,31 @@ export default function Sidebar() {
   const publishWorkspaceProjects = useWorkspaceStore((store) => store.publishProjects);
   useEffect(() => {
     publishWorkspaceProjects(
-      projectGroups.map(({ projectKey, displayName, memberProjectRefs }) => ({
+      projectGroups.map(({ projectKey, displayName, memberProjectRefs, memberProjects }) => ({
         projectKey,
         displayName,
         refs: memberProjectRefs.map((ref) => `${ref.environmentId}:${ref.projectId}`),
+        connections: [...new Set(memberProjects.map((member) => member.environmentId))].map(
+          (environmentId) => ({
+            environmentId,
+            label:
+              environmentLabelById.get(environmentId) ??
+              memberProjects.find((member) => member.environmentId === environmentId)
+                ?.environmentLabel ??
+              "Remote",
+            kind: environmentMachineById.get(environmentId) ?? "server",
+            primary: environmentId === primaryEnvironmentId,
+          }),
+        ),
       })),
     );
-  }, [projectGroups, publishWorkspaceProjects]);
+  }, [
+    environmentLabelById,
+    environmentMachineById,
+    primaryEnvironmentId,
+    projectGroups,
+    publishWorkspaceProjects,
+  ]);
   const activeWorkspace = useActiveWorkspace();
   const serverConfigs = useAtomValue(environmentServerConfigsAtom);
   // Threads on non-primary environments (T3 Connect, hosted) resolve their
