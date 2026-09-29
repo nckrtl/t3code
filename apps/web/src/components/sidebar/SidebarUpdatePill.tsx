@@ -108,11 +108,13 @@ function SidebarUpdateArchitectureWarningContent() {
   );
 }
 
-export function SidebarUpdatePill() {
-  return isElectron ? <SidebarUpdateControl /> : null;
+/** `rail` renders it as a workspace rail button (rooms-patches). */
+export function SidebarUpdatePill({ variant = "footer" }: { variant?: "footer" | "rail" } = {}) {
+  return isElectron ? <SidebarUpdateControl variant={variant} /> : null;
 }
 
-function SidebarUpdateControl() {
+function SidebarUpdateControl({ variant }: { variant: "footer" | "rail" }) {
+  const inRail = variant === "rail";
   const state = useDesktopUpdateState();
   const [isActionPending, setIsActionPending] = useState(false);
   const [checkAnimationKey, setCheckAnimationKey] = useState(0);
@@ -303,7 +305,9 @@ function SidebarUpdateControl() {
       aria-label={tooltip}
       aria-disabled={isInteractionDisabled || undefined}
       className={cn(
-        "inline-flex size-8 items-center justify-center rounded-full outline-hidden ring-ring transition-colors focus-visible:ring-2",
+        inRail
+          ? "flex size-9.5 shrink-0 items-center justify-center rounded-md outline-hidden ring-ring transition-colors focus-visible:ring-2"
+          : "inline-flex size-8 items-center justify-center rounded-full outline-hidden ring-ring transition-colors focus-visible:ring-2",
         isInteractionDisabled ? "cursor-not-allowed" : "cursor-pointer",
         showUpdateIconState
           ? cn(
@@ -347,8 +351,9 @@ function SidebarUpdateControl() {
     </button>
   );
 
+  const Item = inRail ? "div" : SidebarMenuItem;
   return (
-    <SidebarMenuItem className="ml-auto shrink-0">
+    <Item className={inRail ? "shrink-0" : "ml-auto shrink-0"}>
       <Popover
         handle={releaseNotesPopoverHandle}
         onOpenChange={(open, details) => {
@@ -382,7 +387,7 @@ function SidebarUpdateControl() {
           {!showReleaseNotesPopover ? (
             <TooltipPopup
               align="center"
-              side="top"
+              side={inRail ? "right" : "top"}
               variant={showUpdateDetails ? "glass" : "default"}
             >
               {tooltip}
@@ -404,7 +409,7 @@ function SidebarUpdateControl() {
               }
             }}
             ref={releaseNotesPopupRef}
-            side="top"
+            side={inRail ? "right" : "top"}
             tooltipStyle
           >
             <SidebarUpdateReleaseNotes
@@ -415,6 +420,6 @@ function SidebarUpdateControl() {
           </PopoverPopup>
         ) : null}
       </Popover>
-    </SidebarMenuItem>
+    </Item>
   );
 }
