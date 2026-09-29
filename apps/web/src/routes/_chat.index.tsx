@@ -21,6 +21,7 @@ import {
 import { useEnvironments } from "../state/environments";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
+import { useActiveWorkspaceProjectRefs } from "../workspaceStore";
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
@@ -47,13 +48,19 @@ function IndexDraftLanding() {
   const startingRef = useRef(false);
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
-  const mostRecentProject = useMemo(
-    () =>
-      bootstrapped
-        ? (sortScopedProjectsForSidebar(projects, threads, "updated_at")[0] ?? null)
-        : null,
-    [bootstrapped, projects, threads],
-  );
+  // Inside a workspace, start in its most recent project (rooms-patches).
+  const workspaceRefs = useActiveWorkspaceProjectRefs();
+  const mostRecentProject = useMemo(() => {
+    if (!bootstrapped) return null;
+    const scoped =
+      workspaceRefs === null
+        ? projects
+        : projects.filter((project) => workspaceRefs.has(`${project.environmentId}:${project.id}`));
+    return (
+      sortScopedProjectsForSidebar(scoped.length ? scoped : projects, threads, "updated_at")[0] ??
+      null
+    );
+  }, [bootstrapped, projects, threads, workspaceRefs]);
 
   useEffect(() => {
     if (mostRecentProject === null || startingRef.current) {

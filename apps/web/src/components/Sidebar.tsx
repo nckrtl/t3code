@@ -2311,7 +2311,11 @@ export default function Sidebar() {
   const publishWorkspaceProjects = useWorkspaceStore((store) => store.publishProjects);
   useEffect(() => {
     publishWorkspaceProjects(
-      projectGroups.map(({ projectKey, displayName }) => ({ projectKey, displayName })),
+      projectGroups.map(({ projectKey, displayName, memberProjectRefs }) => ({
+        projectKey,
+        displayName,
+        refs: memberProjectRefs.map((ref) => `${ref.environmentId}:${ref.projectId}`),
+      })),
     );
   }, [projectGroups, publishWorkspaceProjects]);
   const activeWorkspace = useActiveWorkspace();
@@ -4346,7 +4350,13 @@ export default function Sidebar() {
       // One project: nothing to pick, create immediately. Shift+click creates
       // directly in the current project even with several projects, skipping
       // the palette picker.
-      if (shouldCreateNewThreadInCurrentProject(event?.shiftKey ?? false, projectGroups.length)) {
+      // A workspace counts only its own projects (rooms-patches).
+      const pickable =
+        activeWorkspace === null
+          ? projectGroups.length
+          : projectGroups.filter((group) => activeWorkspace.projectKeys.includes(group.projectKey))
+              .length;
+      if (shouldCreateNewThreadInCurrentProject(event?.shiftKey ?? false, pickable)) {
         if (isMobile) setOpenMobile(false);
         void startNewThreadFromContext({
           activeDraftThread: newThreadContext.activeDraftThread,
@@ -4359,7 +4369,7 @@ export default function Sidebar() {
       if (isMobile) setOpenMobile(false);
       openCommandPalette({ open: "new-thread-in" });
     },
-    [isMobile, newThreadContext, projectGroups.length, setOpenMobile],
+    [activeWorkspace, isMobile, newThreadContext, projectGroups, setOpenMobile],
   );
 
   // The button mirrors chat.new: in multi-project setups both route through
