@@ -258,6 +258,8 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { useActiveWorkspace, useWorkspaceStore } from "../workspaceStore";
+import { resolveScopedProjectKeys } from "../workspaces.logic";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -2409,6 +2411,15 @@ export default function Sidebar() {
   );
   const projectGroupsRef = useRef(projectGroups);
   projectGroupsRef.current = projectGroups;
+  // Workspaces (rooms-patches): the rail's editor lists these projects, and the
+  // active workspace narrows the sidebar to its projects.
+  const publishWorkspaceProjects = useWorkspaceStore((store) => store.publishProjects);
+  useEffect(() => {
+    publishWorkspaceProjects(
+      projectGroups.map(({ projectKey, displayName }) => ({ projectKey, displayName })),
+    );
+  }, [projectGroups, publishWorkspaceProjects]);
+  const activeWorkspace = useActiveWorkspace();
   // Threads on non-primary environments (T3 Connect, hosted) resolve their
   // provider entry from their own environment's config: default instance ids
   // are driver slugs, so a flat map would collide across environments.
@@ -2460,12 +2471,17 @@ export default function Sidebar() {
   const projectScopeItems = useMemo(
     () => [
       { value: "all", label: "All projects" },
-      ...projectGroups.map((project) => ({
-        value: project.projectKey,
-        label: project.displayName,
-      })),
+      ...projectGroups
+        .filter(
+          (project) =>
+            activeWorkspace === null || activeWorkspace.projectKeys.includes(project.projectKey),
+        )
+        .map((project) => ({
+          value: project.projectKey,
+          label: project.displayName,
+        })),
     ],
-    [projectGroups],
+    [activeWorkspace, projectGroups],
   );
   // Same-named projects on two machines are only told apart by where they
   // live, so rows on another machine carry its icon once the catalog spans
@@ -2514,14 +2530,8 @@ export default function Sidebar() {
   );
   const scopedProjectKeys = useMemo(
     () =>
-      scopedProjectGroup === null
-        ? null
-        : new Set(
-            scopedProjectGroup.memberProjectRefs.map(
-              (projectRef) => `${projectRef.environmentId}:${projectRef.projectId}`,
-            ),
-          ),
-    [scopedProjectGroup],
+      resolveScopedProjectKeys({ projectGroups, workspace: activeWorkspace, scopedProjectGroup }),
+    [activeWorkspace, projectGroups, scopedProjectGroup],
   );
   // A persisted scope whose project is gone falls back to all projects, but
   // only after every catalog environment has a live project snapshot. Cached
@@ -2562,7 +2572,7 @@ export default function Sidebar() {
   // hidden now, and bulk actions must never count or touch invisible rows.
   useEffect(() => {
     clearSelection();
-  }, [clearSelection, projectScopeKey]);
+  }, [activeWorkspace?.id, clearSelection, projectScopeKey]);
 
   const openProjectSettings = useCallback(
     (projectGroup: SidebarProjectSnapshot) => {
@@ -2785,7 +2795,7 @@ export default function Sidebar() {
   // filter context changes so a scope/search flip never inherits a deep
   // page state.
   const [settledVisibleCount, setSettledVisibleCount] = useState(SETTLED_TAIL_INITIAL_COUNT);
-  const settledResetKey = projectScopeKey ?? "all";
+  const settledResetKey = `${activeWorkspace?.id ?? "all"}:${projectScopeKey ?? "all"}`;
   const lastSettledResetKeyRef = useRef(settledResetKey);
   if (lastSettledResetKeyRef.current !== settledResetKey) {
     lastSettledResetKeyRef.current = settledResetKey;
@@ -5101,7 +5111,7 @@ export default function Sidebar() {
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter />
+      <SidebarChromeFooter utilities={false} />
     </>
   );
 }
