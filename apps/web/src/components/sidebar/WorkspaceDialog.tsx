@@ -176,7 +176,7 @@ export function WorkspaceDialog({
               {projects.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No projects yet.</p>
               ) : (
-                <div className="grid max-h-72 gap-3 overflow-y-auto rounded-md border border-border p-2">
+                <div className="grid max-h-72 grid-cols-1 gap-3 overflow-y-auto rounded-md border border-border p-2">
                   {sections.map(({ connection, projects: sectionProjects }) => {
                     const sectionKeys = sectionProjects.map((project) => project.projectKey);
                     const allSelected = sectionKeys.every((key) => projectKeys.includes(key));
@@ -185,7 +185,7 @@ export function WorkspaceDialog({
                       <section
                         key={sectionId}
                         aria-label={connection?.label ?? "Not connected"}
-                        className="grid gap-1"
+                        className="grid min-w-0 grid-cols-1 gap-1"
                       >
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           {connection ? (
@@ -219,7 +219,10 @@ export function WorkspaceDialog({
                             .filter((other) => other.environmentId !== connection?.environmentId)
                             .map((other) => other.label);
                           return (
-                            <div key={project.projectKey} className="flex items-center gap-2 pl-5">
+                            <div
+                              key={project.projectKey}
+                              className="flex min-w-0 items-center gap-2 pl-5"
+                            >
                               <Checkbox
                                 id={id}
                                 checked={projectKeys.includes(project.projectKey)}
@@ -227,8 +230,8 @@ export function WorkspaceDialog({
                                   toggleProject(project.projectKey, checked === true)
                                 }
                               />
-                              <Label htmlFor={id} className="min-w-0">
-                                <span className="truncate">{project.displayName}</span>
+                              <Label htmlFor={id} className="min-w-0 flex-1">
+                                <span className="min-w-0 truncate">{project.displayName}</span>
                                 {elsewhere.length > 0 ? (
                                   <span className="shrink-0 text-muted-foreground text-xs font-normal">
                                     also on {elsewhere.join(", ")}
