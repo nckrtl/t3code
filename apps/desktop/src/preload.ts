@@ -33,6 +33,22 @@ exposeClerkBridge({ passkeys: true });
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Electron exposes the client platform in its sandboxed preload process.
 const clientPlatform = process.platform;
 
+// Extra windows (rooms-patches) get their identity as command-line arguments
+// from DesktopWindow.createAdditional; the main window has none.
+function readWindowContext(): { readonly additional: boolean; readonly workspace: string | null } {
+  const additional = process.argv.includes("--t3code-window=additional");
+  const workspaceArg = process.argv.find((arg) => arg.startsWith("--t3code-window-workspace="));
+  let workspace: string | null = null;
+  if (workspaceArg !== undefined) {
+    try {
+      workspace = decodeURIComponent(workspaceArg.slice("--t3code-window-workspace=".length));
+    } catch {
+      workspace = null;
+    }
+  }
+  return { additional, workspace };
+}
+
 if (clientPlatform === "darwin") {
   // Native window buttons do not scale with Chromium zoom. Keep their reserved
   // space in native points, including when a zoomed page is reloaded.
@@ -189,6 +205,9 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.invoke(IpcChannels.OPEN_SYSTEM_SETTINGS_CHANNEL, pane),
   probeRemoteEditors: () => ipcRenderer.invoke(IpcChannels.PROBE_REMOTE_EDITORS_CHANNEL, undefined),
   pasteAsText: () => ipcRenderer.invoke(IpcChannels.PASTE_AS_TEXT_CHANNEL, undefined),
+  openWorkspaceWindow: (workspace) =>
+    ipcRenderer.invoke(IpcChannels.OPEN_WORKSPACE_WINDOW_CHANNEL, workspace),
+  windowContext: readWindowContext(),
   onMenuAction: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, action: unknown) => {
       if (typeof action !== "string") return;

@@ -21,7 +21,7 @@ import {
 import { useEnvironments } from "../state/environments";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
-import { useActiveWorkspaceProjectRefs } from "../workspaceStore";
+import { useActiveWorkspaceProjectRefs, useWorkspaceStore } from "../workspaceStore";
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
@@ -49,9 +49,13 @@ function IndexDraftLanding() {
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
   // Inside a workspace, start in its most recent project (rooms-patches).
+  // The sidebar publishes the project list after its first render; until
+  // then a workspace cannot tell its projects apart, so wait for it.
   const workspaceRefs = useActiveWorkspaceProjectRefs();
+  const projectsPublished = useWorkspaceStore((state) => state.availableProjects.length > 0);
   const mostRecentProject = useMemo(() => {
     if (!bootstrapped) return null;
+    if (workspaceRefs !== null && !projectsPublished && projects.length > 0) return null;
     const scoped =
       workspaceRefs === null
         ? projects
@@ -60,7 +64,7 @@ function IndexDraftLanding() {
       sortScopedProjectsForSidebar(scoped.length ? scoped : projects, threads, "updated_at")[0] ??
       null
     );
-  }, [bootstrapped, projects, threads, workspaceRefs]);
+  }, [bootstrapped, projects, projectsPublished, threads, workspaceRefs]);
 
   useEffect(() => {
     if (mostRecentProject === null || startingRef.current) {

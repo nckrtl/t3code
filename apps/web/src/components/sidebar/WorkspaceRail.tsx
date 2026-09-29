@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
+import { canOpenDesktopWindows, openDesktopWorkspaceWindow } from "../../lib/desktopWindowContext";
 import { cn } from "../../lib/utils";
+import { readLocalApi } from "../../localApi";
 import { useEnvironments } from "../../state/environments";
 import { primaryServerProvidersAtom } from "../../state/server";
 import { useWorkspaceStore } from "../../workspaceStore";
@@ -32,6 +34,7 @@ function RailButton({
   className,
   onClick,
   onEdit,
+  onOpenWindow,
   children,
 }: {
   label: string;
@@ -41,8 +44,27 @@ function RailButton({
   className?: string;
   onClick: () => void;
   onEdit?: () => void;
+  /** Opens this workspace in a new window: ⌘-click, or from the right-click menu. */
+  onOpenWindow?: () => void;
   children: ReactNode;
 }) {
+  const showMenu = async (position: { x: number; y: number }) => {
+    const api = readLocalApi();
+    if (!onOpenWindow || !api) {
+      onEdit?.();
+      return;
+    }
+    const clicked = await api.contextMenu.show(
+      [
+        { id: "open-window", label: "Open in New Window" },
+        ...(onEdit ? [{ id: "edit", label: "Edit…" }] : []),
+      ],
+      position,
+    );
+    if (clicked === "open-window") onOpenWindow();
+    else if (clicked === "edit") onEdit?.();
+  };
+  const hasMenu = onEdit !== undefined || onOpenWindow !== undefined;
   return (
     <Tooltip>
       <TooltipTrigger
@@ -51,13 +73,16 @@ function RailButton({
             type="button"
             aria-label={label}
             aria-pressed={active}
-            onClick={onClick}
+            onClick={(event) => {
+              if (event.metaKey && onOpenWindow) onOpenWindow();
+              else onClick();
+            }}
             onDoubleClick={onEdit}
             onContextMenu={
-              onEdit
+              hasMenu
                 ? (event) => {
                     event.preventDefault();
-                    onEdit();
+                    void showMenu({ x: event.clientX, y: event.clientY });
                   }
                 : undefined
             }
@@ -76,8 +101,10 @@ function RailButton({
       <TooltipPopup side="right">
         {label}
         {hint ? <span className="text-muted-foreground"> · {hint}</span> : null}
-        {onEdit && !hint ? (
-          <span className="text-muted-foreground"> · right-click to edit</span>
+        {hasMenu && !hint ? (
+          <span className="text-muted-foreground">
+            {onOpenWindow ? " · ⌘-click for a new window" : " · right-click to edit"}
+          </span>
         ) : null}
       </TooltipPopup>
     </Tooltip>
@@ -107,6 +134,10 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
   });
   const setEditing = (target: Workspace | "new") =>
     setDialog((current) => ({ target, open: true, session: current.session + 1 }));
+  // Extra windows need the desktop shell (rooms-patches).
+  const openWindow = canOpenDesktopWindows()
+    ? (workspace: Workspace | null) => () => openDesktopWorkspaceWindow(workspace?.id ?? null)
+    : null;
 
   return (
     <nav
@@ -128,6 +159,7 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
             label="All projects"
             active={activeWorkspaceId === null}
             onClick={() => selectWorkspace(null)}
+            {...(openWindow ? { onOpenWindow: openWindow(null) } : {})}
           >
             {/* Its own square, like a workspace badge, so the selected highlight rings it the same way. */}
             <span
@@ -144,6 +176,7 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
               active={workspace.id === activeWorkspaceId}
               onClick={() => selectWorkspace(workspace.id)}
               onEdit={() => setEditing(workspace)}
+              {...(openWindow ? { onOpenWindow: openWindow(workspace) } : {})}
             >
               <WorkspaceBadge workspace={workspace} />
             </RailButton>

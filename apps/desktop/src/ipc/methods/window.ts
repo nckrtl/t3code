@@ -29,6 +29,7 @@ import * as DesktopEnvironment from "../../app/DesktopEnvironment.ts";
 import * as DesktopAppSettings from "../../settings/DesktopAppSettings.ts";
 import * as DesktopWslBackend from "../../wsl/DesktopWslBackend.ts";
 import * as DesktopWslEnvironment from "../../wsl/DesktopWslEnvironment.ts";
+import * as DesktopWindow from "../../window/DesktopWindow.ts";
 import * as ElectronApp from "../../electron/ElectronApp.ts";
 import * as ElectronDialog from "../../electron/ElectronDialog.ts";
 import * as ElectronMenu from "../../electron/ElectronMenu.ts";
@@ -370,6 +371,17 @@ export const pasteAsText = DesktopIpc.makeIpcMethod({
     ) {
       focused.paste();
     }
+  }),
+});
+
+/** Opens an extra window showing a workspace (id or name; null = all projects). rooms-patches. */
+export const openWorkspaceWindow = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.OPEN_WORKSPACE_WINDOW_CHANNEL,
+  payload: Schema.NullOr(Schema.String.check(Schema.isMaxLength(200))),
+  result: Schema.Void,
+  handler: Effect.fn("desktop.ipc.window.openWorkspaceWindow")(function* (workspace) {
+    const desktopWindow = yield* DesktopWindow.DesktopWindow;
+    yield* desktopWindow.createAdditional({ workspace });
   }),
 });
 
