@@ -63,6 +63,7 @@ import * as DesktopUpdates from "./updates/DesktopUpdates.ts";
 import * as BrowserImport from "./preview/BrowserImport/BrowserImport.ts";
 import * as LinuxBrowserSecret from "./preview/BrowserImport/LinuxBrowserSecret.ts";
 import * as BrowserSession from "./preview/BrowserSession.ts";
+import { upstreamReleaseVersion } from "./app/roomsBuildVersion.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as DesktopWindow from "./window/DesktopWindow.ts";
 import * as DesktopWslBackend from "./wsl/DesktopWslBackend.ts";
@@ -99,7 +100,9 @@ const resolveDesktopSshCliRunner = (
       nodeEngineRange: serverPackageJson.engines.node,
     };
   }
-  return { archiveVersion: environment.appVersion };
+  // rooms-patches: the fork's own version has no upstream release archive (the
+  // remote download would 404), and the fork does not change the server.
+  return { archiveVersion: upstreamReleaseVersion(environment.appVersion) };
 };
 
 const desktopSshEnvironmentLayer = Layer.unwrap(
