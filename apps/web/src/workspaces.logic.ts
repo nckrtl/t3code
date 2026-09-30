@@ -238,7 +238,7 @@ export function validateWorkspaceDraft(draft: {
   };
 }
 
-/** A shifted digit uses its physical key code because event.key may be "!". */
+/** Option can change event.key to a symbol; both number rows use physical codes. */
 export function workspaceShortcutIndex(event: {
   readonly code: string;
   readonly key: string;
@@ -247,9 +247,10 @@ export function workspaceShortcutIndex(event: {
   readonly altKey: boolean;
   readonly ctrlKey: boolean;
 }): number | null {
-  if (!event.metaKey || !event.shiftKey || event.altKey || event.ctrlKey) return null;
+  if (!event.metaKey || !event.altKey || event.shiftKey || event.ctrlKey) return null;
   const digit =
-    /^Digit([1-9])$/.exec(event.code)?.[1] ?? (/^[1-9]$/.test(event.key) ? event.key : null);
+    /^(?:Digit|Numpad)([1-9])$/.exec(event.code)?.[1] ??
+    (event.code === "" && /^[1-9]$/.test(event.key) ? event.key : null);
   return digit === null ? null : Number(digit) - 1;
 }
 
