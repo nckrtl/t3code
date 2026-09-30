@@ -125,6 +125,8 @@ export function workspaceLetter(name: string): string {
 
 /**
  * The workspace a request names, by id or by name (compared like Rooms does).
+ * A shorter name matches when exactly one workspace name starts with it,
+ * so "DLF" selects "DLF - Leden".
  * Null when no workspace, or more than one, matches.
  */
 export function findWorkspace(
@@ -135,8 +137,13 @@ export function findWorkspace(
   if (byId) return byId;
   const key = workspaceNameKey(idOrName);
   if (key.length === 0) return null;
-  const matches = workspaces.filter((workspace) => workspaceNameKey(workspace.name) === key);
-  return matches.length === 1 ? matches[0]! : null;
+  const exact = workspaces.filter((workspace) => workspaceNameKey(workspace.name) === key);
+  if (exact.length === 1) return exact[0]!;
+  if (exact.length > 1) return null;
+  const prefixed = workspaces.filter((workspace) =>
+    workspaceNameKey(workspace.name).startsWith(key),
+  );
+  return prefixed.length === 1 ? prefixed[0]! : null;
 }
 
 /** Words that mean "no workspace": show every project. */

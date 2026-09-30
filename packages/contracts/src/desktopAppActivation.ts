@@ -27,8 +27,9 @@ export const DesktopAppOpenThreadRequest = Schema.Struct({
 export type DesktopAppOpenThreadRequest = typeof DesktopAppOpenThreadRequest.Type;
 
 /**
- * Selects a sidebar workspace (rooms-patches): a workspace id or name, or
- * "all" for every project. Also sent for t3code://workspace/<name> links.
+ * Selects a sidebar workspace in the main window (rooms-patches): a workspace
+ * id or name, or "all" for every project. A `t3code://workspace/<name>` link
+ * does not send this; that link focuses the window already in the workspace.
  */
 export const DesktopAppSelectWorkspaceRequest = Schema.Struct({
   version: Schema.Literal(DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION),
