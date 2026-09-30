@@ -1,3 +1,4 @@
+import type { ScopedThreadRef } from "@t3tools/contracts";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
@@ -11,6 +12,7 @@ import { resolveStorage } from "./lib/storage";
 import { randomUUID } from "./lib/utils";
 import {
   findWorkspace,
+  reorderWorkspaces,
   meansAllProjects,
   validateWorkspaceDraft,
   workspaceNameKey,
@@ -25,6 +27,8 @@ interface WorkspaceStoreState {
   workspaces: Workspace[];
   /** The selected workspace; null shows every project. */
   activeWorkspaceId: string | null;
+  lastThreadByWorkspace: Record<string, ScopedThreadRef>;
+  rememberThread: (workspaceId: string | null, thread: ScopedThreadRef) => void;
   /** The sidebar's projects, published by the thread sidebar (not persisted). */
   availableProjects: readonly WorkspaceProject[];
   publishProjects: (projects: readonly WorkspaceProject[]) => void;
@@ -34,6 +38,7 @@ interface WorkspaceStoreState {
   createWorkspace: (draft: WorkspaceDraft) => Workspace;
   updateWorkspace: (id: string, draft: WorkspaceDraft) => void;
   deleteWorkspace: (id: string) => void;
+  moveWorkspace: (id: string, targetId: string) => void;
 }
 
 function assertUniqueName(workspaces: readonly Workspace[], name: string, exceptId?: string) {
@@ -87,6 +92,19 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
       workspaces: [],
       activeWorkspaceId: null,
       availableProjects: [],
+      lastThreadByWorkspace: {},
+      rememberThread: (workspaceId, thread) => {
+        const key = workspaceId ?? "all";
+        const previous = get().lastThreadByWorkspace[key];
+        if (
+          previous?.environmentId === thread.environmentId &&
+          previous.threadId === thread.threadId
+        )
+          return;
+        set((state) => ({
+          lastThreadByWorkspace: { ...state.lastThreadByWorkspace, [key]: thread },
+        }));
+      },
       publishProjects: (projects) => {
         const current = get().availableProjects;
         const same =
@@ -131,6 +149,11 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           ),
         }));
       },
+      moveWorkspace: (id, targetId) => {
+        const current = get().workspaces;
+        const next = reorderWorkspaces(current, id, targetId);
+        if (next !== current) set({ workspaces: [...next] });
+      },
       deleteWorkspace: (id) =>
         set((state) => ({
           workspaces: state.workspaces.filter((workspace) => workspace.id !== id),
@@ -143,7 +166,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
       storage: createJSONStorage(workspaceStorage),
       merge: (persisted, current) => {
         const stored = (persisted ?? {}) as Partial<
-          Pick<WorkspaceStoreState, "workspaces" | "activeWorkspaceId">
+          Pick<WorkspaceStoreState, "workspaces" | "activeWorkspaceId" | "lastThreadByWorkspace">
         >;
         const workspaces = Array.isArray(stored.workspaces)
           ? stored.workspaces
@@ -154,6 +177,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         return {
           ...current,
           workspaces,
+          lastThreadByWorkspace: stored.lastThreadByWorkspace ?? current.lastThreadByWorkspace,
           activeWorkspaceId: workspaces.some((workspace) => workspace.id === activeWorkspaceId)
             ? activeWorkspaceId
             : null,
@@ -162,6 +186,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
       partialize: (state) => ({
         workspaces: state.workspaces,
         activeWorkspaceId: state.activeWorkspaceId,
+        lastThreadByWorkspace: state.lastThreadByWorkspace,
       }),
     },
   ),

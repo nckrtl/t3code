@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { useWorkspaceStore } from "./workspaceStore";
 import {
   groupProjectsByConnection,
+  reorderWorkspaces,
+  workspaceShortcutIndex,
   isWorkspaceImage,
   WORKSPACE_IMAGE_MAX_CHARS,
   findWorkspace,
@@ -107,6 +109,38 @@ describe("workspaces.logic", () => {
     ).toEqual(new Set());
   });
 
+  it("keeps matching projects on different machines independent", () => {
+    const localOnly = { ...workspace("Orbit", []), projectRefs: ["local:p1"] };
+    expect(
+      resolveScopedProjectKeys({
+        projectGroups: [orbit, drift],
+        workspace: localOnly,
+        scopedProjectGroup: null,
+      }),
+    ).toEqual(new Set(["local:p1"]));
+    expect(
+      resolveScopedProjectKeys({
+        projectGroups: [orbit],
+        workspace: { ...localOnly, projectRefs: ["beast:p9"] },
+        scopedProjectGroup: orbit,
+      }),
+    ).toEqual(new Set(["beast:p9"]));
+    expect(
+      resolveScopedProjectKeys({
+        projectGroups: [orbit],
+        workspace: { ...localOnly, projectRefs: [] },
+        scopedProjectGroup: null,
+      }),
+    ).toEqual(new Set());
+    const catalog = [
+      { projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1", "beast:p9"] },
+    ];
+    expect(workspaceProjectRefs(localOnly, catalog)).toEqual(new Set(["local:p1"]));
+    expect(workspaceProjectRefs({ ...localOnly, projectRefs: ["beast:p9"] }, [])).toEqual(
+      new Set(["beast:p9"]),
+    );
+  });
+
   it("validates drafts", () => {
     expect(
       validateWorkspaceDraft({
@@ -203,6 +237,26 @@ describe("workspaceStore", () => {
     expect(useWorkspaceStore.getState()).toMatchObject({ workspaces: [], activeWorkspaceId: null });
   });
 
+  it("saves separate machine selections and preserves them on rehydration", async () => {
+    const store = useWorkspaceStore.getState();
+    const created = store.createWorkspace({
+      name: "Orbit",
+      projectKeys: [],
+      projectRefs: ["local:p1", "beast:p9"],
+      color: "blue",
+      icon: null,
+    });
+    store.updateWorkspace(created.id, { ...created, projectRefs: ["beast:p9"] });
+    await useWorkspaceStore.persist.rehydrate();
+    const saved = useWorkspaceStore.getState().workspaces.find((w) => w.id === created.id)!;
+    expect(
+      workspaceProjectRefs(saved, [
+        { projectKey: "repo:orbit", displayName: "orbit", refs: ["local:p1", "beast:p9"] },
+      ]),
+    ).toEqual(new Set(["beast:p9"]));
+    expect(saved.projectKeys).toEqual([]);
+  });
+
   it("ignores selecting an unknown workspace id", () => {
     useWorkspaceStore.getState().selectWorkspace("ws-unknown");
     expect(useWorkspaceStore.getState().activeWorkspaceId).toBeNull();
@@ -291,5 +345,44 @@ describe("workspace images", () => {
     expect(() => validateWorkspaceDraft({ ...draft, image: "javascript:alert(1)" })).toThrow(
       "That image can't be used.",
     );
+  });
+});
+
+describe("workspace order and shortcuts", () => {
+  it("uses physical number keys with exactly Command and Shift", () => {
+    const event = {
+      code: "Digit1",
+      key: "!",
+      metaKey: true,
+      shiftKey: true,
+      altKey: false,
+      ctrlKey: false,
+    };
+    expect(workspaceShortcutIndex(event)).toBe(0);
+    expect(workspaceShortcutIndex({ ...event, code: "Digit9", key: "(" })).toBe(8);
+    expect(workspaceShortcutIndex({ ...event, shiftKey: false })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, ctrlKey: true })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, altKey: true })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, code: "Digit0", key: ")" })).toBeNull();
+  });
+
+  it("moves a workspace both ways and ignores missing or unchanged targets", () => {
+    const all = [workspace("A", []), workspace("B", []), workspace("C", [])];
+    const next = reorderWorkspaces(all, "ws-C", "ws-A");
+    expect(next.map((w) => w.name)).toEqual(["C", "A", "B"]);
+    expect(reorderWorkspaces(next, "ws-C", "ws-B").map((w) => w.name)).toEqual(["A", "B", "C"]);
+    expect(reorderWorkspaces(all, "missing", "ws-A")).toBe(all);
+    expect(reorderWorkspaces(all, "ws-A", "ws-A")).toBe(all);
+  });
+
+  it("persists rail order without changing the active workspace", async () => {
+    useWorkspaceStore.setState({
+      workspaces: [workspace("A", []), workspace("B", [])],
+      activeWorkspaceId: "ws-A",
+    });
+    useWorkspaceStore.getState().moveWorkspace("ws-B", "ws-A");
+    await useWorkspaceStore.persist.rehydrate();
+    expect(useWorkspaceStore.getState().workspaces.map((w) => w.name)).toEqual(["B", "A"]);
+    expect(useWorkspaceStore.getState().activeWorkspaceId).toBe("ws-A");
   });
 });

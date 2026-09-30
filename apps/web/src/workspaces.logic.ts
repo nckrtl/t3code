@@ -25,6 +25,8 @@ export interface Workspace {
   readonly name: string;
   /** Logical sidebar project keys (SidebarProjectSnapshot.projectKey). */
   readonly projectKeys: readonly string[];
+  /** Explicit environment-scoped selections; projectKeys keeps legacy selections. */
+  readonly projectRefs?: readonly string[];
   readonly color: WorkspaceColor;
   /** A name from WORKSPACE_ICON_NAMES, or null to show the name's first letter. */
   readonly icon: string | null;
@@ -105,7 +107,10 @@ export function workspaceProjectRefs(
 ): ReadonlySet<string> | null {
   if (workspace === null) return null;
   const keys = new Set(workspace.projectKeys);
-  return new Set(projects.filter((p) => keys.has(p.projectKey)).flatMap((p) => p.refs));
+  return new Set([
+    ...(workspace.projectRefs ?? []),
+    ...projects.filter((p) => keys.has(p.projectKey)).flatMap((p) => p.refs),
+  ]);
 }
 
 /** Folds case and diacritics and keeps letters and digits, the way Rooms matches names. */
@@ -184,12 +189,18 @@ export function resolveScopedProjectKeys<
   const { projectGroups, workspace, scopedProjectGroup } = input;
   if (workspace === null && scopedProjectGroup === null) return null;
   const inWorkspace = workspace === null ? null : new Set<string>(workspace.projectKeys);
-  const groups = (scopedProjectGroup === null ? projectGroups : [scopedProjectGroup]).filter(
-    (group) => inWorkspace === null || inWorkspace.has(group.projectKey),
-  );
+  const refs = new Set(workspace?.projectRefs ?? []);
+  const groups = scopedProjectGroup === null ? projectGroups : [scopedProjectGroup];
   return new Set(
     groups.flatMap((group) =>
-      group.memberProjectRefs.map((ref) => `${ref.environmentId}:${ref.projectId}`),
+      group.memberProjectRefs
+        .filter(
+          (ref) =>
+            inWorkspace === null ||
+            inWorkspace.has(group.projectKey) ||
+            refs.has(`${ref.environmentId}:${ref.projectId}`),
+        )
+        .map((ref) => `${ref.environmentId}:${ref.projectId}`),
     ),
   );
 }
@@ -198,12 +209,14 @@ export function resolveScopedProjectKeys<
 export function validateWorkspaceDraft(draft: {
   readonly name: string;
   readonly projectKeys: readonly string[];
+  readonly projectRefs?: readonly string[];
   readonly color: string;
   readonly icon: string | null;
   readonly image?: string | null;
 }): {
   name: string;
   projectKeys: string[];
+  projectRefs?: string[];
   color: WorkspaceColor;
   icon: string | null;
   image: string | null;
@@ -218,8 +231,37 @@ export function validateWorkspaceDraft(draft: {
   return {
     name,
     projectKeys: [...new Set(draft.projectKeys)],
+    ...(draft.projectRefs === undefined ? {} : { projectRefs: [...new Set(draft.projectRefs)] }),
     color: draft.color as WorkspaceColor,
     icon: draft.icon,
     image,
   };
+}
+
+/** A shifted digit uses its physical key code because event.key may be "!". */
+export function workspaceShortcutIndex(event: {
+  readonly code: string;
+  readonly key: string;
+  readonly metaKey: boolean;
+  readonly shiftKey: boolean;
+  readonly altKey: boolean;
+  readonly ctrlKey: boolean;
+}): number | null {
+  if (!event.metaKey || !event.shiftKey || event.altKey || event.ctrlKey) return null;
+  const digit =
+    /^Digit([1-9])$/.exec(event.code)?.[1] ?? (/^[1-9]$/.test(event.key) ? event.key : null);
+  return digit === null ? null : Number(digit) - 1;
+}
+
+export function reorderWorkspaces<T extends { readonly id: string }>(
+  workspaces: readonly T[],
+  movedId: string,
+  targetId: string,
+): readonly T[] {
+  const from = workspaces.findIndex((workspace) => workspace.id === movedId);
+  const to = workspaces.findIndex((workspace) => workspace.id === targetId);
+  if (from < 0 || to < 0 || from === to) return workspaces;
+  const next = [...workspaces];
+  next.splice(to, 0, ...next.splice(from, 1));
+  return next;
 }

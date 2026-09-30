@@ -136,32 +136,35 @@ export function buildSidebarProjectSnapshots(input: {
 export function buildSidebarProjectPickerEntries(input: {
   groups: ReadonlyArray<SidebarProjectSnapshot>;
   preferredProjectRef: ScopedProjectRef | null;
+  allowedProjectRefs?: ReadonlySet<string> | null;
 }) {
   const preferredProjectRef = input.preferredProjectRef;
   const entries = input.groups.flatMap((group): SidebarProjectPickerEntry[] => {
+    const members = group.memberProjects.filter(
+      (project) =>
+        input.allowedProjectRefs == null ||
+        input.allowedProjectRefs.has(`${project.environmentId}:${project.id}`),
+    );
     const isPreferred = preferredProjectRef
       ? group.memberProjectRefs.some(
-          (projectRef) =>
-            projectRef.environmentId === preferredProjectRef.environmentId &&
-            projectRef.projectId === preferredProjectRef.projectId,
-        )
+          (ref) =>
+            ref.environmentId === preferredProjectRef.environmentId &&
+            ref.projectId === preferredProjectRef.projectId,
+        ) && members.some((project) => project.environmentId === preferredProjectRef.environmentId)
       : false;
     const preferredProject = preferredProjectRef
-      ? (group.memberProjects.find(
+      ? (members.find(
           (project) =>
             project.environmentId === preferredProjectRef.environmentId &&
             project.id === preferredProjectRef.projectId,
-        ) ??
-        group.memberProjects.find(
-          (project) => project.environmentId === preferredProjectRef.environmentId,
-        ))
+        ) ?? members.find((project) => project.environmentId === preferredProjectRef.environmentId))
       : null;
     const targetProject =
       preferredProject ??
-      group.memberProjects.find(
+      members.find(
         (project) => project.environmentId === group.environmentId && project.id === group.id,
       ) ??
-      group.memberProjects[0];
+      members[0];
     if (!targetProject) return [];
 
     return [{ group, targetProject, isPreferred }];
