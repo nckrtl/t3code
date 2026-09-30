@@ -277,7 +277,7 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
                 const hint = [
                   status.approval > 0 ? `${status.approval} awaiting approval` : null,
                   status.input > 0 ? `${status.input} awaiting input` : null,
-                  status.unread > 0 ? `${status.unread} unread` : null,
+                  status.unread > 0 ? `${status.unread} completed unread` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ");

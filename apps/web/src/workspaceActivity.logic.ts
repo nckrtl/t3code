@@ -68,7 +68,10 @@ export function workspaceAttention(
     if (status === "approval") approval++;
     else if (status === "input") input++;
     const lastVisitedAt = visited[scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))];
+    // A mid-turn checkpoint can set completedAt while the agent is still working.
     if (
+      status === "ready" &&
+      thread.latestTurn?.state === "completed" &&
       hasUnseenCompletion({ ...thread, ...(lastVisitedAt === undefined ? {} : { lastVisitedAt }) })
     )
       unread++;
