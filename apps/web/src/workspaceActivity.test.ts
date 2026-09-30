@@ -23,6 +23,7 @@ function thread(environmentId = local, id = "t1") {
     id: ThreadId.make(id),
     projectId: ProjectId.make("p1"),
     archivedAt: null,
+    settledOverride: null,
     hasPendingApprovals: false,
     hasPendingUserInput: false,
     hasActionableProposedPlan: false,
@@ -146,5 +147,28 @@ describe("workspace attention", () => {
       approval: 0,
       input: 1,
     });
+  });
+  it("clears the workspace dot when the only active thread is read, even with unread settled history", () => {
+    const history = { ...completed, id: ThreadId.make("old"), settledOverride: "settled" as const };
+    const candidates = [completed, history];
+    const visits = { ...visited(local, "t1", "2026-09-30T11:00:00Z"), ...visited(local, "old") };
+    expect(workspaceAttention(candidates, visits).unread).toBe(0);
+    expect(
+      workspaceAttention([{ ...history, settledOverride: "active" as const }], visits).unread,
+    ).toBe(1);
+  });
+  it("stops counting a project's unread completions when it is removed from the workspace", () => {
+    const former = { ...completed, id: ThreadId.make("old"), projectId: ProjectId.make("former") };
+    const candidates = [completed, former];
+    const visits = { ...visited(local, "t1", "2026-09-30T11:00:00Z"), ...visited(local, "old") };
+    expect(
+      workspaceAttention(
+        workspaceThreads(candidates, new Set(["local:p1", "local:former"])),
+        visits,
+      ).unread,
+    ).toBe(1);
+    expect(
+      workspaceAttention(workspaceThreads(candidates, new Set(["local:p1"])), visits).unread,
+    ).toBe(0);
   });
 });
