@@ -1232,6 +1232,14 @@ export interface DesktopBridge {
   pasteAsText?: () => Promise<void>;
   /** Opens an extra desktop window showing a workspace (id or name; null = all projects). */
   openWorkspaceWindow?: (workspace: string | null) => Promise<void>;
+  /**
+   * Tells the shell which workspace this window is showing, so
+   * `t3code://workspace/<name>` can focus it. Optional: older shells lack it.
+   */
+  reportWorkspace?: (workspace: {
+    readonly id: string | null;
+    readonly name: string | null;
+  }) => Promise<void>;
   /** Which window this is: extra windows carry their starting workspace. Absent in older shells. */
   windowContext?: { readonly additional: boolean; readonly workspace: string | null };
   onMenuAction: (listener: (action: string) => void) => () => void;

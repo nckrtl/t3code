@@ -211,6 +211,8 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   pasteAsText: () => ipcRenderer.invoke(IpcChannels.PASTE_AS_TEXT_CHANNEL, undefined),
   openWorkspaceWindow: (workspace) =>
     ipcRenderer.invoke(IpcChannels.OPEN_WORKSPACE_WINDOW_CHANNEL, workspace),
+  reportWorkspace: (workspace) =>
+    ipcRenderer.invoke(IpcChannels.REPORT_WORKSPACE_CHANNEL, workspace),
   windowContext: readWindowContext(),
   onMenuAction: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, action: unknown) => {
