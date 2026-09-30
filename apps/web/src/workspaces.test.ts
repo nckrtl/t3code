@@ -349,21 +349,32 @@ describe("workspace images", () => {
 });
 
 describe("workspace order and shortcuts", () => {
-  it("uses physical number keys with exactly Command and Shift", () => {
+  it("uses both physical number rows with exactly Command and Option", () => {
     const event = {
       code: "Digit1",
-      key: "!",
+      key: "¡",
       metaKey: true,
-      shiftKey: true,
-      altKey: false,
+      shiftKey: false,
+      altKey: true,
       ctrlKey: false,
     };
-    expect(workspaceShortcutIndex(event)).toBe(0);
-    expect(workspaceShortcutIndex({ ...event, code: "Digit9", key: "(" })).toBe(8);
-    expect(workspaceShortcutIndex({ ...event, shiftKey: false })).toBeNull();
+    for (let digit = 1; digit <= 9; digit++) {
+      expect(workspaceShortcutIndex({ ...event, code: `Digit${digit}` })).toBe(digit - 1);
+      expect(workspaceShortcutIndex({ ...event, code: `Numpad${digit}`, key: String(digit) })).toBe(
+        digit - 1,
+      );
+    }
+    expect(workspaceShortcutIndex({ ...event, metaKey: false })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, shiftKey: true })).toBeNull();
     expect(workspaceShortcutIndex({ ...event, ctrlKey: true })).toBeNull();
-    expect(workspaceShortcutIndex({ ...event, altKey: true })).toBeNull();
-    expect(workspaceShortcutIndex({ ...event, code: "Digit0", key: ")" })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, altKey: false })).toBeNull();
+    expect(
+      workspaceShortcutIndex({ ...event, altKey: false, shiftKey: true, code: "Digit3" }),
+    ).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, code: "Digit0", key: "0" })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, code: "Numpad0", key: "0" })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, code: "KeyA", key: "1" })).toBeNull();
+    expect(workspaceShortcutIndex({ ...event, code: "", key: "3" })).toBe(2);
   });
 
   it("moves a workspace both ways and ignores missing or unchanged targets", () => {

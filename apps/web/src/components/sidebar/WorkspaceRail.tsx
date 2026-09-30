@@ -286,10 +286,14 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
                     id={workspace.id}
                     key={workspace.id}
                     label={workspace.name}
-                    hint={[index < 9 ? `⌘⇧${index + 1}` : null, hint, "drag to reorder"]
+                    hint={[
+                      index < 9 ? `⌘⌥${index + 1} (number row or numpad)` : null,
+                      hint,
+                      "drag to reorder",
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
-                    {...(index < 9 ? { shortcut: `Meta+Shift+${index + 1}` } : {})}
+                    {...(index < 9 ? { shortcut: `Meta+Alt+${index + 1}` } : {})}
                     active={workspace.id === activeWorkspaceId}
                     onClick={() => selectWorkspace(workspace.id)}
                     onEdit={() => setEditing(workspace)}
