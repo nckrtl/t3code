@@ -10,6 +10,7 @@ type WorkspaceThread = Pick<
   | "id"
   | "projectId"
   | "archivedAt"
+  | "settledOverride"
   | "hasPendingApprovals"
   | "hasPendingUserInput"
   | "hasActionableProposedPlan"
@@ -71,6 +72,7 @@ export function workspaceAttention(
     // A mid-turn checkpoint can set completedAt while the agent is still working.
     if (
       status === "ready" &&
+      thread.settledOverride !== "settled" &&
       thread.latestTurn?.state === "completed" &&
       hasUnseenCompletion({ ...thread, ...(lastVisitedAt === undefined ? {} : { lastVisitedAt }) })
     )
