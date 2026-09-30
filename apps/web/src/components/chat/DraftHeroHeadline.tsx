@@ -1,3 +1,4 @@
+import { useActiveWorkspaceProjectRefs } from "../../workspaceStore";
 import type { DraftId } from "~/composerDraftStore";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { resolveEnvironmentMachineKind, type ScopedProjectRef } from "@t3tools/contracts";
@@ -106,13 +107,15 @@ export function DraftHeroHeadline({
       ),
     [environments],
   );
+  const workspaceRefs = useActiveWorkspaceProjectRefs();
   const projectPickerEntries = useMemo(
     () =>
       buildSidebarProjectPickerEntries({
         groups: projectGroups,
+        allowedProjectRefs: workspaceRefs,
         preferredProjectRef: activeProjectRef,
       }),
-    [activeProjectRef, projectGroups],
+    [activeProjectRef, projectGroups, workspaceRefs],
   );
   const projectEntryByKey = useMemo(
     () => new Map(projectPickerEntries.map((entry) => [entry.group.projectKey, entry] as const)),

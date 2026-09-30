@@ -11,6 +11,7 @@ import {
   type Workspace,
   type WorkspaceColor,
   type WorkspaceProject,
+  workspaceProjectRefs,
 } from "../../workspaces.logic";
 import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
 import { Button } from "../ui/button";
@@ -70,18 +71,43 @@ export function WorkspaceDialog({
       setError(cause instanceof Error ? cause.message : String(cause));
     }
   };
-  const [projectKeys, setProjectKeys] = useState<string[]>(() => [...(editing?.projectKeys ?? [])]);
+  const [projectKeys, setProjectKeys] = useState<string[]>(() => [
+    ...(workspaceProjectRefs(editing, availableProjects) ?? []),
+    ...(editing?.projectKeys ?? []).filter(
+      (key) => !availableProjects.some((project) => project.projectKey === key),
+    ),
+  ]);
   const [error, setError] = useState<string | null>(null);
 
   // Projects the workspace has but the sidebar doesn't show now (an environment
   // is offline) stay listed, so saving never drops them silently.
   const projects = useMemo((): WorkspaceProject[] => {
-    const known = new Set(availableProjects.map((project) => project.projectKey));
+    const scoped = availableProjects.flatMap((project) =>
+      project.refs.map((ref) => ({
+        ...project,
+        projectKey: ref,
+        refs: [ref],
+        connections: (project.connections ?? []).filter((connection) =>
+          ref.startsWith(`${connection.environmentId}:`),
+        ),
+      })),
+    );
+    const known = new Set(scoped.map((project) => project.projectKey));
+    const unavailable = [
+      ...(editing?.projectRefs ?? []),
+      ...(editing?.projectKeys ?? []).filter(
+        (key) => !availableProjects.some((project) => project.projectKey === key),
+      ),
+    ];
     return [
-      ...availableProjects,
-      ...(editing?.projectKeys ?? [])
+      ...scoped,
+      ...unavailable
         .filter((key) => !known.has(key))
-        .map((key) => ({ projectKey: key, displayName: `${key} (not available now)`, refs: [] })),
+        .map((key) => ({
+          projectKey: key,
+          displayName: `${key} (not available now)`,
+          refs: [],
+        })),
     ];
   }, [availableProjects, editing]);
   // Listed under the connection each project lives on, so projects on this Mac
@@ -89,7 +115,15 @@ export function WorkspaceDialog({
   const sections = useMemo(() => groupProjectsByConnection(projects), [projects]);
 
   const save = () => {
-    const draft = { name, color, icon, image, projectKeys };
+    const legacyKeys = new Set(editing?.projectKeys ?? []);
+    const draft = {
+      name,
+      color,
+      icon,
+      image,
+      projectKeys: projectKeys.filter((key) => legacyKeys.has(key)),
+      projectRefs: projectKeys.filter((key) => !legacyKeys.has(key)),
+    };
     try {
       if (editing) {
         updateWorkspace(editing.id, draft);
@@ -103,7 +137,9 @@ export function WorkspaceDialog({
   };
 
   const toggleProject = (key: string, checked: boolean) =>
-    setProjectKeys((keys) => (checked ? [...keys, key] : keys.filter((k) => k !== key)));
+    setProjectKeys((keys) =>
+      checked ? [...new Set([...keys, key])] : keys.filter((k) => k !== key),
+    );
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>

@@ -1,3 +1,19 @@
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAtomValue } from "@effect/atom-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
@@ -9,7 +25,7 @@ import {
   SettingsIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { canOpenDesktopWindows, openDesktopWorkspaceWindow } from "../../lib/desktopWindowContext";
 import { cn } from "../../lib/utils";
@@ -17,7 +33,15 @@ import { readLocalApi } from "../../localApi";
 import { useEnvironments } from "../../state/environments";
 import { primaryServerProvidersAtom } from "../../state/server";
 import { useWorkspaceStore } from "../../workspaceStore";
-import type { Workspace } from "../../workspaces.logic";
+import {
+  workspaceProjectRefs,
+  workspaceShortcutIndex,
+  type Workspace,
+} from "../../workspaces.logic";
+import { useWorkspaceThreadNavigation } from "../../hooks/useWorkspaceThreadNavigation";
+import { useThreadShells } from "../../state/entities";
+import { useUiStateStore } from "../../uiStateStore";
+import { workspaceAttention, workspaceThreads } from "../../workspaceActivity.logic";
 import { getProviderUpdateSidebarPillView } from "../ProviderUpdateLaunchNotification.logic";
 import { useSidebar } from "../ui/sidebar";
 import { Spinner } from "../ui/spinner";
@@ -37,6 +61,8 @@ function RailButton({
   onEdit,
   onOpenWindow,
   children,
+  sortable,
+  shortcut,
 }: {
   label: string;
   /** A second tooltip line; workspaces default to how to edit them. */
@@ -48,6 +74,8 @@ function RailButton({
   /** Opens this workspace in a new window: ⌘-click, or from the right-click menu. */
   onOpenWindow?: () => void;
   children: ReactNode;
+  sortable?: ReturnType<typeof useSortable>;
+  shortcut?: string;
 }) {
   const showMenu = async (position: { x: number; y: number }) => {
     const api = readLocalApi();
@@ -72,6 +100,18 @@ function RailButton({
         render={
           <button
             type="button"
+            {...sortable?.attributes}
+            {...sortable?.listeners}
+            ref={sortable?.setNodeRef}
+            style={
+              sortable
+                ? {
+                    transform: CSS.Transform.toString(sortable.transform),
+                    transition: sortable.transition,
+                  }
+                : undefined
+            }
+            aria-keyshortcuts={shortcut}
             aria-label={label}
             aria-pressed={active}
             onClick={(event) => {
@@ -89,9 +129,11 @@ function RailButton({
             }
             className={cn(
               // Tighter than the rail panel (rounded-lg); the badge inside is concentric (rounded, 4px in).
-              "flex size-9.5 shrink-0 items-center justify-center rounded-md text-muted-foreground",
+              "relative flex size-9.5 shrink-0 items-center justify-center rounded-md text-muted-foreground",
               "outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring",
               active && "bg-sidebar-row-active text-sidebar-foreground hover:bg-sidebar-row-active",
+              sortable && "touch-none",
+              sortable?.isDragging && "z-10 opacity-70",
               className,
             )}
           >
@@ -102,7 +144,7 @@ function RailButton({
       <TooltipPopup side="right">
         {label}
         {hint ? <span className="text-muted-foreground"> · {hint}</span> : null}
-        {hasMenu && !hint ? (
+        {hasMenu ? (
           <span className="text-muted-foreground">
             {onOpenWindow ? " · ⌘-click for a new window" : " · right-click to edit"}
           </span>
@@ -112,6 +154,14 @@ function RailButton({
   );
 }
 
+function SortableWorkspaceButton({
+  id,
+  ...props
+}: ComponentProps<typeof RailButton> & { id: string }) {
+  const sortable = useSortable({ id });
+  return <RailButton {...props} sortable={sortable} />;
+}
+
 /**
  * The workspace rail beside the thread sidebar: "All projects", one button per
  * workspace, and "New workspace". Selecting a workspace scopes the sidebar.
@@ -119,9 +169,31 @@ function RailButton({
  * bar, so the macOS window buttons sit on the plain sidebar.
  */
 export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
+  useWorkspaceThreadNavigation();
+  const threads = useThreadShells();
+  const visited = useUiStateStore((state) => state.threadLastVisitedAtById);
+  const projects = useWorkspaceStore((state) => state.availableProjects);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
   const selectWorkspace = useWorkspaceStore((state) => state.selectWorkspace);
+  const moveWorkspace = useWorkspaceStore((state) => state.moveWorkspace);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const attention = useMemo(
+    () =>
+      new Map(
+        workspaces.map((workspace) => [
+          workspace.id,
+          workspaceAttention(
+            workspaceThreads(threads, workspaceProjectRefs(workspace, projects)),
+            visited,
+          ),
+        ]),
+      ),
+    [projects, threads, visited, workspaces],
+  );
   // The dialog keeps its target while it animates closed; `session` remounts
   // its form each time it opens.
   const [dialog, setDialog] = useState<{
@@ -135,6 +207,24 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
   });
   const setEditing = (target: Workspace | "new") =>
     setDialog((current) => ({ target, open: true, session: current.session + 1 }));
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        dialog.open ||
+        document.querySelector('[role="dialog"][aria-modal="true"]')
+      )
+        return;
+      const index = workspaceShortcutIndex(event);
+      const workspace = index === null ? undefined : useWorkspaceStore.getState().workspaces[index];
+      if (!workspace) return;
+      event.preventDefault();
+      selectWorkspace(workspace.id);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dialog.open, selectWorkspace]);
   // Extra windows need the desktop shell (rooms-patches).
   const openWindow = canOpenDesktopWindows()
     ? (workspace: Workspace | null) => () => openDesktopWorkspaceWindow(workspace?.id ?? null)
@@ -170,18 +260,60 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
               <LayersIcon className="size-4" />
             </span>
           </RailButton>
-          {workspaces.map((workspace) => (
-            <RailButton
-              key={workspace.id}
-              label={workspace.name}
-              active={workspace.id === activeWorkspaceId}
-              onClick={() => selectWorkspace(workspace.id)}
-              onEdit={() => setEditing(workspace)}
-              {...(openWindow ? { onOpenWindow: openWindow(workspace) } : {})}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragEnd={({ active, over }) => {
+              if (over) moveWorkspace(String(active.id), String(over.id));
+            }}
+          >
+            <SortableContext
+              items={workspaces.map((workspace) => workspace.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <WorkspaceBadge workspace={workspace} />
-            </RailButton>
-          ))}
+              {workspaces.map((workspace, index) => {
+                const status = attention.get(workspace.id)!;
+                const hint = [
+                  status.approval > 0 ? `${status.approval} awaiting approval` : null,
+                  status.input > 0 ? `${status.input} awaiting input` : null,
+                  status.unread > 0 ? `${status.unread} unread` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <SortableWorkspaceButton
+                    id={workspace.id}
+                    key={workspace.id}
+                    label={workspace.name}
+                    hint={[index < 9 ? `⌘⇧${index + 1}` : null, hint, "drag to reorder"]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    {...(index < 9 ? { shortcut: `Meta+Shift+${index + 1}` } : {})}
+                    active={workspace.id === activeWorkspaceId}
+                    onClick={() => selectWorkspace(workspace.id)}
+                    onEdit={() => setEditing(workspace)}
+                    {...(openWindow ? { onOpenWindow: openWindow(workspace) } : {})}
+                  >
+                    <WorkspaceBadge workspace={workspace} />
+                    {hint ? (
+                      <span
+                        aria-label={hint}
+                        className={cn(
+                          "absolute top-0.5 right-0.5 size-2 rounded-full ring-2 ring-sidebar",
+                          status.approval > 0
+                            ? "bg-warning"
+                            : status.input > 0
+                              ? "bg-primary"
+                              : "bg-info",
+                        )}
+                      />
+                    ) : null}
+                  </SortableWorkspaceButton>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
           <RailButton label="New workspace" onClick={() => setEditing("new")}>
             <PlusIcon className="size-4" />
           </RailButton>

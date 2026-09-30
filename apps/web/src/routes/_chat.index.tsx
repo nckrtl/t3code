@@ -60,10 +60,7 @@ function IndexDraftLanding() {
       workspaceRefs === null
         ? projects
         : projects.filter((project) => workspaceRefs.has(`${project.environmentId}:${project.id}`));
-    return (
-      sortScopedProjectsForSidebar(scoped.length ? scoped : projects, threads, "updated_at")[0] ??
-      null
-    );
+    return sortScopedProjectsForSidebar(scoped, threads, "updated_at")[0] ?? null;
   }, [bootstrapped, projects, projectsPublished, threads, workspaceRefs]);
 
   useEffect(() => {

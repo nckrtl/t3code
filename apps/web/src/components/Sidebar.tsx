@@ -2438,7 +2438,11 @@ export default function Sidebar() {
       ...projectGroups
         .filter(
           (project) =>
-            activeWorkspace === null || activeWorkspace.projectKeys.includes(project.projectKey),
+            resolveScopedProjectKeys({
+              projectGroups: [project],
+              workspace: activeWorkspace,
+              scopedProjectGroup: null,
+            })?.size !== 0,
         )
         .map((project) => ({
           value: project.projectKey,
@@ -4445,8 +4449,14 @@ export default function Sidebar() {
       const pickable =
         activeWorkspace === null
           ? projectGroups.length
-          : projectGroups.filter((group) => activeWorkspace.projectKeys.includes(group.projectKey))
-              .length;
+          : projectGroups.filter(
+              (group) =>
+                resolveScopedProjectKeys({
+                  projectGroups: [group],
+                  workspace: activeWorkspace,
+                  scopedProjectGroup: null,
+                })?.size !== 0,
+            ).length;
       if (shouldCreateNewThreadInCurrentProject(event?.shiftKey ?? false, pickable)) {
         if (isMobile) setOpenMobile(false);
         void startNewThreadFromContext({

@@ -52,6 +52,36 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 }
 
 describe("environment grouping", () => {
+  it("creates threads only on the workspace's selected machine", () => {
+    const primary = makeProject({ repositoryIdentity });
+    const remote = makeProject({
+      id: ProjectId.make("project-remote"),
+      environmentId: remoteEnvironmentId,
+      repositoryIdentity,
+    });
+    const groups = buildSidebarProjectSnapshots({
+      projects: [primary, remote],
+      settings: defaultGroupingSettings,
+      primaryEnvironmentId,
+      resolveEnvironmentLabel: () => null,
+    });
+    const entries = buildSidebarProjectPickerEntries({
+      groups,
+      preferredProjectRef: { environmentId: primaryEnvironmentId, projectId: primary.id },
+      allowedProjectRefs: new Set([`${remoteEnvironmentId}:${remote.id}`]),
+    });
+    expect(entries.map((entry) => entry.targetProject.environmentId)).toEqual([
+      remoteEnvironmentId,
+    ]);
+    expect(
+      buildSidebarProjectPickerEntries({
+        groups,
+        preferredProjectRef: null,
+        allowedProjectRefs: new Set(),
+      }),
+    ).toEqual([]);
+  });
+
   it("groups matching repository identities across environments", () => {
     const primary = makeProject({ repositoryIdentity });
     const remote = makeProject({
