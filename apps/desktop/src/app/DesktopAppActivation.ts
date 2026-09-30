@@ -347,7 +347,6 @@ export const make = Effect.gen(function* () {
     joinPath: path.join,
   });
   let registeredWebContents: Electron.WebContents | null = null;
-  let linkRequests = 0;
   let detachRendererListeners: (() => void) | null = null;
 
   const broker = new DesktopAppActivationBroker({
@@ -393,25 +392,20 @@ export const make = Effect.gen(function* () {
         ),
     ).pipe(
       Effect.andThen(
-        // t3code://workspace/<name> selects a workspace, like the socket's
-        // select-workspace request (rooms-patches).
+        // t3code://workspace/<name> focuses the window already in that
+        // workspace, or opens a new one. It does not select the workspace in
+        // the main window (rooms-patches).
         electronApp.on("open-url", (event: Electron.Event, link: string) => {
           const workspace = workspaceFromLink(link);
           if (workspace === null) return;
           event.preventDefault();
-          linkRequests += 1;
-          void broker
-            .request({
-              version: DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION,
-              requestId: `workspace-link-${linkRequests}`,
-              type: "select-workspace",
-              workspace,
-            })
-            .then((response) => {
-              if (!response.ok) {
-                void runPromise(logWarning("workspace link failed", { link, response }));
-              }
-            });
+          void runPromise(
+            desktopWindow
+              .showWorkspace(workspace)
+              .pipe(
+                Effect.catchCause((cause) => logWarning("workspace link failed", { link, cause })),
+              ),
+          );
         }),
       ),
       Effect.asVoid,
