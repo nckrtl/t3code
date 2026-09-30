@@ -167,13 +167,38 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
   ),
 );
 
+function publishActiveWorkspace(): void {
+  if (typeof window === "undefined") return;
+  const report = window.desktopBridge?.reportWorkspace;
+  if (report === undefined) return;
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore.getState();
+  const active = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null;
+  void report({ id: active?.id ?? null, name: active?.name ?? null }).catch(() => undefined);
+}
+
+// Hold reports until the extra window has applied its launch workspace, so a
+// link never sees the empty selection from before hydration.
+let publishWorkspaceReports = false;
+useWorkspaceStore.subscribe((state, previous) => {
+  if (!publishWorkspaceReports) return;
+  if (
+    state.activeWorkspaceId === previous.activeWorkspaceId &&
+    state.workspaces === previous.workspaces
+  ) {
+    return;
+  }
+  publishActiveWorkspace();
+});
+
 // rooms-patches: an extra window starts on the workspace it was opened for,
-// and every window picks up workspace edits made in the others.
+// and every window tells the shell which workspace it is showing.
 {
   const context = readDesktopWindowContext();
   if (context.additional && context.workspace !== null) {
     useWorkspaceStore.getState().selectWorkspaceByName(context.workspace);
   }
+  publishWorkspaceReports = true;
+  publishActiveWorkspace();
   onOtherWindowStorageChange(WORKSPACE_STORAGE_KEY, () => {
     void useWorkspaceStore.persist.rehydrate();
   });

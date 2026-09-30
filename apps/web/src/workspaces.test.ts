@@ -46,6 +46,15 @@ describe("workspaces.logic", () => {
     expect(findWorkspace(all, "missing")).toBeNull();
     expect(findWorkspace([...all, workspace("ORBIT", [], "ws-2")], "orbit")).toBeNull();
     expect(workspaceNameKey("Désktop Apps!")).toBe("desktopapps");
+    expect(findWorkspace([workspace("DLF - Leden", []), workspace("Orbit", [])], "DLF")?.name).toBe(
+      "DLF - Leden",
+    );
+    expect(findWorkspace([workspace("DLF", []), workspace("DLF - Leden", [])], "DLF")?.name).toBe(
+      "DLF",
+    );
+    expect(
+      findWorkspace([workspace("DLF - Leden", []), workspace("DLF Members", [])], "DLF"),
+    ).toBeNull();
   });
 
   it("scopes the sidebar to the workspace's projects, across environments", () => {

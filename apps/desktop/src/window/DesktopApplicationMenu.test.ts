@@ -76,6 +76,8 @@ const desktopUpdatesLayer = Layer.succeed(DesktopUpdates.DesktopUpdates, {
 const makeDesktopWindowLayer = (selectedAction: Deferred.Deferred<string>) =>
   Layer.succeed(DesktopWindow.DesktopWindow, {
     createMain: Effect.die("unexpected createMain"),
+    showWorkspace: () => Effect.die("unexpected showWorkspace"),
+    noteWorkspace: () => Effect.void,
     createAdditional: (input) =>
       Deferred.succeed(selectedAction, `new-window:${input.workspace}`).pipe(
         Effect.as({} as Electron.BrowserWindow),

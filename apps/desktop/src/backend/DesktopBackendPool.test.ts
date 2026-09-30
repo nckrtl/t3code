@@ -89,6 +89,8 @@ function makePoolLayer(
         Layer.succeed(DesktopWindow.DesktopWindow, {
           createMain: Effect.die("unexpected window create"),
           createAdditional: () => Effect.die("unexpected createAdditional"),
+          showWorkspace: () => Effect.die("unexpected showWorkspace"),
+          noteWorkspace: () => Effect.void,
           ensureMain: Effect.die("unexpected window ensure"),
           revealOrCreateMain: Effect.die("unexpected window reveal"),
           activate: Effect.die("unexpected window activate"),

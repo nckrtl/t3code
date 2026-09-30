@@ -391,6 +391,27 @@ export const openWorkspaceWindow = DesktopIpc.makeIpcMethod({
   }),
 });
 
+const WorkspaceReport = Schema.Struct({
+  id: Schema.NullOr(Schema.String.check(Schema.isMaxLength(200))),
+  name: Schema.NullOr(Schema.String.check(Schema.isMaxLength(200))),
+});
+
+/** Records which workspace the calling window is showing. rooms-patches. */
+export const reportWorkspace = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.REPORT_WORKSPACE_CHANNEL,
+  payload: WorkspaceReport,
+  result: Schema.Void,
+  handler: Effect.fn("desktop.ipc.window.reportWorkspace")(function* (report, event) {
+    if (event === undefined) return;
+    const desktopWindow = yield* DesktopWindow.DesktopWindow;
+    yield* desktopWindow.noteWorkspace({
+      webContentsId: event.sender.id,
+      id: report.id,
+      name: report.name,
+    });
+  }),
+});
+
 /** Theme files are a few KB; anything larger returns empty text and lets the
  *  renderer reject it by size without the contents ever crossing the bridge. */
 const PICKED_THEME_FILE_MAX_BYTES = 256 * 1024;
