@@ -1,5 +1,6 @@
-import { FolderGit2Icon, FolderGitIcon, FolderIcon } from "lucide-react";
-import { memo, useMemo } from "react";
+import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
+import { FolderGit2Icon, FolderGitIcon, FolderIcon, GlobeIcon } from "lucide-react";
+import { memo, useMemo, useState } from "react";
 
 import {
   resolveCurrentWorkspaceLabel,
@@ -7,7 +8,12 @@ import {
   resolveLockedWorkspaceLabel,
   type EnvMode,
 } from "./BranchToolbar.logic";
+import { useOpenLink } from "../browser/useOpenLink";
+import type { OrbitThreadInstance } from "../orbit/orbitThreadStore";
+import { useOrbitAvailability } from "../orbit/useOrbitAvailability";
 import { useComposerMenuProps } from "./chat/composerEventScope";
+import { OrbitLogoIcon } from "./OrbitLogoIcon";
+import { Badge } from "./ui/badge";
 import { PreviousWorktreeItemContent } from "./PreviousWorktreeItemContent";
 import {
   Select,
@@ -22,6 +28,74 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 const PREVIOUS_WORKTREE_SELECT_VALUE = "previous-worktree";
 
+function OrbitInstanceItemContent({ note }: { note: string | null }) {
+  const label = resolveEnvModeLabel("orbit");
+  if (!note) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <OrbitLogoIcon className="size-3" />
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="flex min-w-0 items-start gap-1.5">
+      <OrbitLogoIcon className="mt-1 size-3" />
+      <span className="flex min-w-0 flex-col">
+        <span>{label}</span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{note}</span>
+      </span>
+    </span>
+  );
+}
+
+function OrbitInstanceUrlChip({ url, threadRef }: { url: string; threadRef: ScopedThreadRef }) {
+  const openLink = useOpenLink(threadRef);
+  const host = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Badge
+            variant="secondary"
+            className="min-w-0 shrink font-normal"
+            render={
+              <a
+                href={url}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void openLink(url, { event }).catch((error: unknown) => console.error(error));
+                }}
+              />
+            }
+          />
+        }
+      >
+        <GlobeIcon />
+        <span className="truncate">{host}</span>
+      </TooltipTrigger>
+      <TooltipPopup>Open {url}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
+function orbitThreadLabel(instance: OrbitThreadInstance): string {
+  if (instance.phase === "registering") return "Orbit: setting up";
+  if (instance.phase === "failed") return "Orbit: not registered";
+  // The route's first label is the readable name, e.g. `login-redirect`.
+  const host = instance.url?.replace(/^https?:\/\//, "").split(".")[0];
+  return `Orbit: ${host || instance.instanceName}`;
+}
+
+function orbitThreadTooltip(instance: OrbitThreadInstance): string {
+  if (instance.phase === "registering") {
+    return `Worktree ${instance.checkoutPath}. Orbit registers it once the branch has its name.`;
+  }
+  if (instance.phase === "failed")
+    return `Orbit could not register this worktree: ${instance.failure}`;
+  return `Orbit instance ${instance.instanceName} in ${instance.checkoutPath}`;
+}
+
 interface BranchToolbarEnvModeSelectorProps {
   forceNewWorktree?: boolean;
   envLocked: boolean;
@@ -31,6 +105,11 @@ interface BranchToolbarEnvModeSelectorProps {
   previousWorktreeLabel?: string | null;
   previousWorktreeBranch?: string | null;
   onUsePreviousWorktree?: () => void;
+  /** Where the hidden Orbit check runs; omit to hide the Orbit option. */
+  orbitTarget?: { readonly environmentId: EnvironmentId; readonly projectRoot: string } | null;
+  /** The Orbit Instance this thread runs in, if any. */
+  orbitThread?: OrbitThreadInstance | null;
+  threadRef?: ScopedThreadRef | null;
 }
 
 export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSelector({
@@ -42,19 +121,78 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
   previousWorktreeLabel,
   previousWorktreeBranch = null,
   onUsePreviousWorktree,
+  orbitTarget = null,
+  orbitThread = null,
+  threadRef = null,
 }: BranchToolbarEnvModeSelectorProps) {
   const composerFloatingLayerProps = useComposerMenuProps();
   const showPreviousWorktree = Boolean(previousWorktreeLabel && onUsePreviousWorktree);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const orbitAvailability = useOrbitAvailability({
+    environmentId: orbitTarget?.environmentId ?? ("" as EnvironmentId),
+    projectRoot: orbitTarget?.projectRoot ?? null,
+    enabled: pickerOpen || effectiveEnvMode === "orbit",
+  });
+  const showOrbit = orbitTarget !== null;
+  const orbitDisabled =
+    orbitAvailability === null || "status" in orbitAvailability
+      ? true
+      : !orbitAvailability.available;
+  const orbitNote =
+    orbitAvailability === null
+      ? null
+      : "status" in orbitAvailability
+        ? "Checking Orbit…"
+        : orbitAvailability.available
+          ? null
+          : orbitAvailability.reason;
   const envModeItems = useMemo(
     () => [
       { value: "local", label: resolveCurrentWorkspaceLabel(activeWorktreePath) },
       { value: "worktree", label: resolveEnvModeLabel("worktree") },
+      ...(showOrbit ? [{ value: "orbit", label: resolveEnvModeLabel("orbit") }] : []),
       ...(showPreviousWorktree && previousWorktreeLabel
         ? [{ value: PREVIOUS_WORKTREE_SELECT_VALUE, label: previousWorktreeLabel }]
         : []),
     ],
-    [activeWorktreePath, previousWorktreeLabel, showPreviousWorktree],
+    [activeWorktreePath, previousWorktreeLabel, showOrbit, showPreviousWorktree],
   );
+
+  if (orbitThread !== null || (envLocked && effectiveEnvMode === "orbit")) {
+    const lockedLabel = orbitThread ? orbitThreadLabel(orbitThread) : resolveEnvModeLabel("orbit");
+    return (
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <Tooltip>
+          <TooltipTrigger
+            render={<span />}
+            className="inline-flex h-7 min-w-0 items-center gap-1 border border-transparent px-1.75 font-normal text-muted-foreground/70 text-xs sm:h-6"
+            data-composer-context-control
+          >
+            <OrbitLogoIcon className="size-3 shrink-0" />
+            <span
+              data-composer-label
+              className="min-w-0 max-w-[240px] group-data-[compact]/composer-context:max-w-0"
+            >
+              <span
+                data-composer-label-motion
+                className="block w-full min-w-0 max-w-[240px] truncate transition-opacity duration-180 ease-drawer group-data-[compact]/composer-context:opacity-0 motion-reduce:transition-none"
+              >
+                {lockedLabel}
+              </span>
+            </span>
+          </TooltipTrigger>
+          <TooltipPopup>
+            {orbitThread
+              ? orbitThreadTooltip(orbitThread)
+              : "Creating an Orbit worktree for this thread"}
+          </TooltipPopup>
+        </Tooltip>
+        {orbitThread?.url && threadRef ? (
+          <OrbitInstanceUrlChip url={orbitThread.url} threadRef={threadRef} />
+        ) : null}
+      </span>
+    );
+  }
 
   if (envLocked || forceNewWorktree) {
     return (
@@ -96,6 +234,7 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
     <Select
       modal={false}
       value={effectiveEnvMode}
+      onOpenChange={setPickerOpen}
       onValueChange={(value: string | null) => {
         if (value === PREVIOUS_WORKTREE_SELECT_VALUE) {
           onUsePreviousWorktree?.();
@@ -118,7 +257,9 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
             />
           }
         >
-          {effectiveEnvMode === "worktree" ? (
+          {effectiveEnvMode === "orbit" ? (
+            <OrbitLogoIcon className="size-3" />
+          ) : effectiveEnvMode === "worktree" ? (
             <FolderGit2Icon className="size-3" />
           ) : activeWorktreePath ? (
             <FolderGitIcon className="size-3" />
@@ -138,14 +279,18 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
           </span>
         </TooltipTrigger>
         <TooltipPopup>
-          {effectiveEnvMode === "worktree"
-            ? resolveEnvModeLabel("worktree")
-            : resolveCurrentWorkspaceLabel(activeWorktreePath)}
+          {effectiveEnvMode === "orbit" && orbitNote
+            ? `${resolveEnvModeLabel("orbit")}: ${orbitNote}`
+            : effectiveEnvMode === "worktree" || effectiveEnvMode === "orbit"
+              ? resolveEnvModeLabel(effectiveEnvMode)
+              : resolveCurrentWorkspaceLabel(activeWorktreePath)}
         </TooltipPopup>
       </Tooltip>
       <SelectPopup
         alignItemWithTrigger={false}
-        className={showPreviousWorktree ? "w-[min(21rem,calc(100vw-2rem))]" : undefined}
+        className={
+          showPreviousWorktree || showOrbit ? "w-[min(21rem,calc(100vw-2rem))]" : undefined
+        }
         {...composerFloatingLayerProps}
       >
         <SelectGroup>
@@ -166,6 +311,11 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
               {resolveEnvModeLabel("worktree")}
             </span>
           </SelectItem>
+          {showOrbit ? (
+            <SelectItem value="orbit" disabled={orbitDisabled && effectiveEnvMode !== "orbit"}>
+              <OrbitInstanceItemContent note={orbitNote} />
+            </SelectItem>
+          ) : null}
           {showPreviousWorktree && previousWorktreeLabel ? (
             <SelectItem value={PREVIOUS_WORKTREE_SELECT_VALUE}>
               <PreviousWorktreeItemContent branch={previousWorktreeBranch} />

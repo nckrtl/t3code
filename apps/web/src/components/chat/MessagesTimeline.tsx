@@ -307,6 +307,7 @@ interface TimelineRowSharedState {
 interface TimelineRowActivityState {
   isWorking: boolean;
   isPreparingWorktree: boolean;
+  preparingWorktreeLabel: string | null;
   isCompacting: boolean;
   isRevertingCheckpoint: boolean;
   latestTurnId: TurnId | null;
@@ -406,6 +407,8 @@ interface MessagesTimelineProps {
   onOpenAgents?: () => void;
   isWorking: boolean;
   isPreparingWorktree?: boolean;
+  /** Replaces "Setting up worktree…", e.g. while Orbit copies an Instance. */
+  preparingWorktreeLabel?: string;
   isCompacting?: boolean;
   activeTurnStartedAt: string | null;
   /** Live bootstrap progress for this thread, or null when none is tracked. */
@@ -484,6 +487,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   onWorktreeSetupWorkLocally,
   onOpenWorktreeSetupTerminal,
   isPreparingWorktree = false,
+  preparingWorktreeLabel,
   isCompacting = false,
   activeTurnStartedAt,
   agentPanelModel,
@@ -1225,6 +1229,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     () => ({
       isWorking,
       isPreparingWorktree,
+      preparingWorktreeLabel: preparingWorktreeLabel ?? null,
       isCompacting,
       isRevertingCheckpoint,
       latestTurnId: latestTurn?.turnId ?? null,
@@ -1239,6 +1244,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       isRevertingCheckpoint,
       isWorking,
       isPreparingWorktree,
+      preparingWorktreeLabel,
       // Deliberately the fields `deriveUnsettledTurnId` reads, not the object:
       // its identity changes on every thread-shell patch.
       latestTurn?.turnId,
@@ -2530,13 +2536,13 @@ function ProposedPlanTimelineRow({
 }
 
 function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "working" }> }) {
-  const { isCompacting, isPreparingWorktree, backgroundWorktreeSetup } =
+  const { isCompacting, isPreparingWorktree, preparingWorktreeLabel, backgroundWorktreeSetup } =
     use(TimelineRowActivityCtx);
   // One span for every label so the setup-to-working handoff swaps text in
   // place instead of remounting the row.
   const shimmer = isPreparingWorktree || isCompacting;
   const label = isPreparingWorktree ? (
-    "Setting up worktree…"
+    (preparingWorktreeLabel ?? "Setting up worktree…")
   ) : isCompacting ? (
     <CompactingLabel />
   ) : row.createdAt ? (

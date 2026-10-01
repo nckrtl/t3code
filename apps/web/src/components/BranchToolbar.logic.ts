@@ -22,7 +22,7 @@ export interface EnvironmentOption {
   machine: EnvironmentMachineKind;
 }
 
-export const EnvMode = Schema.Literals(["local", "worktree"]);
+export const EnvMode = Schema.Literals(["local", "worktree", "orbit"]);
 export type EnvMode = typeof EnvMode.Type;
 
 const GENERIC_LOCAL_ENVIRONMENT_LABELS = new Set(["local", "local environment"]);
@@ -91,6 +91,7 @@ export function resolveContextStripLabelsCompact(input: {
 }
 
 export function resolveEnvModeLabel(mode: EnvMode): string {
+  if (mode === "orbit") return "New Orbit instance";
   return mode === "worktree" ? "New worktree" : "Current checkout";
 }
 
@@ -176,7 +177,9 @@ export function resolveEffectiveEnvMode(input: {
     if (activeWorktreePath) {
       return "local";
     }
-    return draftThreadEnvMode === "worktree" ? "worktree" : "local";
+    return draftThreadEnvMode === "worktree" || draftThreadEnvMode === "orbit"
+      ? draftThreadEnvMode
+      : "local";
   }
   return activeWorktreePath || preparingWorktree ? "worktree" : "local";
 }
@@ -192,6 +195,9 @@ export function resolveDraftEnvModeAfterBranchChange(input: {
   }
   if (effectiveEnvMode === "worktree" && !currentWorktreePath) {
     return "worktree";
+  }
+  if (effectiveEnvMode === "orbit" && !currentWorktreePath) {
+    return "orbit";
   }
   return "local";
 }
