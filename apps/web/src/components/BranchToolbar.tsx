@@ -39,6 +39,8 @@ import {
 } from "./BranchToolbarBranchSelector";
 import { BranchToolbarEnvironmentSelector } from "./BranchToolbarEnvironmentSelector";
 import { BranchToolbarEnvModeSelector } from "./BranchToolbarEnvModeSelector";
+import { isOrbitCheckout, useOrbitCheckout } from "../orbit/orbitThreadStore";
+import { OrbitLogoIcon } from "./OrbitLogoIcon";
 import { PreviousWorktreeItemContent } from "./PreviousWorktreeItemContent";
 import { ComposerControl } from "./chat/ComposerControl";
 import {
@@ -133,17 +135,19 @@ const MobileRunContextSelector = memo(function MobileRunContextSelector({
     [availableEnvironments, environmentId],
   );
   const WorkspaceIcon =
-    effectiveEnvMode === "worktree"
-      ? FolderGit2Icon
-      : activeWorktreePath
-        ? FolderGitIcon
-        : FolderIcon;
+    effectiveEnvMode === "orbit"
+      ? OrbitLogoIcon
+      : effectiveEnvMode === "worktree"
+        ? FolderGit2Icon
+        : activeWorktreePath
+          ? FolderGitIcon
+          : FolderIcon;
   const workspaceLabel = forceNewWorktree
     ? resolveEnvModeLabel("worktree")
     : envModeLocked
       ? resolveLockedWorkspaceLabel(activeWorktreePath, effectiveEnvMode)
-      : effectiveEnvMode === "worktree"
-        ? resolveEnvModeLabel("worktree")
+      : effectiveEnvMode === "worktree" || effectiveEnvMode === "orbit"
+        ? resolveEnvModeLabel(effectiveEnvMode)
         : resolveCurrentWorkspaceLabel(activeWorktreePath);
   const isLocked = envLocked || envModeLocked;
   const workspaceIcon = (
@@ -548,6 +552,14 @@ export const BranchToolbar = memo(function BranchToolbar({
     : (serverThread?.worktreePath ?? draftThread?.worktreePath ?? null);
   const effectiveEnvMode = forceNewWorktree ? "worktree" : envMode;
   const envModeLocked = envLocked || (serverThread !== null && activeWorktreePath !== null);
+  const orbitThread = useOrbitCheckout(environmentId, activeWorktreePath);
+  const orbitTarget = useMemo(
+    () =>
+      activeProject && !forceNewWorktree
+        ? { environmentId: activeProject.environmentId, projectRoot: activeProject.workspaceRoot }
+        : null,
+    [activeProject, forceNewWorktree],
+  );
 
   // "Previous worktree" hops a draft into the most recently active worktree
   // of this project — the "keep going where I just was" follow-up flow. Only
@@ -563,7 +575,10 @@ export const BranchToolbar = memo(function BranchToolbar({
     () =>
       canUsePreviousWorktree
         ? resolvePreviousWorktreeSeed({
-            threads: projectThreads,
+            // Orbit checkouts are not T3 worktrees; they come back through Orbit.
+            threads: projectThreads.filter(
+              (thread) => !isOrbitCheckout(thread.environmentId, thread.worktreePath),
+            ),
             currentWorktreePath: activeWorktreePath,
           })
         : null,
@@ -688,6 +703,9 @@ export const BranchToolbar = memo(function BranchToolbar({
               previousWorktreeLabel={previousWorktreeLabel}
               previousWorktreeBranch={previousWorktreeSeed?.branch ?? null}
               onUsePreviousWorktree={onUsePreviousWorktree}
+              orbitTarget={orbitTarget}
+              orbitThread={orbitThread}
+              threadRef={threadRef}
             />
           ) : null}
         </div>

@@ -346,6 +346,10 @@ import {
   serverEnvironment,
 } from "../state/server";
 import { terminalEnvironment } from "../state/terminal";
+import { createOrbitWorktree, orbitInstanceNameForBranch } from "../orbit/orbitInstances";
+import { useOrbitThreadStore } from "../orbit/orbitThreadStore";
+import { runHiddenShell } from "../orbit/orbitTransport";
+import { getOrbitAvailability } from "../orbit/useOrbitAvailability";
 import { threadEnvironment, useEnvironmentThread } from "../state/threads";
 import {
   requestOlderThreadTurns,
@@ -7715,6 +7719,18 @@ export default function ChatView(props: ChatViewProps) {
       setThreadError(threadIdForSend, "Select a base branch before sending in New worktree mode.");
       return;
     }
+    const shouldCreateOrbitInstance =
+      isFirstMessage &&
+      sendEnvMode === "orbit" &&
+      !activeThread.worktreePath &&
+      multipleModelSelections === null;
+    if (shouldCreateOrbitInstance && !activeThreadBranch) {
+      setThreadError(
+        threadIdForSend,
+        "Select a base branch before sending in New Orbit instance mode.",
+      );
+      return;
+    }
 
     const composerImagesSnapshot = [...composerImages];
     const composerFilesSnapshot = [...composerFiles];
@@ -7896,7 +7912,10 @@ export default function ChatView(props: ChatViewProps) {
       return;
     }
     beginLocalDispatch({
-      preparingWorktree: multipleModelSelections !== null || Boolean(baseBranchForWorktree),
+      preparingWorktree:
+        multipleModelSelections !== null ||
+        Boolean(baseBranchForWorktree) ||
+        shouldCreateOrbitInstance,
       submissionIntent: resolvedSubmissionIntent,
     });
 
@@ -8331,6 +8350,59 @@ export default function ChatView(props: ChatViewProps) {
       failure = turnAttachmentsResult;
     }
 
+    // New Orbit instance: a worktree of the project's repository in Orbit's
+    // managed path, on a temporary branch the thread starts on at once. T3's
+    // server renames the branch after this message; OrbitRegistrationSync then
+    // registers the worktree as an Orbit Instance with a matching route.
+    let orbitWorkspace: { readonly branch: string; readonly worktreePath: string } | null = null;
+    if (failure === null && turnAttachmentsResult._tag === "Success" && shouldCreateOrbitInstance) {
+      const projectRoot = activeProject.workspaceRoot;
+      const orbitResult = await settlePromise(async () => {
+        const availability = await getOrbitAvailability(environmentId, projectRoot);
+        if (!availability.available) {
+          throw new Error(`Cannot create an Orbit instance: ${availability.reason}.`);
+        }
+        const { source } = availability;
+        const temporaryBranch = buildTemporaryWorktreeBranchName(randomHex);
+        const instanceName = orbitInstanceNameForBranch(temporaryBranch);
+        const worktreePath = `${source.projectAppsPath}/${instanceName}`;
+        await createOrbitWorktree(
+          (script, timeoutSeconds) =>
+            runHiddenShell({ environmentId, cwd: projectRoot, script, timeoutSeconds }),
+          { projectRoot, baseBranch: activeThreadBranch!, temporaryBranch, worktreePath },
+        );
+        useOrbitThreadStore.getState().register(scopeThreadRef(environmentId, threadIdForSend), {
+          environmentId,
+          threadId: threadIdForSend,
+          phase: "registering",
+          instanceName,
+          projectId: source.projectId,
+          projectSlug: source.projectSlug,
+          tld: source.tld,
+          controlCwd: projectRoot,
+          checkoutPath: worktreePath,
+          temporaryBranch,
+          createdAt: new Date().toISOString(),
+          instanceId: null,
+          url: null,
+          failure: null,
+        });
+        return { branch: temporaryBranch, worktreePath };
+      });
+      if (orbitResult._tag === "Failure") {
+        failure = orbitResult;
+      } else {
+        orbitWorkspace = orbitResult.value;
+        if (!isLocalDraftThread) {
+          const metaResult = await updateThreadMetadata({
+            environmentId,
+            input: { threadId: threadIdForSend, ...orbitWorkspace },
+          });
+          if (metaResult._tag === "Failure") failure = metaResult;
+        }
+      }
+    }
+
     let turnStartSucceeded = false;
     let backgroundDraftOpened = false;
     if (failure === null && turnAttachmentsResult._tag === "Success") {
@@ -8345,8 +8417,8 @@ export default function ChatView(props: ChatViewProps) {
                       modelSelection: threadCreateModelSelection,
                       runtimeMode,
                       interactionMode: sendInteractionMode,
-                      branch: activeThreadBranch,
-                      worktreePath: activeThread.worktreePath,
+                      branch: orbitWorkspace?.branch ?? activeThreadBranch,
+                      worktreePath: orbitWorkspace?.worktreePath ?? activeThread.worktreePath,
                       createdAt: activeThread.createdAt,
                     },
                   }
@@ -9835,6 +9907,9 @@ export default function ChatView(props: ChatViewProps) {
                   : {})}
                 isWorking={!paintOnlyDisplayedTimeline && isWorking}
                 isPreparingWorktree={!paintOnlyDisplayedTimeline && isPreparingWorktree}
+                {...(envMode === "orbit"
+                  ? { preparingWorktreeLabel: "Creating Orbit instance…" }
+                  : {})}
                 isCompacting={!paintOnlyDisplayedTimeline && isCompacting}
                 activeTurnStartedAt={paintOnlyDisplayedTimeline ? null : activeWorkStartedAt}
                 worktreeSetup={paintOnlyDisplayedTimeline ? null : worktreeSetup}

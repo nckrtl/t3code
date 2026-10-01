@@ -30,6 +30,7 @@ import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepA
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
 import { QueuedMessageSender } from "../components/QueuedMessageSender";
+import { OrbitRegistrationSync } from "../orbit/OrbitRegistrationSync";
 import { isAdditionalDesktopWindow } from "../lib/desktopWindowContext";
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
 import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToastCoordinator";
@@ -241,6 +242,7 @@ function RootRouteView() {
           {isMainWindow ? <SnapShotCoordinator /> : null}
           {isMainWindow ? <ThreadNotificationCoordinator /> : null}
           {isMainWindow ? <QueuedMessageSender /> : null}
+          {isMainWindow ? <OrbitRegistrationSync /> : null}
           <ConfirmDialogHost />
           <CustomSnoozeDialogHost />
           <SlowRpcRequestToastCoordinator />

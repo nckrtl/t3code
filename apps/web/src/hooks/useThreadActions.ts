@@ -41,6 +41,7 @@ import { useTerminalUiStateStore } from "../terminalUiStateStore";
 import { useUiStateStore } from "../uiStateStore";
 import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
 import { formatWorktreePathForDisplay, getOrphanedWorktreePathForThread } from "../worktreeCleanup";
+import { isOrbitCheckout, useOrbitThreadStore } from "../orbit/orbitThreadStore";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { useClientSettings } from "./useSettings";
 import * as ThreadUndo from "./threadUndo";
@@ -392,10 +393,14 @@ export function useThreadActions() {
         deletedIds && deletedIds.size > 0
           ? threads.filter((entry) => entry.id === threadRef.threadId || !deletedIds.has(entry.id))
           : threads;
-      const orphanedWorktreePath = getOrphanedWorktreePathForThread(
+      const candidateWorktreePath = getOrphanedWorktreePathForThread(
         survivingThreads,
         threadRef.threadId,
       );
+      // Orbit owns its Instance checkouts; removing them is Orbit's job.
+      const orphanedWorktreePath = isOrbitCheckout(threadRef.environmentId, candidateWorktreePath)
+        ? null
+        : candidateWorktreePath;
       const displayWorktreePath = orphanedWorktreePath
         ? formatWorktreePathForDisplay(orphanedWorktreePath)
         : null;
@@ -459,6 +464,7 @@ export function useThreadActions() {
       refreshArchivedThreadsForEnvironment(threadRef.environmentId);
       releaseComposerDraftUploads(threadRef);
       clearComposerDraftForThread(threadRef);
+      useOrbitThreadStore.getState().remove(threadRef);
       clearProjectDraftThreadById(
         scopeProjectRef(threadRef.environmentId, thread.projectId),
         threadRef,

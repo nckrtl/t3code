@@ -1,0 +1,179 @@
+import type { OrbitHttpRequest, OrbitHttpResponse, OrbitTransport } from "./orbitTransport";
+
+/**
+ * The few Orbit Gateway calls T3 makes. Shapes follow the live API.
+ */
+
+export interface OrbitInstance {
+  readonly id: number;
+  readonly name: string;
+  readonly projectId: number;
+  readonly projectSlug: string | null;
+  readonly nodeId: number;
+  readonly checkoutPath: string;
+  readonly branch: string | null;
+  readonly domain: string | null;
+  readonly url: string | null;
+  readonly status: string;
+}
+
+export interface OrbitNode {
+  readonly id: number;
+  readonly name: string;
+  readonly roles: ReadonlyArray<string>;
+  readonly tld: string | null;
+  /** Root of Orbit's managed checkouts on the Node, e.g. `/fast/apps`. */
+  readonly appsPath: string | null;
+}
+
+export interface OrbitDirectoryMatch {
+  readonly instanceId: number;
+  readonly projectId: number;
+  readonly nodeId: number;
+}
+
+export class OrbitApiError extends Error {
+  override readonly name = "OrbitApiError";
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function int(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+async function call(transport: OrbitTransport, request: OrbitHttpRequest): Promise<unknown> {
+  const response: OrbitHttpResponse = await transport(request);
+  const body = record(response.body);
+  if (response.status >= 200 && response.status < 300) {
+    return body?.data ?? null;
+  }
+  const error = record(body?.error);
+  throw new OrbitApiError(
+    text(error?.code) ?? `http.${response.status}`,
+    text(error?.message) ?? `Orbit answered with HTTP ${response.status}.`,
+    response.status,
+  );
+}
+
+function malformed(what: string): OrbitApiError {
+  return new OrbitApiError("orbit.response_invalid", `Orbit sent an invalid ${what}.`, 200);
+}
+
+export function parseOrbitInstance(value: unknown): OrbitInstance {
+  const data = record(value);
+  const id = int(data?.id);
+  const projectId = int(data?.project_id);
+  const nodeId = int(data?.node_id);
+  const checkoutPath = text(data?.checkout_path);
+  const name = text(data?.name);
+  if (id === null || projectId === null || nodeId === null || !checkoutPath || !name) {
+    throw malformed("Instance");
+  }
+  const route = record(data?.route);
+  return {
+    id,
+    name,
+    projectId,
+    projectSlug: text(record(data?.project)?.slug),
+    nodeId,
+    checkoutPath,
+    branch: text(data?.branch_override) ?? text(data?.selected_branch),
+    domain: text(data?.domain) ?? text(route?.domain),
+    url: text(data?.url),
+    status: text(data?.status) ?? "unknown",
+  };
+}
+
+export async function resolveOrbitDirectory(
+  transport: OrbitTransport,
+  directory: string,
+): Promise<OrbitDirectoryMatch> {
+  const data = record(
+    await call(transport, {
+      method: "GET",
+      path: "/api/v1/instances/resolve-directory",
+      query: { directory },
+    }),
+  );
+  const instanceId = int(data?.instance_id);
+  const projectId = int(data?.project_id);
+  const nodeId = int(data?.node_id);
+  if (instanceId === null || projectId === null || nodeId === null) {
+    throw malformed("directory match");
+  }
+  return { instanceId, projectId, nodeId };
+}
+
+export async function getOrbitNode(transport: OrbitTransport, nodeId: number): Promise<OrbitNode> {
+  const data = record(await call(transport, { method: "GET", path: `/api/v1/nodes/${nodeId}` }));
+  const id = int(data?.id);
+  const name = text(data?.name);
+  if (id === null || !name) throw malformed("Node");
+  const roles = Array.isArray(data?.roles)
+    ? data.roles.filter((role): role is string => typeof role === "string")
+    : [];
+  return {
+    id,
+    name,
+    roles,
+    tld: text(data?.tld),
+    appsPath: text(record(record(data?.settings)?.apps)?.path),
+  };
+}
+
+export async function getOrbitInstance(
+  transport: OrbitTransport,
+  instanceId: number,
+): Promise<OrbitInstance> {
+  return parseOrbitInstance(
+    await call(transport, { method: "GET", path: `/api/v1/instances/${instanceId}` }),
+  );
+}
+
+/**
+ * `instance:register`: adopt a checkout or linked worktree that already sits in
+ * Orbit's managed path (`<apps-root>/<project-slug>/<name>`), so Orbit does not
+ * move it. With `setup`, Orbit runs the Project setup steps before it answers.
+ */
+export async function registerOrbitInstance(
+  transport: OrbitTransport,
+  input: {
+    readonly sourcePath: string;
+    readonly projectId: number;
+    readonly instanceName: string;
+    readonly domain: string;
+  },
+): Promise<OrbitInstance> {
+  const data = record(
+    await call(transport, {
+      method: "POST",
+      path: "/api/v1/instances/register",
+      body: {
+        source_path: input.sourcePath,
+        project_id: input.projectId,
+        instance_name: input.instanceName,
+        domain: input.domain,
+        setup: true,
+      },
+      // Adoption, dependency copy and the Project setup steps; Orbit's own deadline applies too.
+      timeoutSeconds: 30 * 60,
+    }),
+  );
+  return parseOrbitInstance(data?.instance);
+}
