@@ -8360,7 +8360,13 @@ export default function ChatView(props: ChatViewProps) {
       const orbitResult = await settlePromise(async () => {
         const availability = await getOrbitAvailability(environmentId, projectRoot);
         if (!availability.available) {
-          throw new Error(`Cannot create an Orbit instance: ${availability.reason}.`);
+          throw new Error(
+            `Cannot create an Orbit instance: ${
+              "reason" in availability
+                ? availability.reason
+                : "Orbit does not manage this repository"
+            }.`,
+          );
         }
         const { source } = availability;
         const temporaryBranch = buildTemporaryWorktreeBranchName(randomHex);
@@ -8369,7 +8375,14 @@ export default function ChatView(props: ChatViewProps) {
         await createOrbitWorktree(
           (script, timeoutSeconds) =>
             runHiddenShell({ environmentId, cwd: projectRoot, script, timeoutSeconds }),
-          { projectRoot, baseBranch: activeThreadBranch!, temporaryBranch, worktreePath },
+          {
+            // The worktree belongs to the `default` Instance's repository, so
+            // Orbit's setup steps find that Instance as its upstream.
+            projectRoot: source.checkoutPath,
+            baseBranch: activeThreadBranch!,
+            temporaryBranch,
+            worktreePath,
+          },
         );
         useOrbitThreadStore.getState().register(scopeThreadRef(environmentId, threadIdForSend), {
           environmentId,
