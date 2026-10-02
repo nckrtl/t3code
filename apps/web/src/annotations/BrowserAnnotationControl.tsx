@@ -1,6 +1,7 @@
 import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import {
+  BrushCleaningIcon,
   CheckIcon,
   CircleIcon,
   MessageCircleQuestionIcon,
@@ -15,12 +16,14 @@ import { Kbd } from "~/components/ui/kbd";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import {
   type AnnotationQueueState,
   annotationState,
   annotatorEndpointForPage,
+  clearDoneAnnotations,
   countAnnotations,
   openAnnotationCount,
   overlayBootstrapScript,
@@ -137,11 +140,33 @@ export function BrowserAnnotationControl({
               <Kbd>⌘⇧A</Kbd>
             </div>
           </div>
-          {watching ? (
-            <Badge variant="success" size="sm">
-              Watching
-            </Badge>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1">
+            {watching ? (
+              <Badge variant="success" size="sm">
+                Watching
+              </Badge>
+            ) : null}
+            {counts.done > 0 ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Clear ${counts.done} done`}
+                      type="button"
+                      onClick={() =>
+                        void clearDoneAnnotations(endpoint.annotationsUrl, annotations)
+                      }
+                    />
+                  }
+                >
+                  <BrushCleaningIcon />
+                </TooltipTrigger>
+                <TooltipPopup>{`Clear ${counts.done} done`}</TooltipPopup>
+              </Tooltip>
+            ) : null}
+          </div>
         </div>
         {annotations.length === 0 ? (
           <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">

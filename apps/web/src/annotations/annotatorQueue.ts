@@ -136,6 +136,25 @@ export async function fetchAnnotations(
 }
 
 /**
+ * Removes finished annotations from the shared queue, so no viewer shows them again.
+ * Returns how many the server removed.
+ */
+export async function clearDoneAnnotations(
+  annotationsUrl: string,
+  annotations: ReadonlyArray<AnnotatorRecord>,
+): Promise<number> {
+  const done = annotations.filter((annotation) => annotation.status === "done");
+  const results = await Promise.all(
+    done.map((annotation) =>
+      fetch(`${annotationsUrl}/${encodeURIComponent(annotation.id)}`, { method: "DELETE" })
+        .then((response) => response.ok)
+        .catch(() => false),
+    ),
+  );
+  return results.filter(Boolean).length;
+}
+
+/**
  * Script run in the page to load the overlay from the annotator. The overlay keeps its
  * pins and statuses in sync with the server; its own floating control stays hidden
  * because the browser toolbar owns annotation mode.
