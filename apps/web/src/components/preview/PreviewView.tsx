@@ -64,6 +64,7 @@ import { useBrowserSurfaceStore } from "~/browser/browserSurfaceStore";
 import { usePreviewSession } from "./usePreviewSession";
 import { ZoomIndicator } from "./ZoomIndicator";
 import { AgentBrowserCursor } from "./AgentBrowserCursor";
+import { BrowserLaravelToolbar } from "~/laravelToolbar/BrowserLaravelToolbar";
 import {
   findActiveBrowserRecordingRuntimeTabId,
   isBrowserRecordingStartCancelledError,
@@ -831,6 +832,10 @@ export function PreviewView({
           </div>
         ) : null}
       </div>
+      {/* The Laravel Toolbar takes its height from the page area, so it never covers the page. */}
+      {runtimeTabId && !showEmptyState && navStatus._tag !== "LoadFailed" ? (
+        <BrowserLaravelToolbar tabId={runtimeTabId} environmentId={threadRef.environmentId} />
+      ) : null}
     </div>
   );
 }
