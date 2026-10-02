@@ -140,6 +140,7 @@ export function formatMs(value: number): string {
 export function formatBytes(value: number): string {
   const size = Math.abs(value);
   const sign = value < 0 ? "-" : "";
+  if (size >= 1024 ** 3) return `${sign}${(size / 1024 ** 3).toFixed(2)} GB`;
   if (size >= 1024 * 1024) return `${sign}${(size / 1024 / 1024).toFixed(2)} MB`;
   if (size >= 1024) return `${sign}${(size / 1024).toFixed(2)} KB`;
   return `${sign}${size} B`;

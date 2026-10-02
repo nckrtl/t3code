@@ -4,9 +4,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
 import { cn } from "~/lib/utils";
 
-import { useToolbarTab } from "../context";
+import { useOrbitTool, useToolbarTab } from "../context";
 import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
+import { OrbitIcon, OrbitPanel } from "./orbit";
 import { StatusBadge } from "./parts";
 import { RequestPanel, RequestsPanel } from "./requests";
 
@@ -17,6 +18,7 @@ export const PANEL_IDS = [
   "memory",
   "database",
   "models",
+  "orbit",
   "environment",
 ] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
@@ -28,6 +30,7 @@ const PANELS: Record<PanelId, () => ReactNode> = {
   memory: () => <MemoryPanel />,
   database: () => <DatabasePanel />,
   models: () => <ModelsPanel />,
+  orbit: () => <OrbitPanel />,
   environment: () => <EnvironmentPanel />,
 };
 
@@ -73,6 +76,8 @@ function usePanels(initialPinned: PanelId | null) {
 export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | null }) {
   const panels = usePanels(initialPanel);
   const { tab, selectedId, selected, viewingHistory, select } = useToolbarTab();
+  const orbit = useOrbitTool();
+  const orbitProcesses = orbit.state.status === "ready" ? orbit.state.processes : [];
   const row = tab.history.find((entry) => entry.row.id === selectedId);
   const summary = row ? summarize(row.row, selected) : null;
 
@@ -197,7 +202,30 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                 <span className="tabular-nums">{modelCount(selected)}</span>
               </>,
             )}
-            <div className="ml-auto hidden shrink-0 items-center @2xl:flex">
+          </>
+        ) : null}
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {orbit.state.status === "ready"
+            ? item(
+                "orbit",
+                "Orbit processes",
+                <>
+                  <span className="relative">
+                    <OrbitIcon />
+                    {/* Red on the icon when a process that should run is down. */}
+                    {orbitProcesses.some((process) => process.status === "crashed") ? (
+                      <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-destructive" />
+                    ) : null}
+                  </span>
+                  <span className="tabular-nums">
+                    {orbitProcesses.filter((process) => process.status === "running").length}/
+                    {orbitProcesses.length}
+                  </span>
+                </>,
+              )
+            : null}
+          {selected ? (
+            <div className="hidden items-center @2xl:flex">
               {item(
                 "environment",
                 "Laravel and PHP",
@@ -207,8 +235,8 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                 </span>,
               )}
             </div>
-          </>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </div>
   );

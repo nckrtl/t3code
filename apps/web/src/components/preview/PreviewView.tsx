@@ -823,7 +823,7 @@ export function PreviewView({
       </div>
       {/* The Laravel Toolbar takes its height from the page area, so it never covers the page. */}
       {runtimeTabId && !showEmptyState && navStatus._tag !== "LoadFailed" ? (
-        <BrowserLaravelToolbar tabId={runtimeTabId} environmentId={threadRef.environmentId} />
+        <BrowserLaravelToolbar tabId={runtimeTabId} threadRef={threadRef} pageUrl={url} />
       ) : null}
     </div>
   );
