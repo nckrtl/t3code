@@ -1,6 +1,6 @@
 import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
 import { FolderGit2Icon, FolderGitIcon, FolderIcon, GlobeIcon } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 
 import {
   resolveCurrentWorkspaceLabel,
@@ -127,25 +127,24 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
 }: BranchToolbarEnvModeSelectorProps) {
   const composerFloatingLayerProps = useComposerMenuProps();
   const showPreviousWorktree = Boolean(previousWorktreeLabel && onUsePreviousWorktree);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Checked up front (and cached), so the option never pops in or out while the picker is open.
   const orbitAvailability = useOrbitAvailability({
     environmentId: orbitTarget?.environmentId ?? ("" as EnvironmentId),
     projectRoot: orbitTarget?.projectRoot ?? null,
-    enabled: pickerOpen || effectiveEnvMode === "orbit",
+    enabled: orbitTarget !== null,
   });
-  const showOrbit = orbitTarget !== null;
-  const orbitDisabled =
-    orbitAvailability === null || "status" in orbitAvailability
-      ? true
-      : !orbitAvailability.available;
-  const orbitNote =
-    orbitAvailability === null
-      ? null
-      : "status" in orbitAvailability
-        ? "Checking Orbit…"
-        : orbitAvailability.available
-          ? null
-          : orbitAvailability.reason;
+  const orbitChecking = orbitAvailability !== null && "status" in orbitAvailability;
+  const orbitResult = orbitAvailability === null || orbitChecking ? null : orbitAvailability;
+  // Repositories Orbit does not manage never show the option.
+  const showOrbit =
+    orbitTarget !== null &&
+    (effectiveEnvMode === "orbit" || (orbitResult !== null && orbitResult.hidden !== true));
+  const orbitDisabled = orbitResult === null || !orbitResult.available;
+  const orbitNote = orbitChecking
+    ? "Checking Orbit…"
+    : orbitResult !== null && !orbitResult.available && orbitResult.hidden !== true
+      ? orbitResult.reason
+      : null;
   const envModeItems = useMemo(
     () => [
       { value: "local", label: resolveCurrentWorkspaceLabel(activeWorktreePath) },
@@ -234,7 +233,6 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
     <Select
       modal={false}
       value={effectiveEnvMode}
-      onOpenChange={setPickerOpen}
       onValueChange={(value: string | null) => {
         if (value === PREVIOUS_WORKTREE_SELECT_VALUE) {
           onUsePreviousWorktree?.();

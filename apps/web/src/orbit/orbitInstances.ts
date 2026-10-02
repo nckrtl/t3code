@@ -1,12 +1,12 @@
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
 
 import {
-  getOrbitInstance,
-  getOrbitNode,
+  listOrbitInstances,
+  listOrbitNodes,
+  listOrbitProjects,
   OrbitApiError,
   type OrbitInstance,
   registerOrbitInstance,
-  resolveOrbitDirectory,
 } from "./orbitApi";
 import { OrbitTransportError, type OrbitTransport, shellQuote } from "./orbitTransport";
 
@@ -16,10 +16,12 @@ export type HiddenShellRunner = (
   timeoutSeconds: number,
 ) => Promise<{ readonly exitCode: number; readonly output: string }>;
 
-/** The Orbit Instance in the project's folder, whose repository new threads branch from. */
+/** The Project's `default` Instance on this Node, whose repository new threads branch from. */
 export interface OrbitCopySource {
   readonly instanceId: number;
   readonly instanceName: string;
+  /** The `default` Instance's checkout: the repository new worktrees belong to. */
+  readonly checkoutPath: string;
   readonly projectId: number;
   readonly projectSlug: string;
   readonly nodeId: number;
@@ -29,11 +31,20 @@ export interface OrbitCopySource {
   readonly projectAppsPath: string;
 }
 
+/**
+ * `hidden`: the repository has nothing to do with Orbit, so the option is not
+ * shown. `available: false` with a reason: Orbit manages the repository but
+ * cannot make an Instance for it on this machine.
+ */
 export type OrbitAvailability =
-  | { readonly available: true; readonly source: OrbitCopySource }
-  | { readonly available: false; readonly reason: string };
+  | { readonly available: true; readonly hidden?: false; readonly source: OrbitCopySource }
+  | { readonly available: false; readonly hidden?: false; readonly reason: string }
+  | { readonly available: false; readonly hidden: true };
 
 export const ORBIT_APP_DEV_ROLE = "app-dev";
+const ORBIT_SOURCE_INSTANCE = "default";
+
+const HIDDEN: OrbitAvailability = { available: false, hidden: true };
 
 function unavailable(reason: string): OrbitAvailability {
   return { available: false, reason };
@@ -48,46 +59,101 @@ export function describeOrbitError(error: unknown): string {
   return error instanceof Error ? error.message : "Orbit failed.";
 }
 
+/** `git@github.com:Owner/Repo.git` and `https://github.com/owner/repo` → `github.com/owner/repo`. */
+export function normalizeRepositoryUrl(url: string): string | null {
+  const trimmed = url.trim().toLowerCase();
+  const match = /^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)(?::\d+)?[:/](.+?)(?:\.git)?\/*$/.exec(
+    trimmed,
+  );
+  return match ? `${match[1]}/${match[2]}` : null;
+}
+
+/** The project folder's `origin` URL and this machine's IPv4 addresses. */
+export async function readOrbitLocalFacts(
+  run: HiddenShellRunner,
+  projectRoot: string,
+): Promise<{ readonly remote: string | null; readonly addresses: ReadonlyArray<string> }> {
+  const script = [
+    `git -C ${shellQuote(projectRoot)} remote get-url origin 2>/dev/null || true`,
+    "echo ---",
+    "{ ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1; ifconfig 2>/dev/null | awk '$1 == \"inet\" {print $2}'; } | sort -u",
+  ].join("\n");
+  const { output } = await run(script, 20);
+  const [remotePart = "", addressPart = ""] = output.split("---");
+  return {
+    remote: remotePart.trim() || null,
+    addresses: addressPart.split(/\s+/).filter((address) => address !== ""),
+  };
+}
+
 /**
- * The option is offered when the project's folder is an Orbit development
- * Instance on this machine and this machine has the app-dev role.
+ * The option is offered when the project's repository is an Orbit Project,
+ * this machine is an app-dev Node, and the Project has an active `default`
+ * Instance on it. Repositories Orbit does not manage hide the option.
  */
 export async function checkOrbitAvailability(
   transport: OrbitTransport,
+  run: HiddenShellRunner,
   projectRoot: string,
 ): Promise<OrbitAvailability> {
-  let match;
+  let facts;
+  let project;
   try {
-    match = await resolveOrbitDirectory(transport, projectRoot);
-  } catch (error) {
-    if (error instanceof OrbitApiError && error.status === 404) {
-      return unavailable("This project's folder is not an Orbit instance");
-    }
-    return unavailable(describeOrbitError(error));
+    facts = await readOrbitLocalFacts(run, projectRoot);
+    const repository = facts.remote ? normalizeRepositoryUrl(facts.remote) : null;
+    if (repository === null) return HIDDEN;
+    const projects = await listOrbitProjects(transport);
+    project = projects.find(
+      (candidate) =>
+        candidate.repositoryUrl !== null &&
+        normalizeRepositoryUrl(candidate.repositoryUrl) === repository,
+    );
+  } catch {
+    // No Orbit on this machine, or nothing that ties this repository to it.
+    return HIDDEN;
   }
+  if (!project) return HIDDEN;
   try {
-    const [node, instance] = await Promise.all([
-      getOrbitNode(transport, match.nodeId),
-      getOrbitInstance(transport, match.instanceId),
+    const [nodes, instances] = await Promise.all([
+      listOrbitNodes(transport),
+      listOrbitInstances(transport),
     ]);
+    const node = nodes.find(
+      (candidate) =>
+        candidate.wireguardIp !== null && facts.addresses.includes(candidate.wireguardIp),
+    );
+    if (!node) return unavailable("This machine is not an Orbit Node");
     if (!node.roles.includes(ORBIT_APP_DEV_ROLE)) {
       return unavailable("This machine has no app-dev role");
     }
-    if (!node.tld || !instance.projectSlug) {
-      return unavailable("Orbit did not report the route name parts");
+    const source = instances.find(
+      (instance) =>
+        instance.projectId === project.id &&
+        instance.nodeId === node.id &&
+        instance.name === ORBIT_SOURCE_INSTANCE,
+    );
+    if (!source || !source.checkoutPath) {
+      return unavailable(`Orbit project ${project.slug} has no default instance on ${node.name}`);
     }
+    if (source.status !== "active") {
+      return unavailable(
+        `The default instance of ${project.slug} on ${node.name} is ${source.status}`,
+      );
+    }
+    if (!node.tld) return unavailable(`Orbit reports no domain suffix for ${node.name}`);
     // Registration moves a source into `<apps-root>/<project-slug>/<name>`;
     // a worktree created there stays put under the running agent.
     const projectAppsPath = node.appsPath
-      ? `${node.appsPath.replace(/\/+$/, "")}/${instance.projectSlug}`
-      : instance.checkoutPath.replace(/\/[^/]+\/?$/, "");
+      ? `${node.appsPath.replace(/\/+$/, "")}/${project.slug}`
+      : source.checkoutPath.replace(/\/[^/]+\/?$/, "");
     return {
       available: true,
       source: {
-        instanceId: instance.id,
-        instanceName: instance.name,
-        projectId: match.projectId,
-        projectSlug: instance.projectSlug,
+        instanceId: source.id,
+        instanceName: source.name,
+        checkoutPath: source.checkoutPath,
+        projectId: project.id,
+        projectSlug: project.slug,
         nodeId: node.id,
         nodeName: node.name,
         tld: node.tld,

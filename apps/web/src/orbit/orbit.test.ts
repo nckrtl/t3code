@@ -13,7 +13,9 @@ import {
   checkOrbitAvailability,
   createOrbitWorktree,
   type HiddenShellRunner,
+  normalizeRepositoryUrl,
   orbitInstanceNameForBranch,
+  readOrbitLocalFacts,
   orbitRouteSlug,
   orbitRouteSlugForBranch,
   registerOrbitThreadWorktree,
@@ -169,25 +171,63 @@ describe("isOrbitCheckout", () => {
   });
 });
 
-describe("checkOrbitAvailability", () => {
-  const handler = (node: object) => (request: OrbitHttpRequest) => {
-    if (request.path === "/api/v1/instances/resolve-directory") {
-      expect(request.query).toEqual({ directory: "/fast/apps/orbit-website/default" });
-      return ok({ instance_id: 4, project_id: 33, node_id: 9, environment: "development" });
+describe("normalizeRepositoryUrl", () => {
+  it("matches the HTTPS, SSH and scp forms of one repository", () => {
+    for (const url of [
+      "https://github.com/nckrtl/orbit-website.git",
+      "https://github.com/nckrtl/orbit-website",
+      "git@github.com:nckrtl/orbit-website.git",
+      "ssh://git@github.com/NCKRTL/orbit-website.git/",
+    ]) {
+      expect(normalizeRepositoryUrl(url)).toBe("github.com/nckrtl/orbit-website");
     }
-    if (request.path === "/api/v1/nodes/9") return ok(node);
-    if (request.path === "/api/v1/instances/4") return ok(SOURCE_INSTANCE);
-    throw new Error(`unexpected ${request.path}`);
-  };
+    expect(normalizeRepositoryUrl("")).toBeNull();
+  });
+});
 
-  it("offers worktrees of the Instance in the project folder", async () => {
+describe("checkOrbitAvailability", () => {
+  const PROJECTS = [
+    {
+      id: 33,
+      slug: "orbit-website",
+      repository_url: "https://github.com/nckrtl/orbit-website.git",
+    },
+    { id: 46, slug: "orbit", repository_url: "https://github.com/nckrtl/orbit.git" },
+  ];
+  const DEFAULT_INSTANCE = {
+    id: 4,
+    name: "default",
+    project_id: 33,
+    node_id: 9,
+    status: "active",
+    checkout_path: "/fast/apps/orbit-website/default",
+  };
+  const BEAST_NODE = { ...BEAST, wireguard_ip: "10.44.0.7" };
+  const shell =
+    (remote: string, addresses = "127.0.0.1\n10.44.0.7"): HiddenShellRunner =>
+    async () => ({ exitCode: 0, output: `${remote}\n---\n${addresses}` });
+  const orbit = (overrides: { nodes?: unknown[]; instances?: unknown[] } = {}) =>
+    fakeTransport((request) => {
+      if (request.path === "/api/v1/projects") return ok(PROJECTS);
+      if (request.path === "/api/v1/nodes") return ok(overrides.nodes ?? [BEAST_NODE]);
+      if (request.path === "/api/v1/instances")
+        return ok(overrides.instances ?? [DEFAULT_INSTANCE]);
+      throw new Error(`unexpected ${request.path}`);
+    });
+
+  it("offers worktrees of the Project's default Instance on this machine", async () => {
     await expect(
-      checkOrbitAvailability(fakeTransport(handler(BEAST)), "/fast/apps/orbit-website/default"),
+      checkOrbitAvailability(
+        orbit(),
+        shell("git@github.com:nckrtl/orbit-website.git"),
+        "/home/nick/projects/orbit-website",
+      ),
     ).resolves.toEqual({
       available: true,
       source: {
         instanceId: 4,
         instanceName: "default",
+        checkoutPath: "/fast/apps/orbit-website/default",
         projectId: 33,
         projectSlug: "orbit-website",
         nodeId: 9,
@@ -198,35 +238,47 @@ describe("checkOrbitAvailability", () => {
     });
   });
 
-  it("falls back to the source's parent folder without an apps path", async () => {
-    const result = await checkOrbitAvailability(
-      fakeTransport(handler({ ...BEAST, settings: null })),
-      "/fast/apps/orbit-website/default",
-    );
-    expect(result.available && result.source.projectAppsPath).toBe("/fast/apps/orbit-website");
+  it("hides the option for repositories Orbit does not manage", async () => {
+    await expect(
+      checkOrbitAvailability(orbit(), shell("https://github.com/someone/else.git"), "/x"),
+    ).resolves.toEqual({ available: false, hidden: true });
+    await expect(checkOrbitAvailability(orbit(), shell(""), "/x")).resolves.toEqual({
+      available: false,
+      hidden: true,
+    });
+    const offline = fakeTransport(() => fail(403, "peer.identity_unknown"));
+    await expect(
+      checkOrbitAvailability(offline, shell("https://github.com/nckrtl/orbit.git"), "/x"),
+    ).resolves.toEqual({ available: false, hidden: true });
   });
 
-  it("refuses a folder that is not an Orbit Instance", async () => {
-    const transport = fakeTransport(() => fail(404, "dependencies.target_not_found"));
-    await expect(checkOrbitAvailability(transport, "/home/nick/projects/dlf")).resolves.toEqual({
+  it("explains a Project without a default Instance on this machine", async () => {
+    await expect(
+      checkOrbitAvailability(
+        orbit(),
+        shell("https://github.com/nckrtl/orbit.git"),
+        "/home/nick/orbit",
+      ),
+    ).resolves.toEqual({
       available: false,
-      reason: "This project's folder is not an Orbit instance",
+      reason: "Orbit project orbit has no default instance on beast",
     });
   });
 
-  it("refuses a machine without the app-dev role", async () => {
+  it("explains a machine that is not an app-dev Node", async () => {
     await expect(
       checkOrbitAvailability(
-        fakeTransport(handler({ ...BEAST, roles: ["router"] })),
-        "/fast/apps/orbit-website/default",
+        orbit({ nodes: [{ ...BEAST_NODE, roles: ["router"] }] }),
+        shell("https://github.com/nckrtl/orbit-website"),
+        "/x",
       ),
     ).resolves.toEqual({ available: false, reason: "This machine has no app-dev role" });
-  });
-
-  it("refuses a machine that is not an Orbit Node", async () => {
-    const transport = fakeTransport(() => fail(403, "peer.identity_unknown"));
     await expect(
-      checkOrbitAvailability(transport, "/fast/apps/orbit-website/default"),
+      checkOrbitAvailability(
+        orbit(),
+        shell("https://github.com/nckrtl/orbit-website", "127.0.0.1\n10.44.0.6"),
+        "/x",
+      ),
     ).resolves.toEqual({ available: false, reason: "This machine is not an Orbit Node" });
   });
 });
@@ -366,6 +418,12 @@ describe("createOrbitWorktree", { timeout: 60_000 }, () => {
     expect(git(worktreePath, "log", "-1", "--format=%s")).toBe("two");
     expect(git(source, "config", "branch.t3code/1a2b3c4d.gh-merge-base")).toBe("main");
     expect(NodeFS.readFileSync(NodePath.join(worktreePath, ".git"), "utf8")).toContain("gitdir:");
+  });
+
+  it("reads the project's origin and this machine's addresses", async () => {
+    const facts = await readOrbitLocalFacts(realShell, source);
+    expect(facts.remote).toBe(origin);
+    expect(facts.addresses).toContain("127.0.0.1");
   });
 
   it("reports why git refused", async () => {

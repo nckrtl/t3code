@@ -24,12 +24,7 @@ export interface OrbitNode {
   readonly tld: string | null;
   /** Root of Orbit's managed checkouts on the Node, e.g. `/fast/apps`. */
   readonly appsPath: string | null;
-}
-
-export interface OrbitDirectoryMatch {
-  readonly instanceId: number;
-  readonly projectId: number;
-  readonly nodeId: number;
+  readonly wireguardIp: string | null;
 }
 
 export class OrbitApiError extends Error {
@@ -100,50 +95,79 @@ export function parseOrbitInstance(value: unknown): OrbitInstance {
   };
 }
 
-export async function resolveOrbitDirectory(
-  transport: OrbitTransport,
-  directory: string,
-): Promise<OrbitDirectoryMatch> {
-  const data = record(
-    await call(transport, {
-      method: "GET",
-      path: "/api/v1/instances/resolve-directory",
-      query: { directory },
-    }),
-  );
-  const instanceId = int(data?.instance_id);
-  const projectId = int(data?.project_id);
-  const nodeId = int(data?.node_id);
-  if (instanceId === null || projectId === null || nodeId === null) {
-    throw malformed("directory match");
-  }
-  return { instanceId, projectId, nodeId };
+export interface OrbitProject {
+  readonly id: number;
+  readonly slug: string;
+  readonly repositoryUrl: string | null;
 }
 
-export async function getOrbitNode(transport: OrbitTransport, nodeId: number): Promise<OrbitNode> {
-  const data = record(await call(transport, { method: "GET", path: `/api/v1/nodes/${nodeId}` }));
-  const id = int(data?.id);
-  const name = text(data?.name);
-  if (id === null || !name) throw malformed("Node");
-  const roles = Array.isArray(data?.roles)
-    ? data.roles.filter((role): role is string => typeof role === "string")
-    : [];
-  return {
-    id,
-    name,
-    roles,
-    tld: text(data?.tld),
-    appsPath: text(record(record(data?.settings)?.apps)?.path),
-  };
+export interface OrbitInstanceSummary {
+  readonly id: number;
+  readonly name: string;
+  readonly projectId: number;
+  readonly nodeId: number;
+  readonly status: string;
+  readonly checkoutPath: string | null;
 }
 
-export async function getOrbitInstance(
+async function list(transport: OrbitTransport, path: string): Promise<unknown[]> {
+  const data = await call(transport, { method: "GET", path });
+  if (!Array.isArray(data)) throw malformed("list");
+  return data;
+}
+
+export async function listOrbitProjects(transport: OrbitTransport): Promise<OrbitProject[]> {
+  return (await list(transport, "/api/v1/projects")).flatMap((value) => {
+    const data = record(value);
+    const id = int(data?.id);
+    const slug = text(data?.slug);
+    return id === null || !slug ? [] : [{ id, slug, repositoryUrl: text(data?.repository_url) }];
+  });
+}
+
+export async function listOrbitNodes(transport: OrbitTransport): Promise<OrbitNode[]> {
+  return (await list(transport, "/api/v1/nodes")).flatMap((value) => {
+    const data = record(value);
+    const id = int(data?.id);
+    const name = text(data?.name);
+    if (id === null || !name) return [];
+    const roles = Array.isArray(data?.roles)
+      ? data.roles.filter((role): role is string => typeof role === "string")
+      : [];
+    return [
+      {
+        id,
+        name,
+        roles,
+        tld: text(data?.tld),
+        appsPath: text(record(record(data?.settings)?.apps)?.path),
+        wireguardIp: text(data?.wireguard_ip),
+      },
+    ];
+  });
+}
+
+export async function listOrbitInstances(
   transport: OrbitTransport,
-  instanceId: number,
-): Promise<OrbitInstance> {
-  return parseOrbitInstance(
-    await call(transport, { method: "GET", path: `/api/v1/instances/${instanceId}` }),
-  );
+): Promise<OrbitInstanceSummary[]> {
+  return (await list(transport, "/api/v1/instances")).flatMap((value) => {
+    const data = record(value);
+    const id = int(data?.id);
+    const name = text(data?.name);
+    const projectId = int(data?.project_id);
+    const nodeId = int(data?.node_id);
+    if (id === null || !name || projectId === null || nodeId === null) return [];
+    return [
+      {
+        id,
+        name,
+        projectId,
+        nodeId,
+        status: text(data?.status) ?? "unknown",
+        checkoutPath: text(data?.checkout_path),
+      },
+    ];
+  });
 }
 
 /**

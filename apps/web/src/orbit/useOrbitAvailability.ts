@@ -2,7 +2,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import { useEffect, useState } from "react";
 
 import { checkOrbitAvailability, type OrbitAvailability } from "./orbitInstances";
-import { createTerminalOrbitTransport } from "./orbitTransport";
+import { createTerminalOrbitTransport, runHiddenShell } from "./orbitTransport";
 
 const CACHE_TTL_MS = 5 * 60_000;
 const cache = new Map<
@@ -27,6 +27,8 @@ export function getOrbitAvailability(
   }
   const result = checkOrbitAvailability(
     createTerminalOrbitTransport({ environmentId, cwd: projectRoot }),
+    (script, timeoutSeconds) =>
+      runHiddenShell({ environmentId, cwd: projectRoot, script, timeoutSeconds }),
     projectRoot,
   );
   cache.set(key, { at: Date.now(), result });
