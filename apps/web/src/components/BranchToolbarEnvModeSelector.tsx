@@ -72,7 +72,18 @@ function OrbitInstanceUrlChip({ url, threadRef }: { url: string; threadRef: Scop
         }
       >
         <GlobeIcon />
-        <span className="truncate">{host}</span>
+        {/* A long domain must not push the other labels out; it collapses with them. */}
+        <span
+          data-composer-label
+          className="min-w-0 max-w-40 group-data-[compact]/composer-context:max-w-0"
+        >
+          <span
+            data-composer-label-motion
+            className="block w-full min-w-0 max-w-40 truncate transition-opacity duration-180 ease-drawer group-data-[compact]/composer-context:opacity-0 motion-reduce:transition-none"
+          >
+            {host}
+          </span>
+        </span>
       </TooltipTrigger>
       <TooltipPopup>Open {url}</TooltipPopup>
     </Tooltip>
