@@ -1,5 +1,5 @@
 // Pure mapping from the toolbar payload to what the bar and panels show.
-import type { ToolbarData, ToolbarHistoryRow, ToolbarQuery } from "./types";
+import type { SourceLocation, ToolbarData, ToolbarHistoryRow, ToolbarQuery } from "./types";
 
 export type RequestKind = "page" | "inertia" | "xhr";
 
@@ -43,6 +43,11 @@ export function requestKind(row: Pick<ToolbarHistoryRow, "is_xhr" | "response_ty
   return row.response_type === "Inertia" ? "inertia" : "xhr";
 }
 
+/** The package writes `-` for routes without a name. */
+function named(value: string | null | undefined): string | null {
+  return value && value !== "-" ? value : null;
+}
+
 /** A request as a history row shows it, completed by its full payload when loaded. */
 export function summarize(row: ToolbarHistoryRow, data?: ToolbarData | null): RequestSummary {
   return {
@@ -50,7 +55,7 @@ export function summarize(row: ToolbarHistoryRow, data?: ToolbarData | null): Re
     status: data?.response?.status_code ?? row.status_code ?? null,
     method: data?.request?.method ?? row.method,
     uri: data?.request?.uri ?? row.uri,
-    routeName: data?.request?.route_name ?? row.name ?? null,
+    routeName: named(data?.request?.route_name ?? row.name),
     action: data?.request?.controller_action ?? row.action ?? null,
     component: data?.request?.view_name ?? null,
     kind: requestKind(row),
@@ -158,4 +163,44 @@ export function headerRows(
   headers: Readonly<Record<string, readonly string[]>> | undefined,
 ): Array<[string, string]> {
   return Object.entries(headers ?? {}).map(([name, values]) => [name, values.join(", ")]);
+}
+
+export type PropBadge = "Shared" | "Always" | "Deferred" | "Optional" | "Merge" | "Scroll" | "Once";
+
+const TYPE_BADGE: Record<string, PropBadge> = {
+  always: "Always",
+  defer: "Deferred",
+  optional: "Optional",
+  merge: "Merge",
+  scroll: "Scroll",
+  once: "Once",
+};
+
+export interface PropRow {
+  readonly name: string;
+  readonly value: unknown;
+  /** False for a deferred prop this response left out. */
+  readonly loaded: boolean;
+  readonly badges: readonly PropBadge[];
+  readonly source: SourceLocation | null;
+}
+
+/** The page's top-level props with what Inertia knows about them; deferred props come last. */
+export function propRows(data: ToolbarData | null): PropRow[] {
+  const values = data?.request?.view_data ?? {};
+  const meta = data?.inertia?.props ?? {};
+  const row = (name: string, loaded: boolean): PropRow => {
+    const info = meta[name];
+    const badges: PropBadge[] = [];
+    if (info?.shared) badges.push("Shared");
+    const typeBadge = info?.type ? TYPE_BADGE[info.type] : undefined;
+    if (typeBadge) badges.push(typeBadge);
+    return { name, value: values[name], loaded, badges, source: info?.source ?? null };
+  };
+  return [
+    ...Object.keys(values).map((name) => row(name, true)),
+    ...Object.keys(meta)
+      .filter((name) => !(name in values) && meta[name]?.loaded === false)
+      .map((name) => row(name, false)),
+  ];
 }

@@ -1,4 +1,13 @@
-import { Box, ChevronRight, Globe, Layers, ListIcon, Search, Timer } from "lucide-react";
+import {
+  Box,
+  ChevronRight,
+  CornerDownRight,
+  Globe,
+  Layers,
+  ListIcon,
+  Search,
+  Timer,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -8,7 +17,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { cn } from "~/lib/utils";
 
 import { useToolbarTab } from "../context";
-import { headerRows, summarize } from "../model";
+import { headerRows, type PropRow, propRows, shortLocation, summarize } from "../model";
 import {
   cellClass,
   EmptyRow,
@@ -19,6 +28,7 @@ import {
   PanelShell,
   rowClass,
   Section,
+  SourceLink,
   Stat,
   StatStrip,
   StatusBadge,
@@ -116,7 +126,13 @@ export function RequestsPanel() {
                   )}
                 >
                   <td className={cellClass}>
-                    <StatusBadge status={summary.status} />
+                    {/* Follow-ups (a redirect's next hop, deferred props) sit under their page. */}
+                    <span className="flex items-center gap-1.5">
+                      {entry.row.follow_up ? (
+                        <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+                      ) : null}
+                      <StatusBadge status={summary.status} />
+                    </span>
                   </td>
                   <td className={cn(cellClass, "font-mono text-muted-foreground")}>
                     {summary.method}
@@ -154,6 +170,7 @@ function Scalar({ value }: { value: unknown }) {
   if (typeof value === "number") return <span className="text-info-foreground">{value}</span>;
   if (typeof value === "boolean")
     return <span className="text-warning-foreground">{String(value)}</span>;
+  if (value === undefined) return <span className="text-muted-foreground">not loaded yet</span>;
   return <span className="text-muted-foreground">null</span>;
 }
 
@@ -161,8 +178,56 @@ function isBranch(value: unknown): value is Record<string, unknown> | unknown[] 
   return typeof value === "object" && value !== null;
 }
 
+const BADGE_VARIANT = {
+  Shared: "info",
+  Always: "success",
+  Deferred: "warning",
+  Optional: "outline",
+  Merge: "outline",
+  Scroll: "outline",
+  Once: "outline",
+} as const;
+
+/** What Inertia knows about a top-level prop: its badges and where it is defined. */
+function PropAside({
+  prop,
+  openSource,
+}: {
+  prop: PropRow;
+  openSource: ((target: string) => void) | undefined;
+}) {
+  const { source } = prop;
+  return (
+    <>
+      {prop.badges.map((badge) => (
+        <Badge key={badge} variant={BADGE_VARIANT[badge]}>
+          {badge}
+        </Badge>
+      ))}
+      {source ? (
+        <SourceLink
+          onOpen={openSource ? () => openSource(`${source.file}:${source.line}`) : undefined}
+        >
+          {shortLocation(source.file, source.line)}
+        </SourceLink>
+      ) : null}
+    </>
+  );
+}
+
 /** One prop in the tree. Objects and arrays fold open with a chevron. */
-function PropNode({ name, value, depth }: { name: string; value: unknown; depth: number }) {
+function PropNode({
+  name,
+  value,
+  depth,
+  aside,
+}: {
+  name: string;
+  value: unknown;
+  depth: number;
+  /** Badges and source link on the right of a top-level prop. */
+  aside?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const branch = isBranch(value);
   const entries = branch ? Object.entries(value) : [];
@@ -199,6 +264,7 @@ function PropNode({ name, value, depth }: { name: string; value: unknown; depth:
           </span>
         )}
         {branch ? <span className="text-muted-foreground">{count}</span> : <Scalar value={value} />}
+        {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5">{aside}</span> : null}
       </div>
       {branch && open ? (
         <div className="mb-1.5 ml-4 border-l pl-3">
@@ -214,11 +280,12 @@ function PropNode({ name, value, depth }: { name: string; value: unknown; depth:
 type RequestTab = "route" | "props" | "request" | "response" | "cookies";
 
 export function RequestPanel() {
-  const { selected, tab: toolbarTab, selectedId } = useToolbarTab();
+  const { selected, tab: toolbarTab, selectedId, openSource } = useToolbarTab();
   const [tab, setTab] = useState<RequestTab>("route");
   const row = toolbarTab.history.find((entry) => entry.row.id === selectedId)?.row;
   const summary = row ? summarize(row, selected) : null;
-  const props = selected?.request?.view_data ?? null;
+  const props = propRows(selected);
+  const componentPath = selected?.inertia?.component_path ?? null;
   const cookies = selected?.response?.cookies ?? [];
   const contentType = selected?.response?.content_type ?? "";
   const responseKind = selected?.request?.is_inertia
@@ -298,10 +365,16 @@ export function RequestPanel() {
     );
   else if (tab === "props")
     body =
-      props && Object.keys(props).length > 0 ? (
+      props.length > 0 ? (
         <div className="pl-1.5">
-          {Object.entries(props).map(([name, value]) => (
-            <PropNode key={name} name={name} value={value} depth={0} />
+          {props.map((prop) => (
+            <PropNode
+              key={prop.name}
+              name={prop.name}
+              value={prop.loaded ? prop.value : undefined}
+              depth={0}
+              aside={<PropAside prop={prop} openSource={openSource} />}
+            />
           ))}
         </div>
       ) : (
@@ -375,7 +448,11 @@ export function RequestPanel() {
             <MethodBadge method={summary.method} />
             <span className="truncate font-mono text-foreground">{summary.uri}</span>
             {summary.component ? (
-              <span className="font-mono text-foreground/80">{summary.component}</span>
+              <SourceLink
+                onOpen={componentPath && openSource ? () => openSource(componentPath) : undefined}
+              >
+                {summary.component}
+              </SourceLink>
             ) : null}
           </>
         ) : null
