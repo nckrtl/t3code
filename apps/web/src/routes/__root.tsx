@@ -29,6 +29,7 @@ import { DesktopAppActivationCoordinator } from "../components/desktop/DesktopAp
 import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepAlive";
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
+import { AnnotationWatchCoordinator } from "../annotations/AnnotationWatchCoordinator";
 import { QueuedMessageSender } from "../components/QueuedMessageSender";
 import { OrbitRegistrationSync } from "../orbit/OrbitRegistrationSync";
 import { isAdditionalDesktopWindow } from "../lib/desktopWindowContext";
@@ -242,6 +243,7 @@ function RootRouteView() {
           {isMainWindow ? <SnapShotCoordinator /> : null}
           {isMainWindow ? <ThreadNotificationCoordinator /> : null}
           {isMainWindow ? <QueuedMessageSender /> : null}
+          {isMainWindow ? <AnnotationWatchCoordinator /> : null}
           {isMainWindow ? <OrbitRegistrationSync /> : null}
           <ConfirmDialogHost />
           <CustomSnoozeDialogHost />

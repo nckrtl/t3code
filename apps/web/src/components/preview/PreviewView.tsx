@@ -57,6 +57,7 @@ import { BrowserSettingsReadError } from "~/browser/openFileInPreview";
 import { PreviewUnreachable } from "./PreviewUnreachable";
 import { revealInFileExplorerLabel } from "./fileExplorerLabel";
 import { shouldShowPreviewEmptyState } from "./previewEmptyStateLogic";
+import { BrowserAnnotationControl } from "~/annotations/BrowserAnnotationControl";
 import { Badge } from "~/components/ui/badge";
 import { BrowserSurfaceSlot } from "~/browser/BrowserSurfaceSlot";
 import { useBrowserSurfaceStore } from "~/browser/browserSurfaceStore";
@@ -755,6 +756,16 @@ export function PreviewView({
               </TooltipTrigger>
               <TooltipPopup side="top">{activeProfileName}</TooltipPopup>
             </Tooltip>
+          ) : null
+        }
+        annotationAction={
+          previewBridge ? (
+            <BrowserAnnotationControl
+              threadRef={threadRef}
+              runtimeTabId={runtimeTabId}
+              pageUrl={navUrl}
+              loading={loading}
+            />
           ) : null
         }
         trailingActions={
