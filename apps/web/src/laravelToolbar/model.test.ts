@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatBytes, requestKind, rowFromData, stages, summarize } from "./model";
+import { formatBytes, propRows, requestKind, rowFromData, stages, summarize } from "./model";
 import type { ToolbarData } from "./types";
 
 const page: ToolbarData = {
@@ -22,6 +22,25 @@ const page: ToolbarData = {
 };
 
 describe("laravel toolbar model", () => {
+  it("adds Inertia's prop metadata and lists deferred props that are not loaded", () => {
+    const rows = propRows({
+      request: { view_data: { auth: { user: null }, releases: [] } },
+      inertia: {
+        props: {
+          auth: { shared: true, type: "always", source: { file: "/app/Share.php", line: 21 } },
+          releases: { shared: false, type: null },
+          downloads: { type: "defer", defer_group: "stats", loaded: false },
+        },
+      },
+    });
+    expect(rows.map((row) => [row.name, row.loaded, row.badges])).toEqual([
+      ["auth", true, ["Shared", "Always"]],
+      ["releases", true, []],
+      ["downloads", false, ["Deferred"]],
+    ]);
+    expect(rows[0]?.source).toEqual({ file: "/app/Share.php", line: 21 });
+  });
+
   it("reads the response size as text or as a measurement", () => {
     const measured = { ...page, response: { size: { formattedValue: "9.97 KB", value: 10209 } } };
     expect(summarize(rowFromData(measured)!, measured).size).toBe("9.97 KB");

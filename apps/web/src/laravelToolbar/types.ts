@@ -9,6 +9,21 @@ export interface Measurement {
   readonly unit?: string;
 }
 
+export interface SourceLocation {
+  readonly file: string;
+  readonly line: number;
+}
+
+export interface InertiaPropMeta {
+  readonly shared?: boolean;
+  /** always, defer, optional, merge, scroll or once. */
+  readonly type?: string | null;
+  readonly defer_group?: string | null;
+  /** False for deferred props the first response leaves out. */
+  readonly loaded?: boolean;
+  readonly source?: SourceLocation | null;
+}
+
 export interface ToolbarStage {
   readonly label: string;
   readonly color?: string;
@@ -56,6 +71,8 @@ export interface ToolbarHistoryRow {
   readonly size?: string | null;
   readonly duration?: string | null;
   readonly response_type?: string | null;
+  /** `redirect`: the next hop of a redirect; `partial`: a partial reload (deferred props). */
+  readonly follow_up?: "redirect" | "partial" | null;
 }
 
 export interface ToolbarModel {
@@ -122,5 +139,13 @@ export interface ToolbarData {
     readonly memory_limit?: string;
     readonly max_execution_time?: string | number;
   };
-  readonly inertia?: { readonly version?: string | null };
+  readonly inertia?: {
+    readonly version?: string | null;
+    /** Per top-level prop, from Inertia's DevTools (package 0.3.7+, inertia-laravel 3.3+). */
+    readonly props?: Readonly<Record<string, InertiaPropMeta>> | null;
+    /** Where the controller renders the page. */
+    readonly render_source?: SourceLocation | null;
+    /** The page component's file. */
+    readonly component_path?: string | null;
+  };
 }

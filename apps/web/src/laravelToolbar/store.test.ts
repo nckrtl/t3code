@@ -18,6 +18,18 @@ describe("laravel toolbar store", () => {
     expect(state().history.map((entry) => entry.row.id)).toEqual(["r1"]);
   });
 
+  it("keeps the server's row for the page, with its follow-up mark", () => {
+    useLaravelToolbarStore.getState().receivePage(TAB, {
+      request_id: "r2",
+      profiler: {},
+      request_history: [
+        { id: "r1", method: "GET", uri: "/old", status_code: 302 },
+        { id: "r2", method: "GET", uri: "/new", follow_up: "redirect" },
+      ],
+    });
+    expect(state().history.map((entry) => entry.row.follow_up ?? null)).toEqual([null, "redirect"]);
+  });
+
   it("adds a summary row for a later request", () => {
     useLaravelToolbarStore.getState().receivePage(TAB, { request_id: "r1", profiler: {} });
     useLaravelToolbarStore.getState().receiveUpdate(TAB, {
