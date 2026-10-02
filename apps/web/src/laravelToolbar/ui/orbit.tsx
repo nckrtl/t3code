@@ -315,7 +315,7 @@ export function OrbitPanel() {
                   disabled={!canFollow}
                   onClick={() => setFollow((value) => !value)}
                   className={cn(
-                    "inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md px-2 font-medium text-xs disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5",
+                    "inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md px-2 font-medium text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-50 [&_svg]:size-3.5",
                     following
                       ? "bg-success/15 text-success-foreground hover:bg-success/20"
                       : "text-muted-foreground hover:bg-foreground/6 hover:text-foreground",
