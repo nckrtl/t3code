@@ -59,7 +59,10 @@ export const useLaravelToolbarStore = create<LaravelToolbarState>((set) => ({
         row: item,
         receivedAt: now,
       }));
-      if (row) history = upsert(history, row, now);
+      // The server's own history row is richer (follow-up marks); build one only when missing.
+      if (row && !history.some((entry) => entry.row.id === row.id)) {
+        history = upsert(history, row, now);
+      }
       return update(state, tabId, () => ({
         currentId: row?.id ?? null,
         history,

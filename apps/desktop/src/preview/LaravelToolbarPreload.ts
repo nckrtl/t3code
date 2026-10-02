@@ -20,6 +20,11 @@ function send(kind: "page" | "update" | "none", data?: unknown) {
   ipcRenderer.sendToHost(CHANNEL, { kind, data: data === undefined ? undefined : plain(data) });
 }
 
+// Hosted mode (laravel-toolbar 0.3.7+): the page's toolbar keeps reporting requests but
+// draws no bar of its own. The preload runs before page scripts and shares their window.
+// Older versions still draw it; the host hides it with CSS (see apps/web laravelToolbar/bridge.ts).
+(window as { __LARAVEL_TOOLBAR_HOST__?: string }).__LARAVEL_TOOLBAR_HOST__ = "T3 Code";
+
 window.addEventListener("DOMContentLoaded", () => {
   const data = (window as { __LARAVEL_TOOLBAR_DATA__?: unknown }).__LARAVEL_TOOLBAR_DATA__;
   if (data && typeof data === "object") send("page", data);
