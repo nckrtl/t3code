@@ -1,4 +1,5 @@
 import { isChatGptUsageLimitError } from "@t3tools/shared/usageLimits";
+import { useAnnotationWatchBanner } from "../annotations/useAnnotationWatchBanner";
 import { useLoadBalancedEnvironment } from "../hooks/useLoadBalancedEnvironment";
 import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 import type { UsageLimitSourceSnapshots } from "@t3tools/contracts";
@@ -6512,9 +6513,13 @@ export default function ChatView(props: ChatViewProps) {
       }),
     [feedbackSubmissions, routeThreadKey],
   );
+  // rooms-patches: browser annotations Watch strip.
+  const annotationWatchBannerItem = useAnnotationWatchBanner(activeThreadKey);
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
-    const backgroundLivenessItems =
-      backgroundLivenessBannerItem === null ? [] : [backgroundLivenessBannerItem];
+    const backgroundLivenessItems = [
+      ...(annotationWatchBannerItem === null ? [] : [annotationWatchBannerItem]),
+      ...(backgroundLivenessBannerItem === null ? [] : [backgroundLivenessBannerItem]),
+    ];
     const resumeCompactionItems =
       resumeCompactionBannerItem === null ? [] : [resumeCompactionBannerItem];
     const wokeThreadItems = wokeThreadBannerItem === null ? [] : [wokeThreadBannerItem];
@@ -6584,6 +6589,7 @@ export default function ChatView(props: ChatViewProps) {
     ];
   }, [
     activeBranchMismatchKey,
+    annotationWatchBannerItem,
     backgroundLivenessBannerItem,
     feedbackBannerItems,
     handleRestoreThreadBranch,

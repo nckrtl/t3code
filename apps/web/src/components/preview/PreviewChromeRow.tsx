@@ -52,6 +52,8 @@ interface Props {
   pickDisabled?: boolean | undefined;
   /** Optional reason string surfaced in the disabled tooltip. */
   pickDisabledReason?: string | undefined;
+  /** rooms-patches: browser annotations control, rendered right after the picker. */
+  annotationAction?: ReactNode;
   /**
    * Trailing slot rendered after the URL input. Used by the preview view
    * to mount the three-dot menu (hard reload, devtools, zoom, clear data).
@@ -91,6 +93,7 @@ export function PreviewChromeRow({
   pickDisabledReason,
   trailingActions,
   leadingActions,
+  annotationAction,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState(url);
@@ -258,6 +261,7 @@ export function PreviewChromeRow({
             </TooltipPopup>
           </Tooltip>
         ) : null}
+        {annotationAction}
         {onCapture ? (
           <Tooltip>
             <TooltipTrigger
