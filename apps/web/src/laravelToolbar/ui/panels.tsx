@@ -1,0 +1,562 @@
+import {
+  Box,
+  Bug,
+  Copy,
+  Cpu,
+  Database,
+  Gauge,
+  Globe,
+  Layers,
+  MemoryStick,
+  Server,
+  Timer,
+} from "lucide-react";
+import { useState } from "react";
+
+import { Badge } from "~/components/ui/badge";
+import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
+import { cn } from "~/lib/utils";
+
+import { useToolbarTab } from "../context";
+import {
+  formatBytes,
+  formatMs,
+  queries as toQueries,
+  shortLocation,
+  stages as toStages,
+  wallTimeMs,
+} from "../model";
+import type { ToolbarData } from "../types";
+import {
+  cellClass,
+  EmptyRow,
+  headCellClass,
+  headRowClass,
+  KeyValueRows,
+  MetaDot,
+  PanelShell,
+  RowMarker,
+  Section,
+  SourceLink,
+  StageBar,
+  Stat,
+  StatStrip,
+  rowClass,
+  tableClass,
+} from "./parts";
+
+/** Shown while a history request's payload loads from the page. */
+function Loading() {
+  return <EmptyRow>Loading request…</EmptyRow>;
+}
+
+// ─── Timings ────────────────────────────────────────────────────────────────
+
+export function TimingsPanel() {
+  const { selected } = useToolbarTab();
+  const total = selected ? wallTimeMs(selected) : 0;
+  const stages = selected ? toStages(selected) : [];
+  return (
+    <PanelShell
+      icon={Timer}
+      title="Timings"
+      actions={<span className="font-medium text-xs tabular-nums">{formatMs(total)}</span>}
+    >
+      {!selected ? (
+        <Loading />
+      ) : (
+        <>
+          <StageBar
+            segments={stages.map((stage) => ({
+              key: stage.label,
+              color: stage.color,
+              share: total ? stage.durationMs / total : 0,
+            }))}
+          />
+          <div className="divide-y">
+            {stages.map((stage) => (
+              <div
+                key={stage.label}
+                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-muted/50"
+              >
+                <div className="flex w-36 shrink-0 items-center gap-2">
+                  <RowMarker color={stage.color} />
+                  <span className="truncate font-medium">{stage.label}</span>
+                </div>
+                <div className="relative h-1 flex-1">
+                  <div
+                    className="absolute inset-y-0 rounded-full"
+                    style={{
+                      backgroundColor: stage.color,
+                      left: `${total ? (stage.startMs / total) * 100 : 0}%`,
+                      width: `${Math.max(total ? (stage.durationMs / total) * 100 : 0, 0.8)}%`,
+                    }}
+                  />
+                </div>
+                <span className="w-14 shrink-0 text-right tabular-nums">
+                  {formatMs(stage.durationMs)}
+                </span>
+                <span className="w-8 shrink-0 text-right text-muted-foreground tabular-nums">
+                  {total ? Math.round((stage.durationMs / total) * 100) : 0}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </PanelShell>
+  );
+}
+
+// ─── Memory ─────────────────────────────────────────────────────────────────
+
+/** PHP's memory_limit ("128M", "1G", "-1") in bytes; null when unlimited or unknown. */
+function limitBytes(limit: string | undefined): number | null {
+  const match = /^(\d+)([KMG])?$/i.exec(limit ?? "");
+  if (!match) return null;
+  const units: Record<string, number> = { K: 1024, M: 1024 ** 2, G: 1024 ** 3 };
+  return Number(match[1]) * (units[(match[2] ?? "").toUpperCase()] ?? 1);
+}
+
+export function MemoryPanel() {
+  const { selected } = useToolbarTab();
+  const stages = selected ? toStages(selected) : [];
+  const allocated = selected?.profiler?.total_allocated_memory;
+  const limit = selected?.php?.memory_limit;
+  const limitValue = limitBytes(limit);
+  const growth = stages.filter((stage) => stage.memoryBytes > 0);
+  const totalGrowth = growth.reduce((sum, stage) => sum + stage.memoryBytes, 0);
+  // Waterfall: each stage starts where memory stood after the stage before it.
+  const steps = stages.reduce<Array<(typeof stages)[number] & { from: number; to: number }>>(
+    (list, stage) => {
+      const from = list.at(-1)?.to ?? 0;
+      list.push({ ...stage, from, to: from + stage.memoryBytes });
+      return list;
+    },
+    [],
+  );
+  const low = Math.min(0, ...steps.map((step) => step.to));
+  const high = Math.max(0, ...steps.map((step) => step.to));
+  const span = high - low || 1;
+  return (
+    <PanelShell
+      icon={MemoryStick}
+      title="Memory"
+      actions={
+        selected ? (
+          <div className="flex items-center gap-4 text-xs">
+            <span>
+              <span className="text-muted-foreground">Allocated</span>{" "}
+              <span className="font-medium tabular-nums">{allocated?.formattedValue ?? "–"}</span>
+            </span>
+            <span>
+              <span className="text-muted-foreground">Real</span>{" "}
+              <span className="font-medium tabular-nums">
+                {selected.profiler?.total_real_memory?.formattedValue ?? "–"}
+              </span>
+            </span>
+            {limit ? (
+              <span>
+                <span className="text-muted-foreground">Limit</span>{" "}
+                <span className="font-medium tabular-nums">{limit}</span>
+                {limitValue && allocated?.value ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    ({((allocated.value / limitValue) * 100).toFixed(1)}%)
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+        ) : null
+      }
+    >
+      {!selected ? (
+        <Loading />
+      ) : (
+        <>
+          <StageBar
+            segments={growth.map((stage) => ({
+              key: stage.label,
+              color: stage.color,
+              share: totalGrowth ? stage.memoryBytes / totalGrowth : 0,
+            }))}
+          />
+          <div className="divide-y">
+            {steps.map((stage) => (
+              <div
+                key={stage.label}
+                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-muted/50"
+              >
+                <div className="flex w-36 shrink-0 items-center gap-2">
+                  <RowMarker color={stage.color} />
+                  <span className="truncate font-medium">{stage.label}</span>
+                </div>
+                <div className="relative h-1 flex-1">
+                  <div
+                    className="absolute inset-y-0 rounded-full"
+                    style={{
+                      backgroundColor: stage.color,
+                      left: `${((Math.min(stage.from, stage.to) - low) / span) * 100}%`,
+                      width: `${Math.max((Math.abs(stage.memoryBytes) / span) * 100, 0.6)}%`,
+                    }}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    "w-20 shrink-0 text-right tabular-nums",
+                    stage.memoryBytes < 0 && "text-success-foreground",
+                    stage.memoryBytes === 0 && "text-muted-foreground",
+                  )}
+                >
+                  {stage.memoryBytes > 0 ? "+" : ""}
+                  {formatBytes(stage.memoryBytes)}
+                </span>
+                <span className="w-8 shrink-0 text-right text-muted-foreground tabular-nums">
+                  {stage.memoryBytes > 0 && totalGrowth
+                    ? `${Math.round((stage.memoryBytes / totalGrowth) * 100)}%`
+                    : "–"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </PanelShell>
+  );
+}
+
+// ─── Database ───────────────────────────────────────────────────────────────
+
+type QueryFilter = "all" | "duplicates" | "slow";
+
+const SQL_TOKENS =
+  /('(?:[^']|'')*'|`[^`]*`|"[^"]*"|\b\d+(?:\.\d+)?\b|\b(?:select|from|where|and|or|in|is|not|null|order|by|asc|desc|limit|offset|count|as|update|set|insert|into|values|delete|join|left|inner|on|group|having|exists|distinct)\b)/gi;
+
+function tokenClass(token: string) {
+  if (token.startsWith("'")) return "text-success-foreground";
+  if (token.startsWith("`") || token.startsWith('"')) return "text-foreground";
+  if (/^\d/.test(token)) return "text-info-foreground";
+  return "text-muted-foreground";
+}
+
+/** SQL with keywords muted, identifiers plain, strings green and numbers blue. */
+function SqlText({ sql }: { sql: string }) {
+  // Keyed by character offset: the fragments of one statement never reorder.
+  const fragments = sql
+    .split(SQL_TOKENS)
+    .reduce<Array<{ text: string; start: number; token: boolean }>>((list, text, index) => {
+      const previous = list.at(-1);
+      list.push({
+        text,
+        start: previous ? previous.start + previous.text.length : 0,
+        token: index % 2 === 1,
+      });
+      return list;
+    }, []);
+  return (
+    <span className="truncate font-mono text-foreground/80 text-xs">
+      {fragments.map((fragment) =>
+        fragment.token ? (
+          <span key={fragment.start} className={tokenClass(fragment.text)}>
+            {fragment.text}
+          </span>
+        ) : (
+          fragment.text
+        ),
+      )}
+    </span>
+  );
+}
+
+export function DatabasePanel() {
+  const { selected, openSource } = useToolbarTab();
+  const [filter, setFilter] = useState<QueryFilter>("all");
+  const all = selected ? toQueries(selected) : [];
+  const duplicates = all.filter((query) => query.isDuplicate).length;
+  const slow = all.filter((query) => query.isSlow).length;
+  const visible = all.filter((query) =>
+    filter === "duplicates" ? query.isDuplicate : filter === "slow" ? query.isSlow : true,
+  );
+  const totalTime = selected?.queries?.totalTime ?? 0;
+  const wall = selected ? wallTimeMs(selected) : 0;
+  const database = selected?.queries?.databases?.[0];
+  return (
+    <PanelShell
+      icon={Database}
+      title="Queries"
+      meta={
+        database ? (
+          <>
+            {database.driver ? <span>{database.driver}</span> : null}
+            {database.driver && database.name ? <MetaDot /> : null}
+            {database.name ? (
+              <span className="font-mono text-foreground">{database.name}</span>
+            ) : null}
+          </>
+        ) : null
+      }
+      actions={
+        <ToggleGroup
+          aria-label="Query filter"
+          variant="segmented"
+          value={[filter]}
+          onValueChange={(value) => {
+            const next = value[0];
+            if (next === "all" || next === "duplicates" || next === "slow") setFilter(next);
+          }}
+        >
+          <Toggle value="all">All</Toggle>
+          <Toggle value="duplicates">Duplicates {duplicates}</Toggle>
+          <Toggle value="slow">Slow {slow}</Toggle>
+        </ToggleGroup>
+      }
+    >
+      {!selected ? (
+        <Loading />
+      ) : (
+        <>
+          <StatStrip>
+            <Stat icon={Database} label="Queries" value={all.length} />
+            <Stat
+              icon={Timer}
+              label="Query time"
+              value={formatMs(totalTime)}
+              hint={wall ? `${Math.round((totalTime / wall) * 100)}% of the request` : undefined}
+            />
+            <Stat
+              icon={Copy}
+              label="Duplicates"
+              value={duplicates}
+              hint="Same SQL and bindings"
+              tone={duplicates > 0 ? "warning" : "default"}
+            />
+            <Stat icon={Gauge} label="Slow" value={slow} />
+          </StatStrip>
+          {visible.length === 0 ? (
+            <EmptyRow>
+              {all.length === 0 ? "No queries in this request" : "No queries match"}
+            </EmptyRow>
+          ) : (
+            <div className="divide-y">
+              {visible.map((query) => {
+                const location = shortLocation(query.file, query.line);
+                return (
+                  <div
+                    key={`${query.offset}:${query.sql}`}
+                    className="relative flex items-center gap-3 px-3 py-2.5 text-xs hover:bg-muted/50"
+                  >
+                    <RowMarker
+                      className={cn(
+                        "h-8",
+                        query.isSlow
+                          ? "bg-info"
+                          : query.isDuplicate
+                            ? "bg-warning"
+                            : "bg-muted-foreground/30",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <SqlText sql={query.sql} />
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        {location ? (
+                          <SourceLink
+                            onOpen={
+                              openSource && query.file
+                                ? () => openSource(`${query.file}:${query.line ?? 1}`)
+                                : undefined
+                            }
+                          >
+                            {location}
+                          </SourceLink>
+                        ) : null}
+                        {query.isDuplicate ? <Badge variant="warning">Duplicate</Badge> : null}
+                        {query.isSlow ? <Badge variant="info">Slow</Badge> : null}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right font-mono tabular-nums">
+                      <div>{formatMs(query.durationMs)}</div>
+                      <div className="text-muted-foreground">+{formatMs(query.offset * wall)}</div>
+                    </div>
+                    {/* When the query ran within the request, as a share of the row width. */}
+                    <div className="absolute inset-x-3 bottom-0 h-px">
+                      <div
+                        className="absolute inset-y-0 bg-primary/60"
+                        style={{
+                          left: `${query.offset * 100}%`,
+                          width: `${Math.max(query.share * 100, 0.4)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </PanelShell>
+  );
+}
+
+// ─── Models ─────────────────────────────────────────────────────────────────
+
+export function ModelsPanel() {
+  const { selected } = useToolbarTab();
+  const models = selected?.models ?? [];
+  const total = models.reduce((sum, model) => sum + (model.retrieved ?? 0), 0);
+  const max = Math.max(1, ...models.map((model) => model.retrieved ?? 0));
+  return (
+    <PanelShell
+      icon={Box}
+      title="Models"
+      actions={
+        models.length ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-xs">
+            <span>{total} retrieved</span>
+            <MetaDot />
+            <span>{models.length} models</span>
+          </div>
+        ) : null
+      }
+    >
+      {!selected ? (
+        <Loading />
+      ) : models.length === 0 ? (
+        <EmptyRow>No model events recorded. Model tracking needs Laravel Telescope.</EmptyRow>
+      ) : (
+        <table className={tableClass}>
+          <colgroup>
+            <col className="w-[36%]" />
+            <col className="w-[28%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+          </colgroup>
+          <thead>
+            <tr className={headRowClass}>
+              <th className={headCellClass}>Model</th>
+              <th className={headCellClass}>Retrieved</th>
+              <th className={cn(headCellClass, "text-right")}>Created</th>
+              <th className={cn(headCellClass, "text-right")}>Updated</th>
+              <th className={cn(headCellClass, "text-right")}>Deleted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((model) => {
+              const fqcn = model.model ?? "";
+              return (
+                <tr key={fqcn} className={rowClass}>
+                  <td className={cellClass}>
+                    <div className="truncate font-medium">{fqcn.split("\\").pop()}</div>
+                    <div className="truncate font-mono text-muted-foreground">{fqcn}</div>
+                  </td>
+                  <td className={cellClass}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 text-right tabular-nums">{model.retrieved ?? 0}</span>
+                      <span className="relative h-1 flex-1">
+                        <span
+                          className="absolute inset-y-0 left-0 rounded-full bg-primary/70"
+                          style={{ width: `${((model.retrieved ?? 0) / max) * 100}%` }}
+                        />
+                      </span>
+                    </div>
+                  </td>
+                  {(
+                    [
+                      ["created", model.created],
+                      ["updated", model.updated],
+                      ["deleted", model.deleted],
+                    ] as const
+                  ).map(([event, count]) => (
+                    <td
+                      key={event}
+                      className={cn(
+                        cellClass,
+                        "text-right tabular-nums",
+                        !count && "text-muted-foreground",
+                      )}
+                    >
+                      {count ? count : "–"}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </PanelShell>
+  );
+}
+
+// ─── Laravel & PHP ──────────────────────────────────────────────────────────
+
+function isDebug(value: ToolbarData["laravel"]): boolean {
+  const debug = value?.debug;
+  return debug === true || debug === "1" || debug === "true";
+}
+
+export function EnvironmentPanel() {
+  const { selected } = useToolbarTab();
+  const laravel = selected?.laravel;
+  const php = selected?.php;
+  return (
+    <PanelShell
+      icon={Server}
+      title="Laravel & PHP"
+      actions={
+        laravel?.host ? <span className="text-muted-foreground text-xs">{laravel.host}</span> : null
+      }
+    >
+      {!selected ? (
+        <Loading />
+      ) : (
+        <>
+          <StatStrip>
+            <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} hint="Framework" />
+            <Stat icon={Cpu} label="PHP" value={php?.version ?? "–"} hint="Runtime" />
+            <Stat
+              icon={Globe}
+              label="Environment"
+              value={laravel?.environment ?? "–"}
+              hint="APP_ENV"
+            />
+            <Stat
+              icon={Bug}
+              label="Debug"
+              value={isDebug(laravel) ? "On" : "Off"}
+              hint="APP_DEBUG"
+              tone={isDebug(laravel) ? "warning" : "default"}
+            />
+          </StatStrip>
+          {/* Fills the panel so the divider between the two columns runs to the bottom. */}
+          <div className="grid flex-1 grid-cols-2 divide-x">
+            <Section title="Application" className="border-b-0">
+              <KeyValueRows
+                rows={[
+                  ["Timezone", laravel?.timezone ?? "–"],
+                  ["Locale", laravel?.locale ?? "–"],
+                  ["Inertia", selected.inertia?.version ?? "–"],
+                ]}
+              />
+            </Section>
+            <Section title="PHP" className="border-b-0">
+              <KeyValueRows
+                rows={[
+                  ["Memory limit", php?.memory_limit ?? "–"],
+                  [
+                    "Max execution time",
+                    php?.max_execution_time ? `${php.max_execution_time}s` : "–",
+                  ],
+                ]}
+              />
+            </Section>
+          </div>
+        </>
+      )}
+    </PanelShell>
+  );
+}

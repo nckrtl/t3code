@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { previewBridge } from "~/components/preview/previewBridge";
 import { usePreviewBridge } from "~/components/preview/usePreviewBridge";
 import { useClientSettingsHydrated } from "~/hooks/useSettings";
+import { relayLaravelToolbarMessage } from "~/laravelToolbar/bridge";
 import { cn, isMacPlatform } from "~/lib/utils";
 
 import { resolveBrowserSurfacePanelRect, useBrowserSurfaceStore } from "./browserSurfaceStore";
@@ -164,10 +165,13 @@ export function HostedBrowserWebview(props: {
         new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }),
       );
     };
+    const relayLaravelToolbar = (event: Event) =>
+      relayLaravelToolbarMessage(runtimeTabId, webview, event);
     webview.addEventListener("did-attach", register);
     webview.addEventListener("dom-ready", register);
     webview.addEventListener("render-process-gone", recoverGuest);
     webview.addEventListener("focus", dismissHostPopups);
+    webview.addEventListener("ipc-message", relayLaravelToolbar);
     register();
     return () => {
       disposed = true;
@@ -176,6 +180,7 @@ export function HostedBrowserWebview(props: {
       webview.removeEventListener("dom-ready", register);
       webview.removeEventListener("render-process-gone", recoverGuest);
       webview.removeEventListener("focus", dismissHostPopups);
+      webview.removeEventListener("ipc-message", relayLaravelToolbar);
     };
   }, [clientSettingsHydrated, config, initialSrc, runtimeTabId, webviewGeneration]);
 

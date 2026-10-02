@@ -1,0 +1,215 @@
+import { Box, Database, ListIcon, MemoryStick, Timer, X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+
+import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
+import { cn } from "~/lib/utils";
+
+import { useToolbarTab } from "../context";
+import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
+import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
+import { StatusBadge } from "./parts";
+import { RequestPanel, RequestsPanel } from "./requests";
+
+export const PANEL_IDS = [
+  "requests",
+  "request",
+  "timings",
+  "memory",
+  "database",
+  "models",
+  "environment",
+] as const;
+export type PanelId = (typeof PANEL_IDS)[number];
+
+const PANELS: Record<PanelId, () => ReactNode> = {
+  requests: () => <RequestsPanel />,
+  request: () => <RequestPanel />,
+  timings: () => <TimingsPanel />,
+  memory: () => <MemoryPanel />,
+  database: () => <DatabasePanel />,
+  models: () => <ModelsPanel />,
+  environment: () => <EnvironmentPanel />,
+};
+
+const OPEN_DELAY_MS = 75;
+const CLOSE_DELAY_MS = 120;
+
+/** Hover opens a panel, click pins it. A pinned panel stays until it is clicked again. */
+function usePanels(initialPinned: PanelId | null) {
+  const [pinned, setPinned] = useState<PanelId | null>(initialPinned);
+  const [hovered, setHovered] = useState<PanelId | null>(null);
+  const timer = useRef<number | null>(null);
+  const clear = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    [],
+  );
+  return {
+    active: hovered ?? pinned,
+    pinned,
+    enter: (id: PanelId) => {
+      clear();
+      timer.current = window.setTimeout(() => setHovered(id), OPEN_DELAY_MS);
+    },
+    stay: clear,
+    leave: () => {
+      clear();
+      timer.current = window.setTimeout(() => setHovered(null), CLOSE_DELAY_MS);
+    },
+    toggle: (id: PanelId) => {
+      clear();
+      setHovered(null);
+      setPinned((current) => (current === id ? null : id));
+    },
+  };
+}
+
+/** The bar under the browser page, with its flyout panels. */
+export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | null }) {
+  const panels = usePanels(initialPanel);
+  const { tab, selectedId, selected, viewingHistory, select } = useToolbarTab();
+  const row = tab.history.find((entry) => entry.row.id === selectedId);
+  const summary = row ? summarize(row.row, selected) : null;
+
+  // Bar items are flat: no border, a light fill on hover, a stronger one while open.
+  const item = (id: PanelId, label: string, children: ReactNode, shrink = false) => (
+    <button
+      type="button"
+      aria-label={label}
+      data-pressed={panels.active === id ? "" : undefined}
+      onMouseEnter={() => panels.enter(id)}
+      onMouseLeave={panels.leave}
+      onClick={() => panels.toggle(id)}
+      className={cn(
+        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md px-2 font-medium text-foreground text-xs hover:bg-foreground/6 data-pressed:bg-foreground/10 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        shrink ? "shrink" : "shrink-0",
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="relative shrink-0">
+      {/* The flyout spans the browser edge to edge and sits directly on the bar. */}
+      {panels.active ? (
+        <div
+          className="absolute inset-x-0 bottom-full z-40 border-t bg-popover text-popover-foreground shadow-lg"
+          onMouseEnter={panels.stay}
+          onMouseLeave={() => {
+            if (panels.pinned === null) panels.leave();
+          }}
+        >
+          <RenderErrorBoundary
+            fallback={
+              <div className="flex h-96 items-center justify-center text-muted-foreground text-xs">
+                This panel cannot show this request's data.
+              </div>
+            }
+            resetKeys={[panels.active, selected]}
+          >
+            {PANELS[panels.active]()}
+          </RenderErrorBoundary>
+        </div>
+      ) : null}
+      {/* Narrow browsers drop the route name, then the versions; the URI truncates. */}
+      <div className="@container flex h-9 items-center gap-0.5 overflow-hidden border-t border-border/60 bg-background px-2">
+        {item(
+          "requests",
+          "Requests on this page",
+          <>
+            <ListIcon />
+            <span className="tabular-nums">{tab.history.length}</span>
+          </>,
+        )}
+        {summary
+          ? item(
+              "request",
+              "Request details",
+              <>
+                <StatusBadge status={summary.status} />
+                <span className="shrink-0 font-mono text-muted-foreground">{summary.method}</span>
+                <span className="truncate font-mono">{summary.uri}</span>
+                {summary.routeName ? (
+                  <span className="hidden truncate text-muted-foreground @3xl:inline">
+                    {summary.routeName}
+                  </span>
+                ) : null}
+              </>,
+              true,
+            )
+          : null}
+        {/* Shown while an older request is selected; returns to the page's own request. */}
+        {viewingHistory && row ? (
+          <button
+            type="button"
+            onClick={() => select(null)}
+            className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md bg-info/15 px-2 font-medium text-info-foreground text-xs hover:bg-info/20 [&_svg]:size-3"
+          >
+            {new Date(row.receivedAt).toLocaleTimeString([], { hour12: false })}
+            <X />
+          </button>
+        ) : null}
+        {selected ? (
+          <>
+            {item(
+              "timings",
+              "Timings",
+              <>
+                <Timer />
+                <span className="tabular-nums">{formatMs(wallTimeMs(selected))}</span>
+              </>,
+            )}
+            {item(
+              "memory",
+              "Memory",
+              <>
+                <MemoryStick />
+                <span className="tabular-nums">
+                  {selected.profiler?.total_allocated_memory?.formattedValue ?? "–"}
+                </span>
+              </>,
+            )}
+            {item(
+              "database",
+              "Database queries",
+              <>
+                <span className="relative">
+                  <Database />
+                  {/* Amber on the icon when this request ran duplicate or slow queries. */}
+                  {hasQueryIssues(selected) ? (
+                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-warning" />
+                  ) : null}
+                </span>
+                <span className="tabular-nums">{selected.queries?.queries?.length ?? 0}</span>
+              </>,
+            )}
+            {item(
+              "models",
+              "Eloquent models",
+              <>
+                <Box />
+                <span className="tabular-nums">{modelCount(selected)}</span>
+              </>,
+            )}
+            <div className="ml-auto hidden shrink-0 items-center @2xl:flex">
+              {item(
+                "environment",
+                "Laravel and PHP",
+                <span className="text-muted-foreground">
+                  Laravel {selected.laravel?.version?.split(".").slice(0, 2).join(".") ?? "–"} · PHP{" "}
+                  {selected.php?.version?.split(".").slice(0, 2).join(".") ?? "–"}
+                </span>,
+              )}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
