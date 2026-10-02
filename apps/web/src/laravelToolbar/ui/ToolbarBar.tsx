@@ -91,7 +91,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
       onMouseLeave={panels.leave}
       onClick={() => panels.toggle(id)}
       className={cn(
-        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md px-2 font-medium text-foreground text-xs hover:bg-foreground/6 data-pressed:bg-foreground/10 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md px-2 font-medium text-foreground text-xs outline-none hover:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring data-pressed:bg-foreground/10 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
         shrink ? "shrink" : "shrink-0",
       )}
     >
@@ -101,10 +101,11 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
 
   return (
     <div className="relative shrink-0">
-      {/* The flyout spans the browser edge to edge and sits directly on the bar. */}
+      {/* The flyout spans the browser edge to edge and sits directly on the bar, on the
+          theme's canvas like the bar (popover is the small-menu surface). */}
       {panels.active ? (
         <div
-          className="absolute inset-x-0 bottom-full z-40 border-t bg-popover text-popover-foreground shadow-lg"
+          className="absolute inset-x-0 bottom-full z-40 border-t bg-background text-foreground shadow-lg"
           onMouseEnter={panels.stay}
           onMouseLeave={() => {
             if (panels.pinned === null) panels.leave();
@@ -154,7 +155,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           <button
             type="button"
             onClick={() => select(null)}
-            className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md bg-info/15 px-2 font-medium text-info-foreground text-xs hover:bg-info/20 [&_svg]:size-3"
+            className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md bg-info/15 px-2 font-medium text-info-foreground text-xs outline-none hover:bg-info/20 focus-visible:ring-1 focus-visible:ring-ring [&_svg]:size-3"
           >
             {new Date(row.receivedAt).toLocaleTimeString([], { hour12: false })}
             <X />

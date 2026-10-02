@@ -244,7 +244,7 @@ function PropNode({
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="flex cursor-pointer items-center gap-1.5"
+            className="flex cursor-pointer items-center gap-1.5 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ChevronRight
               className={cn(
