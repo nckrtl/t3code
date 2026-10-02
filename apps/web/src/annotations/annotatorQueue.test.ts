@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   annotationState,
   annotatorEndpointForPage,
   type AnnotatorRecord,
   buildAnnotationPrompt,
+  clearDoneAnnotations,
   countAnnotations,
   openAnnotationCount,
   waitingIdsToSend,
@@ -107,5 +108,30 @@ describe("buildAnnotationPrompt", () => {
     );
     expect(prompt).toContain('"question":true');
     expect(prompt).toContain("never by id");
+  });
+});
+
+describe("clearDoneAnnotations", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("deletes only finished annotations and counts what the server removed", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", (url: string, init: RequestInit) => {
+      calls.push(`${init.method} ${url}`);
+      return Promise.resolve(new Response(null, { status: url.endsWith("/gone") ? 404 : 200 }));
+    });
+    const removed = await clearDoneAnnotations("https://shop.test/__orbit/annotator/annotations", [
+      record("open", 1),
+      record("a b", 2, { status: "done" }),
+      record("gone", 3, { status: "done" }),
+      record("busy", 4, { status: "in_progress" }),
+    ]);
+    expect(calls).toEqual([
+      "DELETE https://shop.test/__orbit/annotator/annotations/a%20b",
+      "DELETE https://shop.test/__orbit/annotator/annotations/gone",
+    ]);
+    expect(removed).toBe(1);
   });
 });
