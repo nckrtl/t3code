@@ -52,7 +52,11 @@ function int(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
-async function call(transport: OrbitTransport, request: OrbitHttpRequest): Promise<unknown> {
+/** One Gateway call; returns `data`, or throws the API error. */
+export async function callOrbit(
+  transport: OrbitTransport,
+  request: OrbitHttpRequest,
+): Promise<unknown> {
   const response: OrbitHttpResponse = await transport(request);
   const body = record(response.body);
   if (response.status >= 200 && response.status < 300) {
@@ -111,7 +115,7 @@ export interface OrbitInstanceSummary {
 }
 
 async function list(transport: OrbitTransport, path: string): Promise<unknown[]> {
-  const data = await call(transport, { method: "GET", path });
+  const data = await callOrbit(transport, { method: "GET", path });
   if (!Array.isArray(data)) throw malformed("list");
   return data;
 }
@@ -185,7 +189,7 @@ export async function registerOrbitInstance(
   },
 ): Promise<OrbitInstance> {
   const data = record(
-    await call(transport, {
+    await callOrbit(transport, {
       method: "POST",
       path: "/api/v1/instances/register",
       body: {

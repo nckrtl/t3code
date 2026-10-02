@@ -1,0 +1,193 @@
+// The Orbit tool: the processes of the Orbit Instance that serves the page, and their logs.
+// Calls go through the Gateway like T3's other Orbit features (see ~/orbit/orbitTransport.ts).
+import { callOrbit, listOrbitNodes, OrbitApiError } from "~/orbit/orbitApi";
+import type { OrbitTransport } from "~/orbit/orbitTransport";
+
+export type ProcessStatus = "running" | "starting" | "crashed" | "stopped";
+export type ProcessAction = "start" | "stop" | "restart";
+
+export interface OrbitProcess {
+  readonly id: number;
+  readonly name: string;
+  readonly command: string | null;
+  readonly status: ProcessStatus;
+  /** Percent of one core. */
+  readonly cpu: number | null;
+  readonly memoryBytes: number | null;
+}
+
+export interface OrbitPage {
+  readonly domain: string;
+  readonly instanceId: number;
+  readonly nodeName: string | null;
+}
+
+export interface LogLine {
+  /** Position in the tail. */
+  readonly id: number;
+  /** Local clock time, when the line carries a timestamp. */
+  readonly time: string | null;
+  readonly text: string;
+}
+
+/** What the toolbar asks of Orbit; the browser pane and the design page each provide one. */
+export interface OrbitSource {
+  readonly page: () => Promise<OrbitPage | null>;
+  readonly processes: (instanceId: number) => Promise<OrbitProcess[]>;
+  readonly logs: (processId: number, lines: number) => Promise<string>;
+  readonly act: (processId: number, action: ProcessAction) => Promise<void>;
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function finite(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+const RUNNING = new Set(["active", "running"]);
+const STARTING = new Set(["activating", "reloading", "restarting", "created"]);
+
+/** systemd and Docker report different words; the panel shows four states. */
+export function processStatus(runtimeStatus: unknown, desiredState: unknown): ProcessStatus {
+  const runtime = typeof runtimeStatus === "string" ? runtimeStatus : "";
+  if (RUNNING.has(runtime)) return "running";
+  if (STARTING.has(runtime)) return "starting";
+  // Down while it should run: it crashed or failed to start.
+  return desiredState === "running" || runtime === "failed" ? "crashed" : "stopped";
+}
+
+export function parseProcess(value: unknown): OrbitProcess | null {
+  const data = record(value);
+  const id = finite(data?.id);
+  const name = typeof data?.name === "string" ? data.name : null;
+  if (id === null || !name) return null;
+  const config = record(data?.runtime_config);
+  const command = Array.isArray(config?.command)
+    ? config.command.filter((part): part is string => typeof part === "string").join(" ")
+    : null;
+  return {
+    id,
+    name,
+    command: command || (typeof config?.image === "string" ? config.image : null),
+    status: processStatus(data?.runtime_status, data?.desired_state),
+    cpu: finite(data?.cpu),
+    memoryBytes: finite(data?.memory_bytes),
+  };
+}
+
+// journald's short-iso output: `2026-10-02T07:24:48+00:00 beast pi-server[3099520]: message`.
+const JOURNAL_LINE =
+  /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:[+-]\d\d:?\d\d|Z)?)\s+\S+\s+[^\s:]+:\s?(.*)$/;
+
+/** Splits a log tail into lines, with the journal's host and unit prefix removed. */
+export function parseLogLines(text: string): LogLine[] {
+  return text
+    .split("\n")
+    .filter((line) => line.trim() !== "" && line !== "-- No entries --")
+    .map((line, id) => {
+      const match = JOURNAL_LINE.exec(line);
+      if (!match) return { id, time: null, text: line };
+      const date = new Date(match[1]!);
+      return {
+        id,
+        time: Number.isNaN(date.getTime()) ? null : date.toLocaleTimeString([], { hour12: false }),
+        text: match[2]!,
+      };
+    });
+}
+
+const LEVEL = /\b(INFO|WARN(?:ING)?|ERROR|DONE|RUNNING|FAIL(?:ED)?)\b/;
+
+/** A log line cut around its level words (INFO, ERROR, ...), so the panel can color them. */
+export function splitLogLevels(
+  text: string,
+): { readonly offset: number; readonly text: string; readonly level: string | null }[] {
+  let offset = 0;
+  return text
+    .split(LEVEL)
+    .map((part, index) => {
+      const piece = { offset, text: part, level: index % 2 === 1 ? part : null };
+      offset += part.length;
+      return piece;
+    })
+    .filter((piece) => piece.text !== "");
+}
+
+let nodeNames: Promise<Map<number, string>> | null = null;
+
+/** Orbit for the page on `domain`, through `transport` (which runs on an Orbit Node). */
+export function gatewayOrbitSource(transport: OrbitTransport, domain: string): OrbitSource {
+  const resolvePage = async (): Promise<OrbitPage | null> => {
+    let resolved: Record<string, unknown> | null;
+    try {
+      resolved = record(
+        await callOrbit(transport, {
+          method: "GET",
+          path: "/api/v1/instances/resolve",
+          query: { domain },
+        }),
+      );
+    } catch (error) {
+      // Domains Orbit does not serve are not an error; the tool just stays hidden.
+      if (error instanceof OrbitApiError && error.status === 404) return null;
+      throw error;
+    }
+    const instanceId = finite(resolved?.instance_id);
+    if (instanceId === null) return null;
+    nodeNames ??= listOrbitNodes(transport)
+      .then((nodes) => new Map(nodes.map((node) => [node.id, node.name])))
+      .catch(() => {
+        nodeNames = null;
+        return new Map<number, string>();
+      });
+    const nodeId = finite(resolved?.node_id);
+    return {
+      domain,
+      instanceId,
+      nodeName: nodeId === null ? null : ((await nodeNames).get(nodeId) ?? null),
+    };
+  };
+  // The domain's Instance does not change while the page is open; ask once, retry on errors.
+  let page: Promise<OrbitPage | null> | null = null;
+  return {
+    page: () =>
+      (page ??= resolvePage().catch((error: unknown) => {
+        page = null;
+        throw error;
+      })),
+    processes: async (instanceId) => {
+      const data = await callOrbit(transport, {
+        method: "GET",
+        path: "/api/v1/processes",
+        query: { target_type: "instance", target_id: String(instanceId) },
+      });
+      return Array.isArray(data)
+        ? data.flatMap((value) => {
+            const process = parseProcess(value);
+            return process ? [process] : [];
+          })
+        : [];
+    },
+    logs: async (processId, lines) => {
+      const data = record(
+        await callOrbit(transport, {
+          method: "GET",
+          path: `/api/v1/processes/${processId}/logs`,
+          query: { lines: String(lines) },
+        }),
+      );
+      return typeof data?.logs === "string" ? data.logs : "";
+    },
+    act: async (processId, action) => {
+      await callOrbit(transport, {
+        method: "POST",
+        path: `/api/v1/processes/${processId}/${action}`,
+        timeoutSeconds: 120,
+      });
+    },
+  };
+}
