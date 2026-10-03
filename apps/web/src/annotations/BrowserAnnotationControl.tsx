@@ -8,6 +8,7 @@ import {
   MessageSquareTextIcon,
   MicIcon,
   SendIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useEffectEvent, useId, useMemo, useState } from "react";
 
@@ -15,7 +16,8 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { DraftInput } from "~/components/ui/draft-input";
 import { Kbd } from "~/components/ui/kbd";
-import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import { Popover, PopoverTrigger } from "~/components/ui/popover";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
@@ -28,6 +30,7 @@ import {
   annotatorEndpointForPage,
   clearDoneAnnotations,
   countAnnotations,
+  removeIdleAnnotations,
   openAnnotationCount,
   overlayBootstrapScript,
   overlayConfigureScript,
@@ -40,6 +43,12 @@ import { useAnnotatorQueue } from "./useAnnotatorQueue";
 type PreviewWebview = HTMLElement & {
   executeJavaScript?: (code: string) => Promise<unknown>;
 };
+
+// The panel sits on the theme's canvas, like T3's own panels and the Laravel Toolbar
+// flyout; the popover surface is the small-menu overlay, which themes may set to a
+// light, untinted colour.
+const PANEL_CLASS_NAME =
+  "w-96 max-w-(--available-width) origin-(--transform-origin) rounded-lg border bg-background text-foreground shadow-lg outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 function runInPage(runtimeTabId: string, code: string): void {
   // The element is replaced after a crash, so look it up on every call.
@@ -82,6 +91,7 @@ export function BrowserAnnotationControl({
   const setWatching = useAnnotationWatchStore((state) => state.setWatching);
   const [annotating, setAnnotating] = useState(false);
   const watchSwitchId = useId();
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const dictationStartUrl = useClientSettings((settings) => settings.annotationDictationUrl);
   const dictationStopUrl = useClientSettings((settings) => settings.annotationDictationStopUrl);
   const updateSettings = useUpdatePrimarySettings();
@@ -122,6 +132,7 @@ export function BrowserAnnotationControl({
 
   const counts = countAnnotations(annotations);
   const open = openAnnotationCount(counts);
+  const idle = annotations.length - counts.working;
   const watching = watch !== null && watch.annotationsUrl === endpoint.annotationsUrl;
 
   return (
@@ -151,152 +162,200 @@ export function BrowserAnnotationControl({
         {open > 0 ? (
           <span
             aria-hidden
-            className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info px-1 text-3xs font-semibold tabular-nums text-white"
+            className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-3xs font-semibold tabular-nums text-primary-foreground"
           >
             {open}
           </span>
         ) : null}
       </PopoverTrigger>
-      <PopoverPopup align="end" sideOffset={6} width="lg" padding="none">
-        <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
-          <div className="min-w-0">
-            <div className="text-sm font-medium">Annotations</div>
-            <div className="truncate text-xs text-muted-foreground">
-              {endpoint.origin} · {annotating ? "click to stop annotating" : "click to annotate"}{" "}
-              <Kbd>⌘⇧A</Kbd>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {watching ? (
-              <Badge variant="success" size="sm">
-                Watching
-              </Badge>
-            ) : null}
-            {counts.done > 0 ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={`Clear ${counts.done} done`}
-                      type="button"
-                      onClick={() =>
-                        void clearDoneAnnotations(endpoint.annotationsUrl, annotations)
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Positioner align="end" side="bottom" sideOffset={6} className="z-[130]">
+          <PopoverPrimitive.Popup className={PANEL_CLASS_NAME}>
+            <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Annotations</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {endpoint.origin} ·{" "}
+                  {annotating ? "click to stop annotating" : "click to annotate"} <Kbd>⌘⇧A</Kbd>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {watching ? (
+                  <Badge variant="success" size="sm">
+                    Watching
+                  </Badge>
+                ) : null}
+                {counts.done > 0 ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Clear ${counts.done} done`}
+                          type="button"
+                          onClick={() =>
+                            void clearDoneAnnotations(endpoint.annotationsUrl, annotations)
+                          }
+                        />
                       }
-                    />
+                    >
+                      <BrushCleaningIcon />
+                    </TooltipTrigger>
+                    <TooltipPopup>{`Clear ${counts.done} done`}</TooltipPopup>
+                  </Tooltip>
+                ) : null}
+                {idle > 0 ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Remove ${idle} not in progress`}
+                          type="button"
+                          onClick={() => setConfirmingRemove(true)}
+                        />
+                      }
+                    >
+                      <Trash2Icon />
+                    </TooltipTrigger>
+                    <TooltipPopup>{`Remove ${idle} not in progress`}</TooltipPopup>
+                  </Tooltip>
+                ) : null}
+              </div>
+            </div>
+            {confirmingRemove && idle > 0 ? (
+              <div className="flex items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs">
+                <span className="text-muted-foreground">
+                  {`Remove ${idle} ${idle === 1 ? "annotation" : "annotations"} for everyone? Work in progress stays.`}
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  <Button size="xs" variant="ghost" onClick={() => setConfirmingRemove(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="destructive"
+                    onClick={() => {
+                      setConfirmingRemove(false);
+                      void removeIdleAnnotations(endpoint.annotationsUrl, annotations);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </span>
+              </div>
+            ) : null}
+            {annotations.length === 0 ? (
+              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                No annotations yet. Click the button, then click an element on the page.
+              </p>
+            ) : (
+              <ol
+                role="list"
+                className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
+              >
+                {annotations.map((annotation) => {
+                  const state = annotationState(annotation);
+                  return (
+                    <li
+                      key={annotation.id}
+                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-md px-1.5 py-1.5 hover:bg-accent"
+                    >
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-4.5 items-center justify-center rounded-full text-3xs font-semibold tabular-nums",
+                          state === "done"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-primary text-primary-foreground",
+                        )}
+                      >
+                        {annotation.number}
+                      </span>
+                      <div className="min-w-0">
+                        <div
+                          className={cn(
+                            "truncate leading-snug",
+                            state === "done" && "text-muted-foreground",
+                          )}
+                        >
+                          {annotation.comment}
+                        </div>
+                        <div className="mt-0.5 truncate text-xs text-muted-foreground/70">
+                          {annotation.summary ?? annotation.element ?? annotation.pathname}
+                          {annotation.source ? ` · ${annotation.source}` : ""}
+                        </div>
+                      </div>
+                      <span className="mt-0.5 text-xs">
+                        <QueueStateLabel state={state} />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            <div className="border-t border-border/60 px-3 py-2.5">
+              {watching ? (
+                <p className="text-xs text-muted-foreground">
+                  New annotations go to this thread when it is idle.
+                  {counts.question > 0 ? " Questions wait for your answer in the thread." : ""}
+                </p>
+              ) : (
+                <Button
+                  size="xs"
+                  className="w-full justify-center"
+                  disabled={counts.waiting === 0}
+                  onClick={() =>
+                    sendAnnotationPrompt({
+                      threadRef,
+                      annotationsUrl: endpoint.annotationsUrl,
+                      annotations,
+                    })
                   }
                 >
-                  <BrushCleaningIcon />
-                </TooltipTrigger>
-                <TooltipPopup>{`Clear ${counts.done} done`}</TooltipPopup>
-              </Tooltip>
-            ) : null}
-          </div>
-        </div>
-        {annotations.length === 0 ? (
-          <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
-            No annotations yet. Click the button, then click an element on the page.
-          </p>
-        ) : (
-          <ol
-            role="list"
-            className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
-          >
-            {annotations.map((annotation) => {
-              const state = annotationState(annotation);
-              return (
-                <li
-                  key={annotation.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-md px-1.5 py-1.5 hover:bg-accent"
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 flex size-4.5 items-center justify-center rounded-full text-3xs font-semibold tabular-nums",
-                      state === "done" ? "bg-muted text-muted-foreground" : "bg-info text-white",
-                    )}
-                  >
-                    {annotation.number}
-                  </span>
-                  <div className="min-w-0">
-                    <div
-                      className={cn(
-                        "truncate leading-snug",
-                        state === "done" && "text-muted-foreground",
-                      )}
-                    >
-                      {annotation.comment}
-                    </div>
-                    <div className="mt-0.5 truncate text-xs text-muted-foreground/70">
-                      {annotation.summary ?? annotation.element ?? annotation.pathname}
-                      {annotation.source ? ` · ${annotation.source}` : ""}
-                    </div>
-                  </div>
-                  <span className="mt-0.5 text-xs">
-                    <QueueStateLabel state={state} />
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        <div className="border-t border-border/60 px-3 py-2.5">
-          {watching ? (
-            <p className="text-xs text-muted-foreground">
-              New annotations go to this thread when it is idle.
-              {counts.question > 0 ? " Questions wait for your answer in the thread." : ""}
-            </p>
-          ) : (
-            <Button
-              size="xs"
-              className="w-full justify-center"
-              disabled={counts.waiting === 0}
-              onClick={() =>
-                sendAnnotationPrompt({
-                  threadRef,
-                  annotationsUrl: endpoint.annotationsUrl,
-                  annotations,
-                })
-              }
+                  <SendIcon />
+                  {counts.waiting === 0
+                    ? "Nothing waiting"
+                    : `Send ${counts.waiting} to this thread`}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs">
+              <MicIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="shrink-0 font-medium text-muted-foreground">Dictation</span>
+              <DraftInput
+                size="sm"
+                className="min-w-0 flex-1"
+                value={dictationStartUrl}
+                onCommit={(next) => updateSettings({ annotationDictationUrl: next.trim() })}
+                placeholder="Off"
+                spellCheck={false}
+                aria-label="Annotation dictation URL"
+              />
+            </div>
+            <label
+              htmlFor={watchSwitchId}
+              className="flex cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs"
             >
-              <SendIcon />
-              {counts.waiting === 0 ? "Nothing waiting" : `Send ${counts.waiting} to this thread`}
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs">
-          <MicIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="shrink-0 font-medium text-muted-foreground">Dictation</span>
-          <DraftInput
-            size="sm"
-            className="min-w-0 flex-1"
-            value={dictationStartUrl}
-            onCommit={(next) => updateSettings({ annotationDictationUrl: next.trim() })}
-            placeholder="Off"
-            spellCheck={false}
-            aria-label="Annotation dictation URL"
-          />
-        </div>
-        <label
-          htmlFor={watchSwitchId}
-          className="flex cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs"
-        >
-          <span className="min-w-0">
-            <span className="block font-medium text-muted-foreground">Watch</span>
-            <span className="block text-muted-foreground/70">
-              Send new annotations automatically
-            </span>
-          </span>
-          <Switch
-            id={watchSwitchId}
-            size="sm"
-            checked={watching}
-            onCheckedChange={(checked) =>
-              setWatching(threadKey, checked ? endpoint.annotationsUrl : null)
-            }
-          />
-        </label>
-      </PopoverPopup>
+              <span className="min-w-0">
+                <span className="block font-medium text-muted-foreground">Watch</span>
+                <span className="block text-muted-foreground/70">
+                  Send new annotations automatically
+                </span>
+              </span>
+              <Switch
+                id={watchSwitchId}
+                size="sm"
+                checked={watching}
+                onCheckedChange={(checked) =>
+                  setWatching(threadKey, checked ? endpoint.annotationsUrl : null)
+                }
+              />
+            </label>
+          </PopoverPrimitive.Popup>
+        </PopoverPrimitive.Positioner>
+      </PopoverPrimitive.Portal>
     </Popover>
   );
 }
