@@ -17,7 +17,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { cn } from "~/lib/utils";
 
 import { useToolbarTab } from "../context";
-import { headerRows, type PropRow, propRows, shortLocation, summarize } from "../model";
+import { headerRows, type PropRow, propRows, routeUri, shortLocation, summarize } from "../model";
 import {
   cellClass,
   EmptyRow,
@@ -62,7 +62,7 @@ export function RequestsPanel() {
         needle === "" ||
         summary.uri.toLowerCase().includes(needle) ||
         (summary.component ?? "").toLowerCase().includes(needle) ||
-        (summary.routeName ?? "").toLowerCase().includes(needle),
+        summary.route.toLowerCase().includes(needle),
     );
   return (
     <PanelShell
@@ -142,7 +142,7 @@ export function RequestsPanel() {
                     {summary.component ?? <span className="text-muted-foreground">–</span>}
                   </td>
                   <td className={cn(cellClass, "truncate text-muted-foreground", WIDE.route.cell)}>
-                    {summary.routeName ?? "–"}
+                    {summary.route}
                   </td>
                   <td className={cn(cellClass, "text-muted-foreground", WIDE.type.cell)}>
                     {KIND_LABEL[summary.kind]}
@@ -296,6 +296,24 @@ export function RequestPanel() {
         ? "HTML"
         : contentType || "–";
 
+  const middleware = selected?.request?.middleware ?? [];
+  // In the order they run, on one line with the other route values.
+  const middlewareChain =
+    middleware.length > 0 ? (
+      <span className="flex flex-wrap items-center gap-1.5">
+        {middleware.map((item, index) => (
+          <span key={item.class} className="inline-flex items-center gap-1.5">
+            {index > 0 ? <span className="text-muted-foreground">→</span> : null}
+            <Badge variant="outline">
+              <span className="font-mono">{item.class.split("\\").pop()}</span>
+            </Badge>
+          </span>
+        ))}
+      </span>
+    ) : (
+      "–"
+    );
+
   let body: ReactNode;
   if (!selected) body = <EmptyRow>Loading request…</EmptyRow>;
   else if (tab === "route")
@@ -336,31 +354,14 @@ export function RequestPanel() {
         <Section title="Route">
           <KeyValueRows
             rows={[
-              ["Name", selected.request?.route_name ?? "–", "mono"],
-              ["URI", selected.request?.route_uri ?? selected.request?.uri ?? "–", "mono"],
+              ["Name", summary?.routeName ?? "–", "mono"],
+              ["URI", routeUri(selected) ?? "–", "mono"],
               ["Action", selected.request?.controller_action ?? "–", "mono"],
               ["Client IP", selected.request?.ip_address ?? "–", "mono"],
+              ["Middleware", middlewareChain],
             ]}
           />
         </Section>
-        {(selected.request?.middleware ?? []).length > 0 ? (
-          <Section
-            title="Middleware"
-            aside={`${selected.request?.middleware?.length} in order`}
-            inset
-          >
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(selected.request?.middleware ?? []).map((middleware, index) => (
-                <span key={middleware.class} className="inline-flex items-center gap-1.5">
-                  {index > 0 ? <span className="text-muted-foreground">→</span> : null}
-                  <Badge variant="outline">
-                    <span className="font-mono">{middleware.class.split("\\").pop()}</span>
-                  </Badge>
-                </span>
-              ))}
-            </div>
-          </Section>
-        ) : null}
       </>
     );
   else if (tab === "props")

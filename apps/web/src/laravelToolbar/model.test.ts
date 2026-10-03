@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatBytes, propRows, requestKind, rowFromData, stages, summarize } from "./model";
+import {
+  errorReportingLabel,
+  formatBytes,
+  formatUptime,
+  iniSwitch,
+  phpLimit,
+  propRows,
+  requestKind,
+  rowFromData,
+  stages,
+  summarize,
+} from "./model";
 import type { ToolbarData } from "./types";
 
 const page: ToolbarData = {
@@ -22,6 +33,30 @@ const page: ToolbarData = {
 };
 
 describe("laravel toolbar model", () => {
+  it("names error_reporting levels and ini switches", () => {
+    expect(errorReportingLabel("22527", "8.5.9")).toBe("E_ALL & ~E_DEPRECATED");
+    expect(errorReportingLabel("22527", "8.3.1")).toBe("E_ALL & ~E_DEPRECATED & ~E_STRICT");
+    expect(errorReportingLabel("30719", "8.5.0")).toBe("E_ALL");
+    expect(errorReportingLabel("32767", "8.2.0")).toBe("E_ALL");
+    expect(errorReportingLabel("0", "8.5.0")).toBe("None");
+    expect(iniSwitch("")).toBe("Off");
+    expect(iniSwitch("1")).toBe("On");
+    expect(formatUptime(57898)).toBe("16h 4m");
+    expect(errorReportingLabel("-1", "8.5.0")).toBe("E_ALL");
+    expect(phpLimit("-1")).toBe("Unlimited");
+    expect(phpLimit("0", "s")).toBe("Unlimited");
+    expect(phpLimit("30", "s")).toBe("30s");
+  });
+
+  it("falls back to the route's URI when it has no name", () => {
+    const row = { id: "r1", method: "GET", uri: "/", name: "-" };
+    expect(summarize(row).route).toBe("/");
+    expect(summarize({ ...row, name: "home" }).route).toBe("home");
+    expect(summarize(row, { request: { route_uri: "posts/{post}", uri: "/posts/1" } }).route).toBe(
+      "/posts/{post}",
+    );
+  });
+
   it("adds Inertia's prop metadata and lists deferred props that are not loaded", () => {
     const rows = propRows({
       request: { view_data: { auth: { user: null }, releases: [] } },

@@ -11,16 +11,21 @@ import {
   Server,
   Timer,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
+import { ScrollArea } from "~/components/ui/scroll-area";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
 
 import { useToolbarTab } from "../context";
 import {
+  errorReportingLabel,
   formatBytes,
   formatMs,
+  formatUptime,
+  iniSwitch,
+  phpLimit,
   queries as toQueries,
   shortLocation,
   stages as toStages,
@@ -41,6 +46,7 @@ import {
   StageBar,
   Stat,
   StatStrip,
+  UnderlineTabs,
   rowClass,
   tableClass,
 } from "./parts";
@@ -499,64 +505,246 @@ function isDebug(value: ToolbarData["laravel"]): boolean {
   return debug === true || debug === "1" || debug === "true";
 }
 
+type EnvironmentTab = "laravel" | "php" | "fpm";
+
+/** Two titled columns of rows; the divider runs to the bottom of the panel. */
+function RowColumns({ children }: { children: ReactNode }) {
+  return <div className="grid flex-1 grid-cols-2 divide-x">{children}</div>;
+}
+
+function LaravelTab({ selected }: { selected: ToolbarData }) {
+  const laravel = selected.laravel;
+  return (
+    <>
+      <StatStrip>
+        <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} hint="Framework" />
+        <Stat icon={Globe} label="Environment" value={laravel?.environment ?? "–"} hint="APP_ENV" />
+        <Stat
+          icon={Bug}
+          label="Debug"
+          value={isDebug(laravel) ? "On" : "Off"}
+          hint="APP_DEBUG"
+          tone={isDebug(laravel) ? "warning" : "default"}
+        />
+        <Stat icon={Box} label="Inertia" value={selected.inertia?.version ?? "–"} hint="Client" />
+      </StatStrip>
+      <KeyValueRows
+        rows={[
+          ["Timezone", laravel?.timezone ?? "–"],
+          ["Locale", laravel?.locale ?? "–"],
+          ["Host", laravel?.host ?? "–", "mono"],
+        ]}
+      />
+    </>
+  );
+}
+
+function PhpTab({ php }: { php: NonNullable<ToolbarData["php"]> }) {
+  const setting = (name: string) => php.settings?.[name] ?? "–";
+  const opcache = php.opcache;
+  const opcacheTotal =
+    opcache?.memory_used != null && opcache.memory_free != null
+      ? opcache.memory_used + opcache.memory_free
+      : null;
+  return (
+    <>
+      <StatStrip>
+        <Stat icon={Cpu} label="PHP" value={php.version ?? "–"} hint={php.sapi ?? "Runtime"} />
+        <Stat
+          icon={MemoryStick}
+          label="Memory limit"
+          value={phpLimit(php.memory_limit)}
+          hint="Per request"
+        />
+        <Stat
+          icon={Timer}
+          label="Max execution"
+          value={phpLimit(php.max_execution_time, "s")}
+          hint="Per request"
+        />
+        <Stat
+          icon={Gauge}
+          label="OPcache"
+          value={
+            opcache?.enabled
+              ? opcache.hit_rate != null
+                ? `${opcache.hit_rate}%`
+                : "On"
+              : opcache
+                ? "Off"
+                : "–"
+          }
+          hint={opcache?.enabled ? "Hit rate" : "Not loaded"}
+          tone={opcache && !opcache.enabled ? "warning" : "default"}
+        />
+      </StatStrip>
+      <RowColumns>
+        <Section title="Requests and uploads" className="border-b-0">
+          <KeyValueRows
+            rows={[
+              ["Post max size", setting("post_max_size")],
+              ["Upload max filesize", setting("upload_max_filesize")],
+              ["Max file uploads", setting("max_file_uploads")],
+              ["Max input vars", setting("max_input_vars")],
+              ["Max input time", phpLimit(php.settings?.max_input_time, "s")],
+              [
+                "Socket timeout",
+                php.settings?.default_socket_timeout
+                  ? `${php.settings.default_socket_timeout}s`
+                  : "–",
+              ],
+            ]}
+          />
+        </Section>
+        <Section title="Errors and OPcache" className="border-b-0">
+          <KeyValueRows
+            rows={[
+              ["Display errors", iniSwitch(php.settings?.display_errors)],
+              [
+                "Error reporting",
+                errorReportingLabel(php.settings?.error_reporting, php.version),
+                "mono",
+              ],
+              ["Log errors", iniSwitch(php.settings?.log_errors)],
+              [
+                "OPcache memory",
+                opcache?.memory_used != null && opcacheTotal != null
+                  ? `${formatBytes(opcache.memory_used)} of ${formatBytes(opcacheTotal)}`
+                  : "–",
+              ],
+              ["Validate timestamps", iniSwitch(php.settings?.["opcache.validate_timestamps"])],
+              ["JIT", setting("opcache.jit")],
+            ]}
+          />
+        </Section>
+      </RowColumns>
+      {(php.extensions ?? []).length > 0 ? (
+        <Section title="Extensions" aside={`${php.extensions?.length} loaded`} inset>
+          <div className="flex flex-wrap gap-1.5">
+            {(php.extensions ?? []).map((extension) => (
+              <Badge key={extension} variant="outline">
+                <span className="font-mono">{extension}</span>
+              </Badge>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+    </>
+  );
+}
+
+function FpmTab({ fpm }: { fpm: NonNullable<NonNullable<ToolbarData["php"]>["fpm"]> }) {
+  const pool = fpm.settings ?? {};
+  const maxChildren = pool["pm.max_children"];
+  const reached = fpm.max_children_reached ?? 0;
+  // Settings the pool file leaves out do not apply to its process manager (spare
+  // servers under ondemand, for example), so they are left out here too.
+  const poolRows = (
+    [
+      ["Name", fpm.pool ?? "–", "mono"],
+      ["Process manager", pool.pm ?? fpm.process_manager ?? "–"],
+      ["Max children", maxChildren ?? "–"],
+      ["Start servers", pool["pm.start_servers"] ?? "–"],
+      [
+        "Spare servers",
+        pool["pm.min_spare_servers"] || pool["pm.max_spare_servers"]
+          ? `${pool["pm.min_spare_servers"] ?? "–"} to ${pool["pm.max_spare_servers"] ?? "–"}`
+          : "–",
+      ],
+      ["Max requests", pool["pm.max_requests"] ?? "–"],
+      ["Idle timeout", pool["pm.process_idle_timeout"] ?? "–"],
+      ["Terminate timeout", pool.request_terminate_timeout ?? "–"],
+      ["Slowlog timeout", pool.request_slowlog_timeout ?? "–"],
+      ["Listen", pool.listen ?? "–", "mono"],
+    ] as const
+  ).filter(([key, value]) => value !== "–" || key === "Name" || key === "Process manager");
+  return (
+    <>
+      <StatStrip>
+        <Stat
+          icon={Cpu}
+          label="Active workers"
+          value={fpm.active_processes ?? "–"}
+          hint={maxChildren ? `of ${maxChildren} max children` : "Now"}
+        />
+        <Stat icon={Layers} label="Idle workers" value={fpm.idle_processes ?? "–"} hint="Now" />
+        <Stat
+          icon={Timer}
+          label="Listen queue"
+          value={fpm.listen_queue ?? "–"}
+          hint={`Peak ${fpm.max_listen_queue ?? "–"}`}
+          tone={(fpm.listen_queue ?? 0) > 0 ? "warning" : "default"}
+        />
+        <Stat
+          icon={Gauge}
+          label="Max children reached"
+          value={reached}
+          hint="Since start"
+          tone={reached > 0 ? "warning" : "default"}
+        />
+      </StatStrip>
+      <RowColumns>
+        <Section title="Pool" className="border-b-0">
+          <KeyValueRows rows={poolRows} />
+        </Section>
+        <Section title="Since start" className="border-b-0">
+          <KeyValueRows
+            rows={[
+              ["Uptime", formatUptime(fpm.start_since)],
+              ["Accepted connections", fpm.accepted_conn ?? "–"],
+              ["Max active workers", fpm.max_active_processes ?? "–"],
+              ["Total workers", fpm.total_processes ?? "–"],
+              ["Slow requests", fpm.slow_requests ?? "–"],
+            ]}
+          />
+        </Section>
+      </RowColumns>
+    </>
+  );
+}
+
 export function EnvironmentPanel() {
   const { selected } = useToolbarTab();
-  const laravel = selected?.laravel;
+  const [tab, setTab] = useState<EnvironmentTab>("laravel");
   const php = selected?.php;
+  const fpm = php?.fpm ?? null;
+  // The PHP-FPM tab exists only when the request ran under PHP-FPM.
+  const current = tab === "fpm" && !fpm ? "laravel" : tab;
   return (
     <PanelShell
       icon={Server}
       title="Laravel & PHP"
+      flush
       actions={
-        laravel?.host ? <span className="text-muted-foreground text-xs">{laravel.host}</span> : null
+        selected?.laravel?.host ? (
+          <span className="text-muted-foreground text-xs">{selected.laravel.host}</span>
+        ) : null
       }
     >
-      {!selected ? (
-        <Loading />
-      ) : (
-        <>
-          <StatStrip>
-            <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} hint="Framework" />
-            <Stat icon={Cpu} label="PHP" value={php?.version ?? "–"} hint="Runtime" />
-            <Stat
-              icon={Globe}
-              label="Environment"
-              value={laravel?.environment ?? "–"}
-              hint="APP_ENV"
-            />
-            <Stat
-              icon={Bug}
-              label="Debug"
-              value={isDebug(laravel) ? "On" : "Off"}
-              hint="APP_DEBUG"
-              tone={isDebug(laravel) ? "warning" : "default"}
-            />
-          </StatStrip>
-          {/* Fills the panel so the divider between the two columns runs to the bottom. */}
-          <div className="grid flex-1 grid-cols-2 divide-x">
-            <Section title="Application" className="border-b-0">
-              <KeyValueRows
-                rows={[
-                  ["Timezone", laravel?.timezone ?? "–"],
-                  ["Locale", laravel?.locale ?? "–"],
-                  ["Inertia", selected.inertia?.version ?? "–"],
-                ]}
-              />
-            </Section>
-            <Section title="PHP" className="border-b-0">
-              <KeyValueRows
-                rows={[
-                  ["Memory limit", php?.memory_limit ?? "–"],
-                  [
-                    "Max execution time",
-                    php?.max_execution_time ? `${php.max_execution_time}s` : "–",
-                  ],
-                ]}
-              />
-            </Section>
-          </div>
-        </>
-      )}
+      <UnderlineTabs
+        value={current}
+        onChange={setTab}
+        tabs={[
+          ["laravel", "Laravel"],
+          ["php", "PHP"],
+          ...(fpm ? ([["fpm", "PHP-FPM"]] as const) : []),
+        ]}
+      />
+      <ScrollArea radius="none" scrollFade hideScrollbars className="min-h-0 flex-1">
+        <div className="flex min-h-full flex-col">
+          {!selected ? (
+            <Loading />
+          ) : current === "laravel" ? (
+            <LaravelTab selected={selected} />
+          ) : current === "php" && php ? (
+            <PhpTab php={php} />
+          ) : current === "fpm" && fpm ? (
+            <FpmTab fpm={fpm} />
+          ) : (
+            <EmptyRow>No PHP details in this request</EmptyRow>
+          )}
+        </div>
+      </ScrollArea>
     </PanelShell>
   );
 }

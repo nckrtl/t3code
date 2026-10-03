@@ -138,6 +138,34 @@ export interface ToolbarData {
     readonly version?: string;
     readonly memory_limit?: string;
     readonly max_execution_time?: string | number;
+    /** Package 0.3.8+: the details below. */
+    readonly sapi?: string | null;
+    readonly settings?: Readonly<Record<string, string | null>> | null;
+    readonly opcache?: {
+      readonly enabled?: boolean;
+      readonly memory_used?: number | null;
+      readonly memory_free?: number | null;
+      readonly hit_rate?: number | null;
+      readonly cached_scripts?: number | null;
+    } | null;
+    readonly extensions?: readonly string[] | null;
+    /** Null outside PHP-FPM. */
+    readonly fpm?: {
+      readonly pool?: string | null;
+      readonly process_manager?: string | null;
+      readonly start_since?: number | null;
+      readonly accepted_conn?: number | null;
+      readonly listen_queue?: number | null;
+      readonly max_listen_queue?: number | null;
+      readonly idle_processes?: number | null;
+      readonly active_processes?: number | null;
+      readonly total_processes?: number | null;
+      readonly max_active_processes?: number | null;
+      readonly max_children_reached?: number | null;
+      readonly slow_requests?: number | null;
+      /** The pool's `pm.*` and timeout directives from its pool file. */
+      readonly settings?: Readonly<Record<string, string>> | null;
+    } | null;
   };
   readonly inertia?: {
     readonly version?: string | null;
