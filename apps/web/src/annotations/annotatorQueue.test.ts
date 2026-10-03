@@ -8,6 +8,8 @@ import {
   clearDoneAnnotations,
   countAnnotations,
   openAnnotationCount,
+  overlayBootstrapScript,
+  overlayOptions,
   waitingIdsToSend,
 } from "./annotatorQueue";
 
@@ -133,5 +135,51 @@ describe("clearDoneAnnotations", () => {
       "DELETE https://shop.test/__orbit/annotator/annotations/gone",
     ]);
     expect(removed).toBe(1);
+  });
+});
+
+describe("overlay options", () => {
+  it("starts and stops the desktop dictation app by POST", () => {
+    expect(
+      overlayOptions({
+        startUrl: " http://127.0.0.1:12321/dictate ",
+        stopUrl: "http://127.0.0.1:12321/dictate-stop",
+      }),
+    ).toEqual({
+      floatingControl: false,
+      dictation: {
+        provider: "post",
+        postUrl: "http://127.0.0.1:12321/dictate",
+        stopUrl: "http://127.0.0.1:12321/dictate-stop",
+        autoStart: true,
+      },
+    });
+  });
+
+  it("turns dictation off without a start URL", () => {
+    expect(overlayOptions({ startUrl: "", stopUrl: "x" }).dictation).toEqual({ provider: "none" });
+  });
+
+  it("reuses an overlay the page already runs instead of loading a second copy", () => {
+    const endpoint = annotatorEndpointForPage("https://shop.test/")!;
+    const dictation = { startUrl: "", stopUrl: "" };
+    const mounted: unknown[] = [];
+    const page = {
+      AgentAnnotation: { mountAnnotation: (options: unknown) => mounted.push(options) },
+    } as Record<string, unknown>;
+    const run = new Function(
+      "window",
+      "sessionStorage",
+      "document",
+      `return ${overlayBootstrapScript(endpoint, dictation)}`,
+    );
+    const storage = { setItem: () => undefined };
+    const document = {
+      createElement: () => {
+        throw new Error("must not load a second copy");
+      },
+    };
+    expect(run(page, storage, document)).toBe("reused");
+    expect(mounted).toHaveLength(1);
   });
 });

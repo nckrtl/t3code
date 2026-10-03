@@ -19,6 +19,8 @@ import {
   type EnvironmentId,
   BROWSER_PROFILE_NAME_MAX_LENGTH,
   BROWSER_RECORDING_FRAME_RATES,
+  DEFAULT_ANNOTATION_DICTATION_STOP_URL,
+  DEFAULT_ANNOTATION_DICTATION_URL,
   DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW,
   DEFAULT_BROWSER_PROFILE_ID,
   DEFAULT_BROWSER_LINK_TARGET,
@@ -888,6 +890,72 @@ function BrowserAutoShowFloatingPreviewSetting({ disabled }: { readonly disabled
   );
 }
 
+// rooms-patches: the desktop dictation app that browser annotations start and stop.
+function AnnotationDictationSettings({ disabled }: { readonly disabled: boolean }) {
+  const startUrl = useClientSettings((settings) => settings.annotationDictationUrl);
+  const stopUrl = useClientSettings((settings) => settings.annotationDictationStopUrl);
+  const updateSettings = useUpdatePrimarySettings();
+
+  return (
+    <>
+      <SettingsRow
+        {...searchableSetting("annotation-dictation-url")}
+        description="Annotations POST here when a comment opens, to start your dictation app. Leave empty to turn dictation off."
+        resetAction={
+          !disabled && startUrl !== DEFAULT_ANNOTATION_DICTATION_URL ? (
+            <SettingResetButton
+              label="annotation dictation URL"
+              onClick={() =>
+                updateSettings({ annotationDictationUrl: DEFAULT_ANNOTATION_DICTATION_URL })
+              }
+            />
+          ) : null
+        }
+        control={
+          <DraftInput
+            size="sm"
+            className="w-full sm:w-72"
+            disabled={disabled}
+            value={startUrl}
+            onCommit={(next) => updateSettings({ annotationDictationUrl: next.trim() })}
+            placeholder={DEFAULT_ANNOTATION_DICTATION_URL}
+            spellCheck={false}
+            aria-label="Annotation dictation URL"
+          />
+        }
+      />
+      <SettingsRow
+        {...searchableSetting("annotation-dictation-stop-url")}
+        description="Annotations POST here when you click the next element, so the dictated text lands before the next comment opens."
+        resetAction={
+          !disabled && stopUrl !== DEFAULT_ANNOTATION_DICTATION_STOP_URL ? (
+            <SettingResetButton
+              label="annotation dictation stop URL"
+              onClick={() =>
+                updateSettings({
+                  annotationDictationStopUrl: DEFAULT_ANNOTATION_DICTATION_STOP_URL,
+                })
+              }
+            />
+          ) : null
+        }
+        control={
+          <DraftInput
+            size="sm"
+            className="w-full sm:w-72"
+            disabled={disabled}
+            value={stopUrl}
+            onCommit={(next) => updateSettings({ annotationDictationStopUrl: next.trim() })}
+            placeholder={DEFAULT_ANNOTATION_DICTATION_STOP_URL}
+            spellCheck={false}
+            aria-label="Annotation dictation stop URL"
+          />
+        }
+      />
+    </>
+  );
+}
+
 /**
  * Profile list, its header menu, and the import flow.
  *
@@ -1438,6 +1506,7 @@ export function IntegrationsSettingsPanel() {
       <BrowserRecordingInputSettings disabled={previewDefaultsDisabled} />
       <BrowserLinkTargetSetting disabled={previewDefaultsDisabled} />
       <BrowserAutoShowFloatingPreviewSetting disabled={previewDefaultsDisabled} />
+      <AnnotationDictationSettings disabled={previewDefaultsDisabled} />
     </>
   );
 

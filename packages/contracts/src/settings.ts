@@ -271,6 +271,10 @@ export type DefaultThemePreference = typeof DefaultThemePreference.Type;
  */
 export const DEFAULT_BROWSER_VIEWPORT: PreviewViewportSetting = FILL_PREVIEW_VIEWPORT;
 export const DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW = true;
+// rooms-patches: browser annotations start and stop a desktop dictation app (Drift's
+// Local API by default) with one POST each. An empty start URL turns dictation off.
+export const DEFAULT_ANNOTATION_DICTATION_URL = "http://127.0.0.1:12321/dictate";
+export const DEFAULT_ANNOTATION_DICTATION_STOP_URL = "http://127.0.0.1:12321/dictate-stop";
 export const BROWSER_RECORDING_FRAME_RATES = [30, 60] as const;
 export const BrowserRecordingFrameRate = Schema.Literals(BROWSER_RECORDING_FRAME_RATES);
 export type BrowserRecordingFrameRate = typeof BrowserRecordingFrameRate.Type;
@@ -347,6 +351,12 @@ export const ClientSettingsSchema = Schema.Struct({
    */
   browserAutoShowFloatingPreview: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW)),
+  ),
+  annotationDictationUrl: Schema.String.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_ANNOTATION_DICTATION_URL)),
+  ),
+  annotationDictationStopUrl: Schema.String.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_ANNOTATION_DICTATION_STOP_URL)),
   ),
   /**
    * User-created browser profiles. The built-in Default and Incognito profiles
@@ -1615,6 +1625,8 @@ export const ClientSettingsPatch = Schema.Struct({
   browserRecordingShowMousePresses: Schema.optionalKey(Schema.Boolean),
   browserLinkTarget: Schema.optionalKey(BrowserLinkTarget),
   browserAutoShowFloatingPreview: Schema.optionalKey(Schema.Boolean),
+  annotationDictationUrl: Schema.optionalKey(Schema.String),
+  annotationDictationStopUrl: Schema.optionalKey(Schema.String),
   browserProfiles: Schema.optionalKey(Schema.Array(BrowserProfile)),
   browserDefaultProfileId: Schema.optionalKey(BrowserProfileId),
   confirmQuit: Schema.optionalKey(QuitConfirmationMode),
