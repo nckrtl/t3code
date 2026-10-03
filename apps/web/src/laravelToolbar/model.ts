@@ -9,6 +9,8 @@ export interface RequestSummary {
   readonly method: string;
   readonly uri: string;
   readonly routeName: string | null;
+  /** The route's name, or its URI pattern (such as `/`) when it has none. */
+  readonly route: string;
   readonly action: string | null;
   readonly component: string | null;
   readonly kind: RequestKind;
@@ -43,6 +45,13 @@ export function requestKind(row: Pick<ToolbarHistoryRow, "is_xhr" | "response_ty
   return row.response_type === "Inertia" ? "inertia" : "xhr";
 }
 
+/** The route's URI pattern with a leading slash; Laravel leaves it off except for `/`. */
+export function routeUri(data?: ToolbarData | null): string | null {
+  const uri = data?.request?.route_uri ?? data?.request?.uri;
+  if (!uri) return null;
+  return uri.startsWith("/") ? uri : `/${uri}`;
+}
+
 /** The package writes `-` for routes without a name. */
 function named(value: string | null | undefined): string | null {
   return value && value !== "-" ? value : null;
@@ -56,6 +65,7 @@ export function summarize(row: ToolbarHistoryRow, data?: ToolbarData | null): Re
     method: data?.request?.method ?? row.method,
     uri: data?.request?.uri ?? row.uri,
     routeName: named(data?.request?.route_name ?? row.name),
+    route: named(data?.request?.route_name ?? row.name) ?? routeUri(data) ?? row.uri,
     action: data?.request?.controller_action ?? row.action ?? null,
     component: data?.request?.view_name ?? null,
     kind: requestKind(row),
@@ -203,4 +213,62 @@ export function propRows(data: ToolbarData | null): PropRow[] {
       .filter((name) => !(name in values) && meta[name]?.loaded === false)
       .map((name) => row(name, false)),
   ];
+}
+
+/** An ini switch as On or Off; empty, "0" and "off" are off. */
+export function iniSwitch(value: string | null | undefined): string {
+  if (value == null) return "–";
+  return ["", "0", "off", "false", "no"].includes(value.toLowerCase()) ? "Off" : "On";
+}
+
+const ERROR_LEVELS: ReadonlyArray<readonly [string, number]> = [
+  ["E_DEPRECATED", 8192],
+  ["E_USER_DEPRECATED", 16384],
+  ["E_STRICT", 2048],
+  ["E_NOTICE", 8],
+  ["E_USER_NOTICE", 1024],
+  ["E_WARNING", 2],
+  ["E_USER_WARNING", 512],
+];
+
+/**
+ * `error_reporting` as constants, such as `E_ALL & ~E_DEPRECATED` for 22527 on PHP 8.4+.
+ * PHP 8.4 dropped E_STRICT, so E_ALL is 30719 there and 32767 before.
+ */
+export function errorReportingLabel(
+  value: string | null | undefined,
+  phpVersion: string | null | undefined,
+): string {
+  if (value == null || value === "") return "–";
+  const level = Number(value);
+  if (!Number.isInteger(level)) return value;
+  if (level === 0) return "None";
+  if (level === -1) return "E_ALL";
+  const [major = 0, minor = 0] = (phpVersion ?? "").split(".").map(Number);
+  const modern = major > 8 || (major === 8 && minor >= 4);
+  const all = modern ? 30719 : 32767;
+  const levels = ERROR_LEVELS.filter(([name]) => !(modern && name === "E_STRICT"));
+  if ((level & all) !== level) return String(level);
+  const missing = levels.filter(([, bit]) => (level & bit) === 0);
+  if (missing.reduce((sum, [, bit]) => sum + bit, 0) !== all - level) return String(level);
+  return ["E_ALL", ...missing.map(([name]) => `~${name}`)].join(" & ");
+}
+
+/** A PHP limit, where -1 (memory) or 0 (time) means no limit. */
+export function phpLimit(value: string | number | null | undefined, unit = ""): string {
+  if (value == null || value === "") return "–";
+  const text = String(value);
+  if (text === "-1" || (unit === "s" && text === "0")) return "Unlimited";
+  return `${text}${unit}`;
+}
+
+/** A duration in seconds as `3d 4h`, `16h 4m` or `5m`. */
+export function formatUptime(seconds: number | null | undefined): string {
+  if (seconds == null) return "–";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
