@@ -154,22 +154,61 @@ export async function clearDoneAnnotations(
   return results.filter(Boolean).length;
 }
 
+export interface AnnotationDictation {
+  /** POSTed when a comment opens; starts the desktop dictation app. Empty turns dictation off. */
+  readonly startUrl: string;
+  /** POSTed when the next element is clicked, so the text lands before the next comment. */
+  readonly stopUrl: string;
+}
+
+/** Overlay options for T3: no floating control (the toolbar owns the mode) and T3's dictation. */
+export function overlayOptions(dictation: AnnotationDictation) {
+  const startUrl = dictation.startUrl.trim();
+  const stopUrl = dictation.stopUrl.trim();
+  return {
+    floatingControl: false,
+    dictation:
+      startUrl === ""
+        ? { provider: "none" }
+        : { provider: "post", postUrl: startUrl, ...(stopUrl ? { stopUrl } : {}), autoStart: true },
+  };
+}
+
 /**
  * Script run in the page to load the overlay from the annotator. The overlay keeps its
- * pins and statuses in sync with the server; its own floating control stays hidden
- * because the browser toolbar owns annotation mode.
+ * pins and statuses in sync with the server. A page that already runs the overlay (its
+ * own toolbar, or an earlier load) is reconfigured instead: a second copy would take
+ * every click and leave the comment popup unrendered.
  */
-export function overlayBootstrapScript(endpoint: AnnotatorEndpoint): string {
+export function overlayBootstrapScript(
+  endpoint: AnnotatorEndpoint,
+  dictation: AnnotationDictation,
+): string {
   const settings = JSON.stringify({ mode: "server", serviceUrl: endpoint.annotationsUrl });
+  const options = JSON.stringify(overlayOptions(dictation));
   return `(() => {
-  if (window.__t3AnnotatorLoaded) return true;
-  window.__t3AnnotatorLoaded = true;
   try { sessionStorage.setItem("annotate:service", ${JSON.stringify(settings)}); } catch {}
-  window.__AGENT_ANNOTATION__ = { floatingControl: false };
+  const options = ${options};
+  window.__AGENT_ANNOTATION__ = options;
+  if (window.AgentAnnotation) { window.AgentAnnotation.mountAnnotation(options); return "reused"; }
+  if (window.__t3AnnotatorLoaded) return "loading";
+  window.__t3AnnotatorLoaded = true;
   const script = document.createElement("script");
   script.src = ${JSON.stringify(endpoint.injectUrl)};
   script.async = true;
   document.documentElement.appendChild(script);
+  return "loaded";
+})()`;
+}
+
+/** Script that applies changed T3 settings to a running overlay. */
+export function overlayConfigureScript(dictation: AnnotationDictation): string {
+  const options = JSON.stringify(overlayOptions(dictation));
+  return `(() => {
+  const options = ${options};
+  window.__AGENT_ANNOTATION__ = options;
+  if (!window.AgentAnnotation) return false;
+  window.AgentAnnotation.mountAnnotation(options);
   return true;
 })()`;
 }

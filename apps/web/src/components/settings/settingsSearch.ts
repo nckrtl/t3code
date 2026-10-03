@@ -663,6 +663,18 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["agent opens browser device simulator pop into view hide"],
   },
   {
+    id: "annotation-dictation-url",
+    title: "Annotation dictation URL",
+    to: "/settings/integrations",
+    searchTerms: ["annotate dictate drift voice speech microphone post start"],
+  },
+  {
+    id: "annotation-dictation-stop-url",
+    title: "Annotation dictation stop URL",
+    to: "/settings/integrations",
+    searchTerms: ["annotate dictate drift voice speech microphone post stop"],
+  },
+  {
     id: "automatic-pull",
     title: "Automatically pull",
     to: "/settings/source-control",

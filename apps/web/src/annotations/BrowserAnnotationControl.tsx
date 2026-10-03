@@ -6,17 +6,20 @@ import {
   CircleIcon,
   MessageCircleQuestionIcon,
   MessageSquareTextIcon,
+  MicIcon,
   SendIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useEffectEvent, useId, useMemo, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { DraftInput } from "~/components/ui/draft-input";
 import { Kbd } from "~/components/ui/kbd";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
+import { useClientSettings, useUpdatePrimarySettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 
 import {
@@ -27,6 +30,7 @@ import {
   countAnnotations,
   openAnnotationCount,
   overlayBootstrapScript,
+  overlayConfigureScript,
   overlaySetModeScript,
 } from "./annotatorQueue";
 import { useAnnotationWatch, useAnnotationWatchStore } from "./annotationWatchStore";
@@ -42,7 +46,14 @@ function runInPage(runtimeTabId: string, code: string): void {
   const webview = document.querySelector<PreviewWebview>(
     `webview[data-preview-tab="${CSS.escape(runtimeTabId)}"]`,
   );
-  void webview?.executeJavaScript?.(code).catch(() => undefined);
+  if (!webview?.executeJavaScript) return;
+  // Electron throws synchronously until the webview is attached and dom-ready; the next
+  // page load runs the bootstrap again, so a skipped call is safe.
+  try {
+    void webview.executeJavaScript(code).catch(() => undefined);
+  } catch {
+    // Not ready yet.
+  }
 }
 
 /**
@@ -71,19 +82,34 @@ export function BrowserAnnotationControl({
   const setWatching = useAnnotationWatchStore((state) => state.setWatching);
   const [annotating, setAnnotating] = useState(false);
   const watchSwitchId = useId();
+  const dictationStartUrl = useClientSettings((settings) => settings.annotationDictationUrl);
+  const dictationStopUrl = useClientSettings((settings) => settings.annotationDictationStopUrl);
+  const updateSettings = useUpdatePrimarySettings();
+  const dictation = useMemo(
+    () => ({ startUrl: dictationStartUrl, stopUrl: dictationStopUrl }),
+    [dictationStartUrl, dictationStopUrl],
+  );
 
   // Restoring the mode must not re-run the page-load effect when the mode toggles.
   const restoreMode = useEffectEvent((tabId: string) => {
     if (annotating) runInPage(tabId, overlaySetModeScript(true));
   });
+  const bootstrap = useEffectEvent((tabId: string, target: NonNullable<typeof endpoint>) =>
+    runInPage(tabId, overlayBootstrapScript(target, dictation)),
+  );
   // Each page load (and reload) starts without the overlay; load it and restore the mode.
   useEffect(() => {
     if (!available || loading || endpoint === null || runtimeTabId === null) return;
-    runInPage(runtimeTabId, overlayBootstrapScript(endpoint));
+    bootstrap(runtimeTabId, endpoint);
     // The overlay mounts once its script has run; give it a moment.
     const timer = setTimeout(() => restoreMode(runtimeTabId), 400);
     return () => clearTimeout(timer);
   }, [available, endpoint, loading, runtimeTabId]);
+
+  // Changed dictation settings apply to the running overlay without a reload.
+  useEffect(() => {
+    if (runtimeTabId !== null) runInPage(runtimeTabId, overlayConfigureScript(dictation));
+  }, [dictation, runtimeTabId]);
 
   const toggleAnnotating = useCallback(() => {
     if (runtimeTabId === null) return;
@@ -237,6 +263,19 @@ export function BrowserAnnotationControl({
               {counts.waiting === 0 ? "Nothing waiting" : `Send ${counts.waiting} to this thread`}
             </Button>
           )}
+        </div>
+        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs">
+          <MicIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="shrink-0 font-medium text-muted-foreground">Dictation</span>
+          <DraftInput
+            size="sm"
+            className="min-w-0 flex-1"
+            value={dictationStartUrl}
+            onCommit={(next) => updateSettings({ annotationDictationUrl: next.trim() })}
+            placeholder="Off"
+            spellCheck={false}
+            aria-label="Annotation dictation URL"
+          />
         </div>
         <label
           htmlFor={watchSwitchId}
