@@ -136,22 +136,43 @@ export async function fetchAnnotations(
 }
 
 /**
- * Removes finished annotations from the shared queue, so no viewer shows them again.
- * Returns how many the server removed.
+ * Removes annotations from the shared queue, so no viewer shows them again. Returns how
+ * many the server removed.
  */
-export async function clearDoneAnnotations(
+async function deleteAnnotations(
   annotationsUrl: string,
   annotations: ReadonlyArray<AnnotatorRecord>,
 ): Promise<number> {
-  const done = annotations.filter((annotation) => annotation.status === "done");
   const results = await Promise.all(
-    done.map((annotation) =>
+    annotations.map((annotation) =>
       fetch(`${annotationsUrl}/${encodeURIComponent(annotation.id)}`, { method: "DELETE" })
         .then((response) => response.ok)
         .catch(() => false),
     ),
   );
   return results.filter(Boolean).length;
+}
+
+/** Removes finished annotations. */
+export function clearDoneAnnotations(
+  annotationsUrl: string,
+  annotations: ReadonlyArray<AnnotatorRecord>,
+): Promise<number> {
+  return deleteAnnotations(
+    annotationsUrl,
+    annotations.filter((annotation) => annotation.status === "done"),
+  );
+}
+
+/** Removes every annotation an agent is not working on: waiting, questions and done. */
+export function removeIdleAnnotations(
+  annotationsUrl: string,
+  annotations: ReadonlyArray<AnnotatorRecord>,
+): Promise<number> {
+  return deleteAnnotations(
+    annotationsUrl,
+    annotations.filter((annotation) => annotation.status !== "in_progress"),
+  );
 }
 
 export interface AnnotationDictation {

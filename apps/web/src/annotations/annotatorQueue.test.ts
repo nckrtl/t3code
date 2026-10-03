@@ -10,6 +10,7 @@ import {
   openAnnotationCount,
   overlayBootstrapScript,
   overlayOptions,
+  removeIdleAnnotations,
   waitingIdsToSend,
 } from "./annotatorQueue";
 
@@ -181,5 +182,27 @@ describe("overlay options", () => {
     };
     expect(run(page, storage, document)).toBe("reused");
     expect(mounted).toHaveLength(1);
+  });
+});
+
+describe("removeIdleAnnotations", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("removes waiting, question and done annotations but keeps work in progress", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", (url: string) => {
+      calls.push(url.split("/").pop() ?? "");
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
+    const removed = await removeIdleAnnotations("https://shop.test/__orbit/annotator/annotations", [
+      record("waiting", 1),
+      record("question", 2, { question: true }),
+      record("done", 3, { status: "done" }),
+      record("busy", 4, { status: "in_progress" }),
+    ]);
+    expect(calls).toEqual(["waiting", "question", "done"]);
+    expect(removed).toBe(3);
   });
 });
