@@ -681,6 +681,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["annotate dictate drift voice speech microphone post stop"],
   },
   {
+    id: "device-annotations-url",
+    title: "Device annotations URL",
+    to: "/settings/integrations",
+    searchTerms: ["annotate annotator simulator device iphone ios queue"],
+  },
+  {
     id: "automatic-pull",
     title: "Automatically pull",
     to: "/settings/source-control",

@@ -275,6 +275,8 @@ export const DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW = true;
 // Local API by default) with one POST each. An empty start URL turns dictation off.
 export const DEFAULT_ANNOTATION_DICTATION_URL = "http://127.0.0.1:12321/dictate";
 export const DEFAULT_ANNOTATION_DICTATION_STOP_URL = "http://127.0.0.1:12321/dictate-stop";
+/** rooms-patches: the @nckrtl/annotator queue that Device panel annotations go to (mini over WireGuard). */
+export const DEFAULT_DEVICE_ANNOTATIONS_URL = "http://10.44.0.9:4791/annotations";
 export const BROWSER_RECORDING_FRAME_RATES = [30, 60] as const;
 export const BrowserRecordingFrameRate = Schema.Literals(BROWSER_RECORDING_FRAME_RATES);
 export type BrowserRecordingFrameRate = typeof BrowserRecordingFrameRate.Type;
@@ -357,6 +359,9 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   annotationDictationStopUrl: Schema.String.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_ANNOTATION_DICTATION_STOP_URL)),
+  ),
+  deviceAnnotationsUrl: Schema.String.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_DEVICE_ANNOTATIONS_URL)),
   ),
   /**
    * User-created browser profiles. The built-in Default and Incognito profiles
@@ -1627,6 +1632,7 @@ export const ClientSettingsPatch = Schema.Struct({
   browserAutoShowFloatingPreview: Schema.optionalKey(Schema.Boolean),
   annotationDictationUrl: Schema.optionalKey(Schema.String),
   annotationDictationStopUrl: Schema.optionalKey(Schema.String),
+  deviceAnnotationsUrl: Schema.optionalKey(Schema.String),
   browserProfiles: Schema.optionalKey(Schema.Array(BrowserProfile)),
   browserDefaultProfileId: Schema.optionalKey(BrowserProfileId),
   confirmQuit: Schema.optionalKey(QuitConfirmationMode),

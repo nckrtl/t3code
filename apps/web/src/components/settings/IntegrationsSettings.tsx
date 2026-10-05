@@ -20,6 +20,7 @@ import {
   BROWSER_PROFILE_NAME_MAX_LENGTH,
   BROWSER_RECORDING_FRAME_RATES,
   DEFAULT_ANNOTATION_DICTATION_STOP_URL,
+  DEFAULT_DEVICE_ANNOTATIONS_URL,
   DEFAULT_ANNOTATION_DICTATION_URL,
   DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW,
   DEFAULT_BROWSER_PROFILE_ID,
@@ -894,6 +895,7 @@ function BrowserAutoShowFloatingPreviewSetting({ disabled }: { readonly disabled
 function AnnotationDictationSettings({ disabled }: { readonly disabled: boolean }) {
   const startUrl = useClientSettings((settings) => settings.annotationDictationUrl);
   const stopUrl = useClientSettings((settings) => settings.annotationDictationStopUrl);
+  const deviceUrl = useClientSettings((settings) => settings.deviceAnnotationsUrl);
   const updateSettings = useUpdatePrimarySettings();
 
   return (
@@ -949,6 +951,32 @@ function AnnotationDictationSettings({ disabled }: { readonly disabled: boolean 
             placeholder={DEFAULT_ANNOTATION_DICTATION_STOP_URL}
             spellCheck={false}
             aria-label="Annotation dictation stop URL"
+          />
+        }
+      />
+      <SettingsRow
+        {...searchableSetting("device-annotations-url")}
+        description="The annotator queue that annotations on a simulator in the Device panel go to."
+        resetAction={
+          !disabled && deviceUrl !== DEFAULT_DEVICE_ANNOTATIONS_URL ? (
+            <SettingResetButton
+              label="device annotations URL"
+              onClick={() =>
+                updateSettings({ deviceAnnotationsUrl: DEFAULT_DEVICE_ANNOTATIONS_URL })
+              }
+            />
+          ) : null
+        }
+        control={
+          <DraftInput
+            size="sm"
+            className="w-full sm:w-72"
+            disabled={disabled}
+            value={deviceUrl}
+            onCommit={(next) => updateSettings({ deviceAnnotationsUrl: next.trim() })}
+            placeholder={DEFAULT_DEVICE_ANNOTATIONS_URL}
+            spellCheck={false}
+            aria-label="Device annotations URL"
           />
         }
       />
