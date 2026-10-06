@@ -34,9 +34,7 @@ import {
 import { useRightPanelStore } from "~/rightPanelStore";
 import { useDeviceState } from "~/state/device";
 
-import { DeviceAnnotationControl } from "../device/DeviceAnnotationControl";
 import { DeviceStreamView } from "../device/DeviceStreamView";
-import { useDeviceAnnotator } from "../device/useDeviceAnnotator";
 import type { DeviceScreenSize } from "@t3tools/client-runtime/device/stream";
 import { previewBridge } from "./previewBridge";
 import {
@@ -265,12 +263,6 @@ function DeviceMiniPlayer({
   );
   const hostLabel =
     deviceState.hosts.find((host) => host.id === source.hostId)?.label ?? "Device host";
-  const annotation = useDeviceAnnotator({
-    threadRef,
-    hostId: source.hostId,
-    deviceId: source.deviceId,
-    visible: true,
-  });
   const cornerRadius = useCallback(
     (player: PreviewMiniPlayerSize) => resolveDeviceMiniPlayerCornerRadius(source.platform, player),
     [source.platform],
@@ -310,28 +302,8 @@ function DeviceMiniPlayer({
             deviceName={device?.name ?? source.name}
             deviceDescription={`${hostLabel} · ${device?.version ?? source.platform}`}
             visible
-            annotating={annotation.annotating}
-            annotations={annotation.annotations ?? []}
-            annotationsUrl={annotation.annotationsUrl}
-            onToggleAnnotating={annotation.toggle}
             onScreen={setScreen}
           />
-          <div className="pointer-events-none absolute top-3 left-3 z-20">
-            <div className="pointer-events-auto rounded-lg bg-background shadow-md">
-              <DeviceAnnotationControl
-                threadRef={annotation.threadRef}
-                hostId={annotation.hostId}
-                deviceId={annotation.deviceId}
-                annotating={annotation.annotating}
-                onToggle={annotation.toggle}
-                annotationsUrl={annotation.annotationsUrl}
-                annotations={annotation.annotations}
-                error={annotation.error}
-                starting={annotation.starting}
-                unreachable={annotation.unreachable}
-              />
-            </div>
-          </div>
         </div>
       )}
     </MiniPlayerShell>
