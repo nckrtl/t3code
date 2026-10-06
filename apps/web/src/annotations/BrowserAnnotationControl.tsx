@@ -122,17 +122,20 @@ export function BrowserAnnotationControl({
   }, [dictation, runtimeTabId]);
 
   const toggleAnnotating = useCallback(() => {
-    if (runtimeTabId === null) return;
+    if (runtimeTabId === null || !available) return;
     const next = !annotating;
     setAnnotating(next);
     runInPage(runtimeTabId, overlaySetModeScript(next));
-  }, [annotating, runtimeTabId]);
+  }, [annotating, available, runtimeTabId]);
 
-  if (annotations === null || endpoint === null || runtimeTabId === null) return null;
+  // Stay in the toolbar even when this page has no annotator, so the control is
+  // where it is in browser mode. The popover explains why annotation cannot start.
+  if (endpoint === null || runtimeTabId === null) return null;
 
-  const counts = countAnnotations(annotations);
+  const queue = annotations ?? [];
+  const counts = countAnnotations(queue);
   const open = openAnnotationCount(counts);
-  const idle = annotations.length - counts.working;
+  const idle = queue.length - counts.working;
   const watching = watch !== null && watch.annotationsUrl === endpoint.annotationsUrl;
 
   return (
@@ -176,7 +179,12 @@ export function BrowserAnnotationControl({
                 <div className="text-sm font-medium">Annotations</div>
                 <div className="truncate text-xs text-muted-foreground">
                   {endpoint.origin} ·{" "}
-                  {annotating ? "click to stop annotating" : "click to annotate"} <Kbd>⌘⇧A</Kbd>
+                  {!available
+                    ? "no annotator on this page"
+                    : annotating
+                      ? "click to stop annotating"
+                      : "click to annotate"}{" "}
+                  <Kbd>⌘⇧A</Kbd>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
@@ -194,9 +202,7 @@ export function BrowserAnnotationControl({
                           size="icon-xs"
                           aria-label={`Clear ${counts.done} done`}
                           type="button"
-                          onClick={() =>
-                            void clearDoneAnnotations(endpoint.annotationsUrl, annotations)
-                          }
+                          onClick={() => void clearDoneAnnotations(endpoint.annotationsUrl, queue)}
                         />
                       }
                     >
@@ -239,7 +245,7 @@ export function BrowserAnnotationControl({
                     variant="destructive"
                     onClick={() => {
                       setConfirmingRemove(false);
-                      void removeIdleAnnotations(endpoint.annotationsUrl, annotations);
+                      void removeIdleAnnotations(endpoint.annotationsUrl, queue);
                     }}
                   >
                     Remove
@@ -247,7 +253,11 @@ export function BrowserAnnotationControl({
                 </span>
               </div>
             ) : null}
-            {annotations.length === 0 ? (
+            {!available ? (
+              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                This page has no annotator. Open a page that serves one, then click an element.
+              </p>
+            ) : queue.length === 0 ? (
               <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
                 No annotations yet. Click the button, then click an element on the page.
               </p>
@@ -256,7 +266,7 @@ export function BrowserAnnotationControl({
                 role="list"
                 className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
               >
-                {annotations.map((annotation) => {
+                {queue.map((annotation) => {
                   const state = annotationState(annotation);
                   return (
                     <li
@@ -310,7 +320,7 @@ export function BrowserAnnotationControl({
                     sendAnnotationPrompt({
                       threadRef,
                       annotationsUrl: endpoint.annotationsUrl,
-                      annotations,
+                      annotations: queue,
                     })
                   }
                 >
