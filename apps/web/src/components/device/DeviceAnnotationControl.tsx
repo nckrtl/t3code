@@ -72,18 +72,20 @@ export function DeviceAnnotationControl(props: {
         closeDelay={150}
         render={
           <Button
-            variant={props.annotating ? "secondary" : "ghost"}
-            size="icon-sm"
+            variant={props.annotating ? "secondary" : "outline"}
+            size="sm"
             aria-label={`${props.annotating ? "Stop annotating" : "Annotate device"}, ${open} open`}
             aria-pressed={props.annotating ? "true" : "false"}
             type="button"
+            className="relative"
             onClick={() => {
               props.onToggle();
             }}
           />
         }
       >
-        <MessageSquareTextIcon className={cn(props.annotating && "text-primary")} />
+        <MessageSquareTextIcon className={cn("size-3.5", props.annotating && "text-primary")} />
+        <span className="text-xs font-medium">Annotate</span>
         {open > 0 ? (
           <span
             aria-hidden

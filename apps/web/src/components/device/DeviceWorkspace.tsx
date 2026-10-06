@@ -1,18 +1,15 @@
 import type { DeviceSummary, EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   captureDeviceScreenshot,
   DeviceScreenshotError,
 } from "@t3tools/client-runtime/device/screenshot";
 import { refreshDeviceHubAccess, useDeviceHubAccess } from "~/state/device";
-import { useClientSettings } from "~/hooks/useSettings";
-import { useAnnotatorQueue } from "~/annotations/useAnnotatorQueue";
-import { fetchAnnotations } from "~/annotations/annotatorQueue";
 import { DeviceAnnotationControl } from "./DeviceAnnotationControl";
-import { annotationsForPathname, deviceAnnotationPathname } from "./deviceAnnotations";
 import { DeviceControlsRail } from "./DeviceControlsRail";
 import { DeviceStreamView, type DeviceStreamHandle } from "./DeviceStreamView";
 import { DeviceToolsPanel } from "./DeviceToolsPanel";
+import { useDeviceAnnotator } from "./useDeviceAnnotator";
 import { useDeviceControls } from "./useDeviceControls";
 
 /** Keyed by environment and device; the screen, quick controls and drawer share the same session. */
@@ -30,59 +27,18 @@ export function DeviceWorkspace(props: {
   const [handle, setHandle] = useState<DeviceStreamHandle | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [axOverlay, setAxOverlay] = useState(false);
-  const [annotating, setAnnotating] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [annotator, setAnnotator] = useState<{ url: string | null; error: string | null }>({
-    url: null,
-    error: null,
+  const annotation = useDeviceAnnotator({
+    threadRef: props.threadRef,
+    hostId: props.device.hostId,
+    deviceId: props.device.id,
+    visible: props.visible,
   });
-  const startingRef = useRef(false);
   const [screenshotPending, setScreenshotPending] = useState(false);
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
   const captureRef = useRef<AbortController | null>(null);
   const downloadRef = useRef<string | null>(null);
   const access = useDeviceHubAccess(props.environmentId, props.device.hostId);
   const controls = useDeviceControls({ ...props, access });
-  const deviceAnnotationsUrl = useClientSettings((settings) => settings.deviceAnnotationsUrl);
-  const pathname = deviceAnnotationPathname(props.device.hostId, props.device.id);
-  const annotatorEndpoint = useMemo(
-    () =>
-      annotator.url === null
-        ? null
-        : { annotationsUrl: annotator.url, injectUrl: "", origin: pathname },
-    [annotator.url, pathname],
-  );
-  const queue = useAnnotatorQueue(annotatorEndpoint);
-  const annotations = useMemo(
-    () => (queue === null ? null : annotationsForPathname(queue, pathname)),
-    [pathname, queue],
-  );
-  const toggleAnnotating = () => {
-    if (annotating) {
-      setAnnotating(false);
-      return;
-    }
-    // The queue is one standing @nckrtl/annotator (Settings → Integrations). Check it answers first.
-    if (startingRef.current) return;
-    const url = deviceAnnotationsUrl.trim();
-    if (url === "") {
-      setAnnotator({ url: null, error: "Set a device annotations URL in Settings." });
-      return;
-    }
-    startingRef.current = true;
-    setStarting(true);
-    setAnnotator((current) => ({ url: current.url, error: null }));
-    void fetchAnnotations(url).then((records) => {
-      startingRef.current = false;
-      setStarting(false);
-      if (records === null) {
-        setAnnotator({ url: null, error: `No annotation server answers at ${url}.` });
-        return;
-      }
-      setAnnotator({ url, error: null });
-      setAnnotating(true);
-    });
-  };
   useEffect(() => {
     if (!access || !props.visible) captureRef.current?.abort();
     return () => {
@@ -137,7 +93,7 @@ export function DeviceWorkspace(props: {
             {screenshotError ?? controls.error}
           </p>
         ) : null}
-        <div className="min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1">
           <DeviceStreamView
             environmentId={props.environmentId}
             platform={props.device.platform}
@@ -147,10 +103,10 @@ export function DeviceWorkspace(props: {
             hostId={props.device.hostId}
             visible={props.visible}
             axOverlay={axOverlay}
-            annotating={annotating}
-            annotations={annotations ?? []}
-            annotationsUrl={annotator.url}
-            onToggleAnnotating={toggleAnnotating}
+            annotating={annotation.annotating}
+            annotations={annotation.annotations ?? []}
+            annotationsUrl={annotation.annotationsUrl}
+            onToggleAnnotating={annotation.toggle}
             allowPhoneView
             onHandle={setHandle}
             renderControls={(view) => (
@@ -161,20 +117,6 @@ export function DeviceWorkspace(props: {
                 controls={controls}
                 screenshotPending={screenshotPending}
                 onScreenshot={() => void saveScreenshot()}
-                annotation={
-                  <DeviceAnnotationControl
-                    threadRef={props.threadRef}
-                    hostId={props.device.hostId}
-                    deviceId={props.device.id}
-                    annotating={annotating}
-                    onToggle={toggleAnnotating}
-                    annotationsUrl={annotator.url}
-                    annotations={annotations}
-                    error={annotator.error}
-                    starting={starting}
-                    unreachable={annotator.url !== null && queue === null}
-                  />
-                }
                 toolsOpen={toolsOpen}
                 onTools={() => setToolsOpen(!toolsOpen)}
                 onFloat={props.onFloat}
@@ -183,6 +125,22 @@ export function DeviceWorkspace(props: {
               />
             )}
           />
+          <div className="pointer-events-none absolute top-3 left-3 z-20">
+            <div className="pointer-events-auto rounded-lg bg-background shadow-md">
+              <DeviceAnnotationControl
+                threadRef={annotation.threadRef}
+                hostId={annotation.hostId}
+                deviceId={annotation.deviceId}
+                annotating={annotation.annotating}
+                onToggle={annotation.toggle}
+                annotationsUrl={annotation.annotationsUrl}
+                annotations={annotation.annotations}
+                error={annotation.error}
+                starting={annotation.starting}
+                unreachable={annotation.unreachable}
+              />
+            </div>
+          </div>
         </div>
       </div>
       {toolsOpen ? (
