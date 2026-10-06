@@ -20,14 +20,21 @@ import {
 } from "~/annotations/annotatorQueue";
 import { useAnnotationWatch, useAnnotationWatchStore } from "~/annotations/annotationWatchStore";
 import { sendAnnotationPrompt } from "~/annotations/sendAnnotationPrompt";
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Kbd } from "~/components/ui/kbd";
-import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+import { Popover, PopoverTrigger } from "~/components/ui/popover";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
+
+// Same surface as the browser annotation panel: the theme canvas, not the popover
+// overlay, which custom themes set to a light untinted colour.
+const PANEL_CLASS_NAME =
+  "w-96 max-w-(--available-width) origin-(--transform-origin) rounded-lg border bg-background text-foreground shadow-lg outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 export function DeviceAnnotationControl(props: {
   readonly threadRef: ScopedThreadRef;
@@ -80,160 +87,177 @@ export function DeviceAnnotationControl(props: {
         {open > 0 ? (
           <span
             aria-hidden
-            className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info px-1 text-3xs font-semibold tabular-nums text-white"
+            className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-3xs font-semibold tabular-nums text-primary-foreground"
           >
             {open}
           </span>
         ) : null}
       </PopoverTrigger>
-      <PopoverPopup side="left" align="end" sideOffset={6} width="lg" padding="none">
-        <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
-          <div className="min-w-0">
-            <div className="text-sm font-medium">Annotations</div>
-            <div className="truncate text-xs text-muted-foreground">
-              {props.annotating ? "click to stop annotating" : "click to annotate"} <Kbd>⌘⇧A</Kbd>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {watching ? (
-              <Badge variant="success" size="sm">
-                Watching
-              </Badge>
-            ) : null}
-            {props.annotationsUrl !== null && counts.done > 0 ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={`Clear ${counts.done} done`}
-                      type="button"
-                      onClick={() => void clearDoneAnnotations(props.annotationsUrl!, annotations)}
-                    />
-                  }
-                >
-                  <BrushCleaningIcon />
-                </TooltipTrigger>
-                <TooltipPopup>{`Clear ${counts.done} done`}</TooltipPopup>
-              </Tooltip>
-            ) : null}
-          </div>
-        </div>
-        {props.error ? (
-          <p role="alert" className="border-t border-border/60 px-3 py-3 text-xs text-destructive">
-            {props.error}
-          </p>
-        ) : props.unreachable ? (
-          <p role="alert" className="border-t border-border/60 px-3 py-3 text-xs text-destructive">
-            The annotation server did not answer.
-          </p>
-        ) : null}
-        {props.annotations === null && !props.error && !props.unreachable ? (
-          <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
-            {props.starting
-              ? "Starting the annotation server…"
-              : props.annotationsUrl
-                ? "Loading annotations…"
-                : "No annotations yet. Click the button, then click an element on the screen."}
-          </p>
-        ) : null}
-        {props.annotations !== null && annotations.length === 0 ? (
-          <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
-            No annotations yet. Click the button, then click an element on the screen.
-          </p>
-        ) : null}
-        {props.annotations !== null && annotations.length > 0 ? (
-          <ol
-            role="list"
-            className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
-          >
-            {annotations.map((annotation) => {
-              const state = annotationState(annotation);
-              return (
-                <li
-                  key={annotation.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-md px-1.5 py-1.5 hover:bg-accent"
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 flex size-4.5 items-center justify-center rounded-full text-3xs font-semibold tabular-nums",
-                      state === "done" ? "bg-muted text-muted-foreground" : "bg-info text-white",
-                    )}
-                  >
-                    {annotation.number}
-                  </span>
-                  <div className="min-w-0">
-                    <div
-                      className={cn(
-                        "truncate leading-snug",
-                        state === "done" && "text-muted-foreground",
-                      )}
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Positioner align="end" side="left" sideOffset={6} className="z-[130]">
+          <PopoverPrimitive.Popup className={PANEL_CLASS_NAME}>
+            <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Annotations</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {props.annotating ? "click to stop annotating" : "click to annotate"}{" "}
+                  <Kbd>⌘⇧A</Kbd>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {watching ? (
+                  <Badge variant="success" size="sm">
+                    Watching
+                  </Badge>
+                ) : null}
+                {props.annotationsUrl !== null && counts.done > 0 ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Clear ${counts.done} done`}
+                          type="button"
+                          onClick={() =>
+                            void clearDoneAnnotations(props.annotationsUrl!, annotations)
+                          }
+                        />
+                      }
                     >
-                      {annotation.comment}
-                    </div>
-                    <div className="mt-0.5 truncate text-xs text-muted-foreground/70">
-                      {annotation.summary ?? annotation.element ?? annotation.pathname}
-                    </div>
-                  </div>
-                  <span className="mt-0.5 text-xs">
-                    <QueueStateLabel state={state} />
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        ) : null}
-        <div className="border-t border-border/60 px-3 py-2.5">
-          {watching ? (
-            <p className="text-xs text-muted-foreground">
-              New annotations go to this thread when it is idle.
-              {counts.question > 0 ? " Questions wait for your answer in the thread." : ""}
-            </p>
-          ) : (
-            <Button
-              size="xs"
-              className="w-full justify-center"
-              disabled={!ready || counts.waiting === 0}
-              onClick={() => {
-                if (props.annotationsUrl === null) return;
-                sendAnnotationPrompt({
-                  threadRef: props.threadRef,
-                  annotationsUrl: props.annotationsUrl,
-                  annotations,
-                });
-              }}
+                      <BrushCleaningIcon />
+                    </TooltipTrigger>
+                    <TooltipPopup>{`Clear ${counts.done} done`}</TooltipPopup>
+                  </Tooltip>
+                ) : null}
+              </div>
+            </div>
+            {props.error ? (
+              <p
+                role="alert"
+                className="border-t border-border/60 px-3 py-3 text-xs text-destructive"
+              >
+                {props.error}
+              </p>
+            ) : props.unreachable ? (
+              <p
+                role="alert"
+                className="border-t border-border/60 px-3 py-3 text-xs text-destructive"
+              >
+                The annotation server did not answer.
+              </p>
+            ) : null}
+            {props.annotations === null && !props.error && !props.unreachable ? (
+              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                {props.starting
+                  ? "Starting the annotation server…"
+                  : props.annotationsUrl
+                    ? "Loading annotations…"
+                    : "No annotations yet. Click the button, then click an element on the screen."}
+              </p>
+            ) : null}
+            {props.annotations !== null && annotations.length === 0 ? (
+              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                No annotations yet. Click the button, then click an element on the screen.
+              </p>
+            ) : null}
+            {props.annotations !== null && annotations.length > 0 ? (
+              <ol
+                role="list"
+                className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
+              >
+                {annotations.map((annotation) => {
+                  const state = annotationState(annotation);
+                  return (
+                    <li
+                      key={annotation.id}
+                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-md px-1.5 py-1.5 hover:bg-accent"
+                    >
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-4.5 items-center justify-center rounded-full text-3xs font-semibold tabular-nums",
+                          state === "done"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-primary text-primary-foreground",
+                        )}
+                      >
+                        {annotation.number}
+                      </span>
+                      <div className="min-w-0">
+                        <div
+                          className={cn(
+                            "truncate leading-snug",
+                            state === "done" && "text-muted-foreground",
+                          )}
+                        >
+                          {annotation.comment}
+                        </div>
+                        <div className="mt-0.5 truncate text-xs text-muted-foreground/70">
+                          {annotation.summary ?? annotation.element ?? annotation.pathname}
+                        </div>
+                      </div>
+                      <span className="mt-0.5 text-xs">
+                        <QueueStateLabel state={state} />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : null}
+            <div className="border-t border-border/60 px-3 py-2.5">
+              {watching ? (
+                <p className="text-xs text-muted-foreground">
+                  New annotations go to this thread when it is idle.
+                  {counts.question > 0 ? " Questions wait for your answer in the thread." : ""}
+                </p>
+              ) : (
+                <Button
+                  size="xs"
+                  className="w-full justify-center"
+                  disabled={!ready || counts.waiting === 0}
+                  onClick={() => {
+                    if (props.annotationsUrl === null) return;
+                    sendAnnotationPrompt({
+                      threadRef: props.threadRef,
+                      annotationsUrl: props.annotationsUrl,
+                      annotations,
+                    });
+                  }}
+                >
+                  <SendIcon />
+                  {counts.waiting === 0
+                    ? "Nothing waiting"
+                    : `Send ${counts.waiting} to this thread`}
+                </Button>
+              )}
+            </div>
+            <label
+              htmlFor={watchSwitchId}
+              className="flex cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs"
             >
-              <SendIcon />
-              {counts.waiting === 0 ? "Nothing waiting" : `Send ${counts.waiting} to this thread`}
-            </Button>
-          )}
-        </div>
-        <label
-          htmlFor={watchSwitchId}
-          className="flex cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs"
-        >
-          <span className="min-w-0">
-            <span className="block font-medium text-muted-foreground">Watch</span>
-            <span className="block text-muted-foreground/70">
-              Send new annotations automatically
-            </span>
-          </span>
-          <Switch
-            id={watchSwitchId}
-            size="sm"
-            checked={watching}
-            disabled={props.annotationsUrl === null}
-            onCheckedChange={(checked) => {
-              if (!checked || props.annotationsUrl === null) {
-                setWatching(threadKey, null);
-                return;
-              }
-              setWatching(threadKey, props.annotationsUrl);
-            }}
-          />
-        </label>
-      </PopoverPopup>
+              <span className="min-w-0">
+                <span className="block font-medium text-muted-foreground">Watch</span>
+                <span className="block text-muted-foreground/70">
+                  Send new annotations automatically
+                </span>
+              </span>
+              <Switch
+                id={watchSwitchId}
+                size="sm"
+                checked={watching}
+                disabled={props.annotationsUrl === null}
+                onCheckedChange={(checked) => {
+                  if (!checked || props.annotationsUrl === null) {
+                    setWatching(threadKey, null);
+                    return;
+                  }
+                  setWatching(threadKey, props.annotationsUrl);
+                }}
+              />
+            </label>
+          </PopoverPrimitive.Popup>
+        </PopoverPrimitive.Positioner>
+      </PopoverPrimitive.Portal>
     </Popover>
   );
 }

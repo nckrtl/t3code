@@ -28,9 +28,15 @@ const pinTone = (annotation: AnnotatorRecord) => {
     case "question":
       return { frame: "border border-warning bg-warning/15", badge: "bg-warning text-white" };
     case "working":
-      return { frame: "border-2 border-info bg-info/20", badge: "bg-info text-white" };
+      return {
+        frame: "border-2 border-primary bg-primary/20",
+        badge: "bg-primary text-primary-foreground",
+      };
     default:
-      return { frame: "border border-info/80 bg-info/10", badge: "bg-info text-white" };
+      return {
+        frame: "border border-primary/80 bg-primary/10",
+        badge: "bg-primary text-primary-foreground",
+      };
   }
 };
 
