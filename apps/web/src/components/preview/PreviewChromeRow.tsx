@@ -6,6 +6,7 @@ import {
   ExternalLink,
   MousePointerClick,
   PictureInPicture2,
+  Search,
 } from "lucide-react";
 import {
   type FormEvent,
@@ -182,6 +183,9 @@ export function PreviewChromeRow({
         {leadingActions}
 
         <InputGroup variant="soft" className="group/address h-8 min-w-0 flex-1">
+          <InputGroupAddon>
+            <Search aria-hidden />
+          </InputGroupAddon>
           <Tooltip>
             <TooltipTrigger
               render={
