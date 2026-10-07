@@ -112,6 +112,8 @@ export function StatStrip({ children }: { children: ReactNode }) {
   );
 }
 
+export const secondaryLineClass = "mt-1 text-2xs leading-4 text-muted-foreground";
+
 export function Stat({
   label,
   value,
@@ -124,13 +126,13 @@ export function Stat({
   tone?: "default" | "warning" | "danger" | "success";
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 p-3">
+    <div className="flex min-w-0 flex-col p-3">
       <div className="flex items-center justify-between gap-2 text-muted-foreground text-xs">
         <span className="truncate font-medium">{label}</span>
       </div>
       <div
         className={cn(
-          "truncate font-medium text-lg tabular-nums",
+          "mt-0.5 truncate font-medium text-lg tabular-nums",
           tone === "warning" && "text-warning-foreground",
           tone === "danger" && "text-destructive",
           tone === "success" && "text-success-foreground",
@@ -138,7 +140,7 @@ export function Stat({
       >
         {value}
       </div>
-      <div className="truncate text-muted-foreground text-xs">{hint ?? " "}</div>
+      <div className={cn("truncate", secondaryLineClass)}>{hint ?? " "}</div>
     </div>
   );
 }
@@ -200,12 +202,23 @@ export function MethodBadge({ method }: { method: string }) {
 export function SourceLink({
   children,
   onOpen,
+  small = false,
 }: {
   children: ReactNode;
   onOpen?: (() => void) | undefined;
+  small?: boolean;
 }) {
   if (!onOpen)
-    return <span className="truncate font-mono text-foreground/80 text-xs">{children}</span>;
+    return (
+      <span
+        className={cn(
+          "truncate font-mono text-foreground/80",
+          small ? "text-2xs leading-4" : "text-xs",
+        )}
+      >
+        {children}
+      </span>
+    );
   return (
     <button
       type="button"
@@ -213,7 +226,10 @@ export function SourceLink({
         event.stopPropagation();
         onOpen();
       }}
-      className="shrink-0 cursor-pointer truncate rounded-sm font-mono text-foreground/80 text-xs underline decoration-foreground/30 underline-offset-2 outline-none focus-visible:ring-1 focus-visible:ring-ring hover:text-foreground hover:decoration-foreground/70"
+      className={cn(
+        "shrink-0 cursor-pointer truncate rounded-sm font-mono text-foreground/80 underline decoration-foreground/30 underline-offset-2 outline-none focus-visible:ring-1 focus-visible:ring-ring hover:text-foreground hover:decoration-foreground/70",
+        small ? "text-2xs leading-4" : "text-xs",
+      )}
     >
       {children}
     </button>

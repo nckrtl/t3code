@@ -15,7 +15,7 @@ import {
   type ProcessStatus,
   splitLogLevels,
 } from "../orbit";
-import { EmptyRow, MetaDot, PanelShell } from "./parts";
+import { EmptyRow, MetaDot, PanelShell, secondaryLineClass } from "./parts";
 
 const LOG_LINES = 200;
 const PROCESS_REFRESH_MS = 5_000;
@@ -104,7 +104,7 @@ function ProcessItem({
       <span className={cn("h-8 w-0.5 shrink-0 rounded-full", STATUS_MARKER[process.status])} />
       <div className="min-w-0 flex-1">
         <div className="truncate font-mono">{process.name}</div>
-        <div className="truncate text-muted-foreground tabular-nums">
+        <div className={cn("truncate tabular-nums", secondaryLineClass)}>
           {process.status === "running" && usage.length > 0 ? usage.join(" · ") : process.status}
         </div>
       </div>

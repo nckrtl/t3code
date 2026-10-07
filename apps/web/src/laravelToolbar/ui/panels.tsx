@@ -29,6 +29,7 @@ import {
   PanelShell,
   RowMarker,
   Section,
+  secondaryLineClass,
   SourceLink,
   StageBar,
   Stat,
@@ -370,9 +371,10 @@ export function DatabasePanel() {
                             <div className="flex min-w-0 items-center gap-2">
                               <SqlText sql={query.sql} />
                             </div>
-                            <div className="mt-1 flex items-center gap-2">
+                            <div className={cn("flex items-center gap-2", secondaryLineClass)}>
                               {location ? (
                                 <SourceLink
+                                  small
                                   onOpen={
                                     openSource && query.file
                                       ? () => openSource(`${query.file}:${query.line ?? 1}`)
@@ -393,7 +395,7 @@ export function DatabasePanel() {
                           <div>{formatMs(query.durationMs)}</div>
                           <Tooltip>
                             <TooltipTrigger
-                              render={<div className="mt-1 text-muted-foreground" tabIndex={0} />}
+                              render={<div className={secondaryLineClass} tabIndex={0} />}
                             >
                               +{formatMs(query.offset * recordedQueryTime)}
                             </TooltipTrigger>
@@ -480,7 +482,7 @@ export function ModelsPanel() {
                 <tr key={fqcn} className={rowClass}>
                   <td className={cellClass}>
                     <div className="truncate font-medium">{fqcn.split("\\").pop()}</div>
-                    <div className="truncate font-mono text-muted-foreground">{fqcn}</div>
+                    <div className={cn("truncate font-mono", secondaryLineClass)}>{fqcn}</div>
                   </td>
                   <td className={cellClass}>
                     <div className="flex items-center gap-3">
