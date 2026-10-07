@@ -2307,6 +2307,10 @@ code {
   /* One step up, for controls on a surface that already uses --shell-control. */
   --shell-control-raised: var(--card);
   --shell-control-raised-border: var(--shell-divider-header);
+  /* Shape of toolbar groups and soft search fields, and of the buttons inside groups.
+     Pill: 9999px / 9999px. Rounded rectangle: var(--radius) / 6px. */
+  --toolbar-radius: 9999px;
+  --toolbar-control-radius: 9999px;
   /* What ToolbarGroup paints; a surface re-roots these to raise its groups. */
   --toolbar-group-fill: var(--shell-control);
   --toolbar-group-border: var(--shell-divider-header);
