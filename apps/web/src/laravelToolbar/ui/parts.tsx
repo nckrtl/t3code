@@ -298,7 +298,7 @@ export function UnderlineTabs<T extends string>({
             <span
               role="img"
               aria-label={warnings[id]}
-              className="absolute top-3 -right-1.5 size-1.5 rounded-full bg-warning"
+              className="absolute top-2.5 -right-1.5 size-1.5 rounded-full bg-warning"
             />
           ) : null}
           {value === id ? (
