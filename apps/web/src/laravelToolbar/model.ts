@@ -31,7 +31,7 @@ export interface Query {
   readonly durationMs: number;
   readonly isDuplicate: boolean;
   readonly isSlow: boolean;
-  /** Start and length as shares (0–1) of the request's wall time. */
+  /** Start and length as shares (0–1) of cumulative recorded query time. */
   readonly offset: number;
   readonly share: number;
   readonly file: string | null;

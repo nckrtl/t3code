@@ -3,6 +3,7 @@ import { type ReactNode, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { useToolbarTab } from "../context";
@@ -267,6 +268,7 @@ export function DatabasePanel() {
   const { selected, openSource } = useToolbarTab();
   const [filter, setFilter] = useState<QueryFilter>("all");
   const all = selected ? toQueries(selected) : [];
+  const recordedQueryTime = all.reduce((sum, query) => sum + query.durationMs, 0);
   const duplicateCount = all.filter((query) => query.isDuplicate).length;
   const slowCount = all.filter((query) => query.isSlow).length;
   const sorting = useTableSort();
@@ -368,7 +370,7 @@ export function DatabasePanel() {
                             <div className="flex min-w-0 items-center gap-2">
                               <SqlText sql={query.sql} />
                             </div>
-                            <div className="mt-0.5 flex items-center gap-2">
+                            <div className="mt-1 flex items-center gap-2">
                               {location ? (
                                 <SourceLink
                                   onOpen={
@@ -389,10 +391,15 @@ export function DatabasePanel() {
                         </td>
                         <td className="px-3 py-2.5 text-right align-middle font-mono tabular-nums">
                           <div>{formatMs(query.durationMs)}</div>
-                          <div className="text-muted-foreground">
-                            +{formatMs(query.offset * wall)}
-                          </div>
-                          {/* When the query ran within the request, as a share of the row width. */}
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={<div className="mt-1 text-muted-foreground" tabIndex={0} />}
+                            >
+                              +{formatMs(query.offset * recordedQueryTime)}
+                            </TooltipTrigger>
+                            <TooltipPopup>Database time spent on earlier queries</TooltipPopup>
+                          </Tooltip>
+                          {/* Position within cumulative recorded query time, excluding time between queries. */}
                           <div className="absolute inset-x-3 bottom-0 h-px">
                             <div
                               className="absolute inset-y-0 bg-primary/60"
