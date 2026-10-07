@@ -15,7 +15,7 @@ import {
   type ProcessStatus,
   splitLogLevels,
 } from "../orbit";
-import { EmptyRow, MetaDot, PanelShell, secondaryLineClass } from "./parts";
+import { EmptyRow, PanelShell, secondaryLineClass } from "./parts";
 
 const LOG_LINES = 200;
 const PROCESS_REFRESH_MS = 5_000;
@@ -249,11 +249,6 @@ export function OrbitPanel() {
                 {running.length} of {processes.length}
               </span>{" "}
               running
-            </span>
-            <MetaDot />
-            <span className="truncate">
-              {state.page.domain}
-              {state.page.nodeName ? ` on ${state.page.nodeName}` : ""}
             </span>
           </span>
           {processes.length > 0 ? (
