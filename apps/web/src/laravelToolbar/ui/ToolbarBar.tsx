@@ -124,7 +124,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           </RenderErrorBoundary>
         </div>
       ) : null}
-      {/* Narrow browsers drop the route name, then the versions; the URI truncates. */}
+      {/* Narrow browsers drop the versions; the route name truncates. */}
       <div className="@container flex h-9 items-center gap-0.5 overflow-hidden border-t border-border/60 bg-background px-2">
         {item(
           "requests",
@@ -141,12 +141,9 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
               <>
                 <StatusBadge status={summary.status} />
                 <span className="shrink-0 font-mono text-muted-foreground">{summary.method}</span>
-                <span className="truncate font-mono">{summary.uri}</span>
-                {summary.routeName ? (
-                  <span className="hidden truncate text-muted-foreground @3xl:inline">
-                    {summary.routeName}
-                  </span>
-                ) : null}
+                <span className="truncate text-muted-foreground">
+                  {summary.routeName ?? "Unnamed route"}
+                </span>
               </>,
               true,
             )
