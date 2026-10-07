@@ -2260,6 +2260,8 @@ code {
   --shell-overlay: color-mix(in srgb, var(--popover) 94%, transparent);
   --shell-highlight: color-mix(in srgb, var(--foreground) 6%, transparent);
   --shell-divider: color-mix(in oklab, var(--sidebar) 90%, var(--foreground));
+  --shell-divider-header: color-mix(in oklab, var(--sidebar) 84%, var(--foreground));
+  --shell-header-height: 44px;
 }
 
 :root.dark {
@@ -2282,4 +2284,29 @@ code {
   /* Opaque, so the frame showing through the 1px gap cannot brighten it: a
      hairline just above the frame (92%), so it reads in the header and the cards. */
   --shell-divider: color-mix(in oklab, var(--sidebar) 89%, var(--foreground));
+  /* The header runs on the lighter frame, so its stretch of divider is lighter. */
+  --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
+}
+
+/* Full-height shell dividers: one color through the glass header, another
+   through the cards below it. A border image wins over the global dark-mode
+   border color, so no !important is needed. */
+@utility shell-divider-r {
+  border-right-width: 1px;
+  border-image: linear-gradient(
+      to bottom,
+      var(--shell-divider-header) var(--shell-header-height),
+      var(--shell-divider) var(--shell-header-height)
+    )
+    1;
+}
+
+@utility shell-divider-l {
+  border-left-width: 1px;
+  border-image: linear-gradient(
+      to bottom,
+      var(--shell-divider-header) var(--shell-header-height),
+      var(--shell-divider) var(--shell-header-height)
+    )
+    1;
 }
