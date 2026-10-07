@@ -390,14 +390,13 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 @utility dropdown-glass {
-  background: color-mix(
-    in srgb,
-    var(--popover) 18%,
-    color-mix(in srgb, var(--popover) var(--glass-opacity), transparent)
-  );
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border: 1px solid color-mix(in srgb, var(--contrast-foreground) 10%, transparent);
+  /* Floating surfaces share the shell's overlay: mostly fill, heavy blur. Rows
+     inside highlight with the shell's highlight instead of the faint accent. */
+  --accent: var(--shell-highlight);
+  background: var(--shell-overlay);
+  -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
+  backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
+  border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
 
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     background: var(--popover) !important;
@@ -1170,12 +1169,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     --muted-foreground: #a3a3a3;
     --border: rgb(255 255 255 / 8%);
     --input: rgb(255 255 255 / 18%);
-    --sidebar: rgba(18, 18, 23, 0.65);
+    --sidebar: var(--card);
     --sidebar-foreground: var(--foreground);
     --sidebar-muted-foreground: var(--muted-foreground);
     --sidebar-control-surface: rgba(255, 255, 255, 0.05);
     --sidebar-row-hover: color-mix(in srgb, var(--contrast-foreground) 8%, transparent);
-    --sidebar-row-active: rgb(255 255 255 / 10%);
+    --sidebar-row-active: color-mix(in srgb, var(--foreground) 8%, transparent);
     --sidebar-row-selected: color-mix(in srgb, var(--contrast-foreground) 7%, transparent);
     --sidebar-border: var(--border);
     --sidebar-stage-fade: var(--card);
@@ -2234,4 +2233,42 @@ code {
 
 .composer-tiptap li[data-checked] > div > p {
   margin: 0;
+}
+
+/* Windowed shell layers. The structure follows the ChatGPT desktop app (a
+   mostly opaque frosted frame with heavy blur, so windows behind it stay calm;
+   an inset thread panel; darker chat and panel cards; raised controls), but
+   every color comes from the active theme's own roles: canvas for the cards,
+   sidebar for the thread panel, overlay for floating surfaces. Mixes run in
+   oklab toward the theme's foreground so each theme keeps its hue. */
+:root {
+  /* Gap between the inset cards and the window edge. */
+  --shell-inset: 2px;
+  --shell-blur: 40px;
+  --shell-saturate: 1.6;
+  --shell-fill: color-mix(in srgb, var(--sidebar) 88%, transparent);
+  --shell-panel: color-mix(in srgb, var(--background) 45%, transparent);
+  --shell-card: color-mix(in srgb, var(--background) 96%, transparent);
+  --shell-raised: var(--background);
+  --shell-overlay: color-mix(in srgb, var(--popover) 94%, transparent);
+  --shell-highlight: color-mix(in srgb, var(--foreground) 6%, transparent);
+  --shell-divider: color-mix(in srgb, var(--foreground) 9%, transparent);
+}
+
+:root.dark {
+  --shell-fill: color-mix(
+    in srgb,
+    color-mix(in oklab, var(--sidebar) 92%, var(--foreground)) 86%,
+    transparent
+  );
+  --shell-panel: color-mix(in srgb, var(--sidebar) 88%, transparent);
+  --shell-card: color-mix(in srgb, var(--background) 94%, transparent);
+  --shell-raised: color-mix(in oklab, var(--background) 86%, var(--foreground));
+  --shell-overlay: color-mix(
+    in srgb,
+    color-mix(in oklab, var(--popover) 96%, var(--foreground)) 94%,
+    transparent
+  );
+  --shell-highlight: color-mix(in srgb, var(--foreground) 8%, transparent);
+  --shell-divider: color-mix(in srgb, var(--foreground) 9%, transparent);
 }

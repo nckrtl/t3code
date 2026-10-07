@@ -130,7 +130,7 @@ export function PreviewPanelShell(props: {
               // The split divider runs the full height, through the header, and matches the
               // sidebar's divider.
               props.splitHeader
-                ? "border-l border-zinc-200 dark:border-white/5"
+                ? "border-l border-(--shell-divider)!"
                 : "rounded-tr-lg rounded-br-lg border-l border-border",
             )
           : "w-full",

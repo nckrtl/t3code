@@ -1154,11 +1154,12 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                   onAuxClick={(event) => handleTabAuxClick(event, surface)}
                   onContextMenu={(event) => void handleTabContextMenu(event, surface)}
                   className={cn(
-                    "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
+                    "cursor-pointer group/tab flex h-7 max-w-40 shrink-0 items-center gap-1 rounded-lg pr-2 pl-2 text-xs",
                     ownsDesktopTitleBar && "[-webkit-app-region:no-drag]",
+                    // Tabs sit on the glass header: a soft highlight pill, not a solid accent.
                     active
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                      ? "bg-(--shell-highlight) text-foreground"
+                      : "text-muted-foreground hover:bg-(--shell-highlight) hover:text-foreground",
                   )}
                 >
                   <PanelTabCloseButton
@@ -1413,7 +1414,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           "flex min-h-0 flex-1 flex-col",
           // Same card as the chat and thread panel: tinted glass, right corners match the thread panel.
           props.mode === "inline" &&
-            "overflow-hidden rounded-tr-lg rounded-br-lg bg-black/[0.05] dark:bg-black/25",
+            "overflow-hidden rounded-tr-lg rounded-br-lg bg-(--shell-card)",
         )}
         data-right-panel-surface-content
       >

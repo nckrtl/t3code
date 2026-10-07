@@ -9799,7 +9799,7 @@ export default function ChatView(props: ChatViewProps) {
   });
 
   return (
-    <div className="relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden [--sidebar:rgba(18,18,23,0.65)] bg-sidebar/65 backdrop-blur-2xl surface-grain">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-(--shell-fill) backdrop-blur-(--shell-blur) backdrop-saturate-(--shell-saturate)">
       <Dialog
         open={
           deviceSetupThread !== null &&
@@ -9876,15 +9876,15 @@ export default function ChatView(props: ChatViewProps) {
           />
         </WorkspacePageHeader>
 
-        {/* Messages and the terminal share one card. Its 4px inset matches the thread panel, and its right corners match that panel's left corners. */}
+        {/* Messages and the terminal share one card. Its --shell-inset gap matches the thread panel, and its right corners match that panel's left corners. */}
         <div
           data-chat-terminal-group=""
           className={cn(
             // Same fill as the thread panel, so both cards sit on the frosted shell alike.
-            "relative z-0 mb-[4px] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black/[0.05] dark:bg-black/25",
+            "relative z-0 mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-(--shell-card)",
             rightPanelPresent && !shouldUseRightPanelSheet
               ? null
-              : "mr-[4px] rounded-tr-lg rounded-br-lg",
+              : "mr-(--shell-inset) rounded-tr-lg rounded-br-lg",
           )}
         >
           {/* Chat column */}
@@ -10373,7 +10373,7 @@ export default function ChatView(props: ChatViewProps) {
       {rightPanelPresent && !shouldUseRightPanelSheet && activeThreadRef ? (
         <div
           className={cn(
-            "flex h-full min-h-0 flex-col pb-[4px] pr-[4px]",
+            "flex h-full min-h-0 flex-col pb-(--shell-inset) pr-(--shell-inset)",
             rightPanelMaximized ? "min-w-0 flex-1" : "shrink-0",
           )}
           data-right-panel-inset=""
