@@ -1,0 +1,62 @@
+# Laravel Toolbar design preview
+
+Live at `http://10.44.0.9:5799/toolbar-mockup.html` on mini (WireGuard).
+This page imports the production `laravelToolbar/ui/ToolbarBar.tsx`, its panels,
+context, store, T3 components and CSS from this checkout. There is no second toolbar UI.
+
+## Working on it
+
+- The active checkout is `~/.cache/t3-patches-045`, branch `nckrtl`. Edit
+  `apps/web/src/laravelToolbar/ui/` to change both the preview and the shipped toolbar.
+  Vite updates the preview on save. Commit and push accepted changes to `origin/nckrtl`.
+- `main.tsx` supplies browser chrome, a page screenshot and the theme. `source.ts` and
+  `fixtures.ts` supply request payloads and a simulated Orbit source through the same
+  `ToolbarProvider` used in the desktop browser. No T3 server or live database is needed.
+- Requests have different recorded timings, memory, queries, models and responses.
+  The PHP and PHP-FPM details and Orbit processes are illustrative. Start, stop and
+  restart only change this preview's in-memory process data. Reload resets the fixtures.
+  Source paths are examples; this preview has no editor connection.
+- `panel=` opens and pins requests, request, timings, memory, database, models, orbit
+  or environment. `theme=light` and `theme=dark` select stock themes; no theme argument
+  uses Nick's Dark Ocean theme. Check Dark Ocean and light after color changes.
+- Nick can open the URL in T3's browser and annotate it. Use screenshots to verify changes.
+  Keep temporary verification screenshots outside the repo.
+
+## Running it
+
+LaunchAgent `com.nckrtl.toolbar-mockup` runs Vite from this checkout's `apps/web`
+using Node 24, bound to `10.44.0.9:5799`. It runs Node directly so it can access Data.
+Log: `~/.local/share/toolbar-mockup/server.log`. If stopped:
+
+```sh
+launchctl kickstart -k gui/$(id -u)/com.nckrtl.toolbar-mockup
+```
+
+For a separate manual preview, from `apps/web`:
+
+```sh
+PATH="$HOME/.nvm/versions/node/v24.21.0/bin:$PATH" \
+node node_modules/vite-plus/bin/vp dev --host 10.44.0.9 --port 5798 --strictPort
+```
+
+Open `/toolbar-mockup.html` on that port. Do not start an app server against `~/.t3`.
+The preview entry and images are imported only by this development HTML page; the
+normal web/desktop entry does not load fixture data.
+
+## Design rules
+
+- Two sizes: 12 px (`text-xs`) for text, 18 px (`text-lg`) for stat values.
+  Medium weight for emphasis. Mono for code, paths, SQL, method and status; system
+  font with tabular numbers for counts, durations and labels.
+- Panels use `bg-background text-foreground`, the same canvas as the bar.
+  Dark Ocean's `bg-popover` is the lighter small-menu surface.
+- One panel at a time; hover opens, click pins. Panels are edge to edge, attached to
+  the bar, `h-96`, with scrolling content and thin dividers. No cards or rounded corners.
+- Underlined tabs inside panels; colored pills for status; thin vertical stage/process
+  markers; stage colors come from the Laravel payload. Source links have faint underlines.
+- Follow the fork's lint rules and shared component variants. Use duty-cycled status
+  animations rather than continuously spinning icons.
+
+The previous standalone mockup, frozen v1 and comparison screenshots remain archived
+in `~/apps/t3code-design`, branch `laravel-toolbar-mockup`, private repo
+`nckrtl/t3code-design`. That checkout is no longer the active preview source.

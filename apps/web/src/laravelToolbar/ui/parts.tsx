@@ -1,5 +1,5 @@
 // Building blocks shared by the toolbar panels. Rules in the design notes
-// (t3code-design: laravelToolbarMockup/DESIGN.md): 12 px text, 18 px stat values,
+// (laravelToolbarPreview/DESIGN.md): 12 px text, 18 px stat values,
 // medium weight, mono only for code, flush grid with thin dividers, no cards.
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
