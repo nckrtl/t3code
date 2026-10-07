@@ -21,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
+import { ToolbarGroup } from "../ToolbarGroup";
 
 interface Props {
   url: string;
@@ -68,10 +69,6 @@ interface Props {
 }
 
 const NOOP = () => {};
-
-/** Bordered button group in the chrome row, shaped like the address field beside it. */
-const CHROME_GROUP_CLASS_NAME =
-  "flex h-8 items-center gap-0.5 rounded-lg border border-(--shell-divider-header)! bg-(--shell-control) px-0.75 [--control-radius:6px]";
 
 export function PreviewChromeRow({
   url,
@@ -126,7 +123,7 @@ export function PreviewChromeRow({
         className="flex h-10 min-h-10 shrink-0 items-center gap-2 border-b border-(--shell-divider)! bg-background px-2 in-data-[preview-panel-mode=inline]:h-auto in-data-[preview-panel-mode=inline]:min-h-0 in-data-[preview-panel-mode=inline]:py-toolbar"
         data-surface-subheader
       >
-        <div className={CHROME_GROUP_CLASS_NAME} role="group" aria-label="Navigation">
+        <ToolbarGroup role="group" aria-label="Navigation">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -178,7 +175,7 @@ export function PreviewChromeRow({
             </TooltipTrigger>
             <TooltipPopup>{loading ? "Loading…" : "Refresh"}</TooltipPopup>
           </Tooltip>
-        </div>
+        </ToolbarGroup>
 
         {leadingActions}
 
@@ -243,7 +240,7 @@ export function PreviewChromeRow({
           ) : null}
         </InputGroup>
 
-        <div className={cn(CHROME_GROUP_CLASS_NAME, "shrink-0 empty:hidden")}>
+        <ToolbarGroup className="shrink-0 empty:hidden">
           {onPickElement ? (
             <Tooltip>
               <TooltipTrigger
@@ -321,7 +318,7 @@ export function PreviewChromeRow({
             </Tooltip>
           ) : null}
           {trailingActions}
-        </div>
+        </ToolbarGroup>
       </form>
       <div
         aria-hidden

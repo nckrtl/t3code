@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 import { toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useComposerHandleContext } from "~/composerHandleContext";
@@ -74,7 +75,7 @@ function FileSearchField(props: {
   value: string;
 }) {
   return (
-    <InputGroup variant="soft" className="mr-2 h-8 min-w-0 flex-1">
+    <InputGroup variant="soft" className="h-8 min-w-0 flex-1">
       <InputGroupAddon>
         <SearchIcon aria-hidden />
       </InputGroupAddon>
@@ -492,7 +493,7 @@ export default function FileBrowserPanel({
       data-file-browser-panel={`${environmentId}:${cwd}`}
     >
       <div
-        className="flex shrink-0 items-center gap-1 border-b border-border/60 bg-background py-toolbar ps-2 pe-toolbar-end in-data-[preview-panel-mode=inline]:border-b-transparent"
+        className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-background py-toolbar ps-2 pe-toolbar-end in-data-[preview-panel-mode=inline]:border-b-transparent"
         data-surface-subheader
       >
         <FileSearchField
@@ -502,35 +503,39 @@ export default function FileBrowserPanel({
           onValueChange={handleSearchValueChange}
           onClose={closeSearch}
         />
-        <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
-        {directoryPaths.length > 0 ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label={
-                    expandAll || allDirectoriesExpanded
-                      ? "Collapse all folders"
-                      : "Expand all folders"
-                  }
-                  onClick={toggleAllDirectories}
-                />
-              }
-            >
-              {allDirectoriesExpanded ? (
-                <ChevronsDownUpIcon className="size-3.5" />
-              ) : (
-                <ChevronsUpDownIcon className="size-3.5" />
-              )}
-            </TooltipTrigger>
-            <TooltipPopup>
-              {expandAll || allDirectoriesExpanded ? "Collapse all folders" : "Expand all folders"}
-            </TooltipPopup>
-          </Tooltip>
-        ) : null}
+        <ToolbarGroup className="shrink-0">
+          <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
+          {directoryPaths.length > 0 ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={
+                      expandAll || allDirectoriesExpanded
+                        ? "Collapse all folders"
+                        : "Expand all folders"
+                    }
+                    onClick={toggleAllDirectories}
+                  />
+                }
+              >
+                {allDirectoriesExpanded ? (
+                  <ChevronsDownUpIcon className="size-3.5" />
+                ) : (
+                  <ChevronsUpDownIcon className="size-3.5" />
+                )}
+              </TooltipTrigger>
+              <TooltipPopup>
+                {expandAll || allDirectoriesExpanded
+                  ? "Collapse all folders"
+                  : "Expand all folders"}
+              </TooltipPopup>
+            </Tooltip>
+          ) : null}
+        </ToolbarGroup>
       </div>
       {error || pathSearch.error ? (
         <button
