@@ -73,7 +73,7 @@ export function TimingsPanel() {
             {stages.map((stage) => (
               <div
                 key={stage.label}
-                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-muted/50"
+                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-foreground/4"
               >
                 <div className="flex w-36 shrink-0 items-center gap-2">
                   <RowMarker color={stage.color} />
@@ -182,7 +182,7 @@ export function MemoryPanel() {
             {steps.map((stage) => (
               <div
                 key={stage.label}
-                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-muted/50"
+                className="flex items-center gap-3 px-3 py-3 text-xs hover:bg-foreground/4"
               >
                 <div className="flex w-36 shrink-0 items-center gap-2">
                   <RowMarker color={stage.color} />
@@ -354,7 +354,7 @@ export function DatabasePanel() {
                     return (
                       <tr
                         key={`${query.offset}:${query.sql}`}
-                        className="relative border-b text-xs hover:bg-muted/50"
+                        className="relative border-b text-xs hover:bg-foreground/4"
                       >
                         <td className="relative px-3 py-2.5 align-middle">
                           <RowMarker

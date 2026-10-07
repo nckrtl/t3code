@@ -169,7 +169,7 @@ export function RequestsPanel() {
                   className={cn(
                     rowClass,
                     "cursor-pointer",
-                    summary.id === selectedId && "bg-muted",
+                    summary.id === selectedId && "bg-(--shell-highlight)",
                   )}
                 >
                   <td className={cellClass}>

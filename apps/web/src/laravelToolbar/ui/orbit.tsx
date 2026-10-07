@@ -107,7 +107,7 @@ function ProcessItem({
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-center gap-2 border-b py-2.5 pr-1.5 pl-3 text-xs hover:bg-muted/50",
+        "flex cursor-pointer items-center gap-2 border-b py-2.5 pr-1.5 pl-3 text-xs hover:bg-foreground/4",
         selected && "bg-accent hover:bg-accent",
       )}
       onClick={onSelect}
@@ -159,7 +159,7 @@ const LEVEL_CLASS: Record<string, string> = {
 /** One log line: muted time, colored level words, the rest as written. */
 function LogLineRow({ time, text }: { time: string | null; text: string }) {
   return (
-    <div className="flex gap-3 px-3 py-0.5 hover:bg-muted/40">
+    <div className="flex gap-3 px-3 py-0.5 hover:bg-foreground/4">
       {time ? <span className="shrink-0 text-muted-foreground">{time}</span> : null}
       <span className="min-w-0 whitespace-pre-wrap break-all">
         {splitLogLevels(text).map(({ offset, text: part, level }) => (

@@ -107,9 +107,7 @@ export function Section({
 
 /** One strip of stats split by thin dividers. */
 export function StatStrip({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid auto-cols-fr grid-flow-col divide-x border-b bg-muted/20">{children}</div>
-  );
+  return <div className="grid auto-cols-fr grid-flow-col divide-x border-b">{children}</div>;
 }
 
 export const secondaryLineClass = "mt-1 text-2xs leading-4 text-muted-foreground";
@@ -315,5 +313,5 @@ export const tableClass = "w-full table-fixed text-left text-xs";
 export const headRowClass = "border-b";
 export const headCellClass =
   "sticky top-0 z-10 h-9 bg-background px-3 font-medium text-muted-foreground";
-export const rowClass = "border-b transition-colors hover:bg-muted/50";
+export const rowClass = "border-b transition-colors hover:bg-foreground/4";
 export const cellClass = "px-3 py-3 align-middle";
