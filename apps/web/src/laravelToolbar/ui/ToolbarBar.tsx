@@ -187,7 +187,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                 }}
               />
               <div
-                className="pointer-events-auto absolute overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+                className="pointer-events-auto absolute overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-control) text-foreground shadow-lg [--background:var(--shell-control)]"
                 style={{
                   inset: TOOLBAR_SHEET_INSET,
                 }}
