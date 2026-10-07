@@ -13,7 +13,11 @@ upstream merges.
 Sources: the fork's `style(web)` commits after the upstream merge-base
 (`git merge-base nckrtl upstream/main`), annotation records in
 `~/.t3/dev/annotations/done`, and the user's own chat direction. The full token
-table is in [references/tokens.md](references/tokens.md).
+table is in [references/tokens.md](references/tokens.md). How to run the fork in
+desktop dev mode with the annotator (the loop that produced most of these
+rules) is in [references/dev-workflow.md](references/dev-workflow.md); how to
+build and install the fork's desktop app is in
+[references/build.md](references/build.md).
 
 ## When to use
 
@@ -62,17 +66,27 @@ table is in [references/tokens.md](references/tokens.md).
   `rounded-tile` inside the 10px rail button. Hover shapes must follow the
   shell curve (the Settings Back button got extra bottom padding for this).
 - Headers are 44px (`--shell-header-height`) and transparent over the frosted
-  frame. Center header controls on that height.
+  frame. Center header controls on that height. In Electron the fixed panel
+  controls use `h-(--shell-header-height)`, and the macOS traffic lights center
+  on 44px too (`MACOS_SHELL_HEADER_HEIGHT` in
+  `apps/desktop/src/window/DesktopWindow.ts`), not on the 52px native titlebar.
+- The fixed header controls sit `--workspace-controls-right` (11px) from the
+  edge, so the last header toggle centers over the last group button in the
+  panel below.
 - Chat, right panel and Settings content are cards on `bg-(--shell-card)` that
-  re-root `[--background:var(--shell-card)]` and
-  `[--terminal-background:var(--shell-card)]`, so the content inside follows.
+  re-root `[--background:var(--shell-card)]`,
+  `[--terminal-background:var(--shell-card)]` and (right panel)
+  `[--code-background:var(--shell-card)]`, so the content inside follows: the
+  file viewer, diffs, explorer and chat share one background. Chat code blocks
+  keep their own code background.
 - Page containers inside the window use `h-full`, never `h-dvh` (`h-dvh`
   overflowed the window and clipped the inset).
 - The shell containers use `backdrop-blur`, which makes them stacking contexts.
   The browser page is a fixed webview layer (z 30) mounted at the app root, so
   any overlay that must sit above the page (flyouts, sheets) portals to `body`
   with `fixed` positioning. A `z-*` inside the shell cannot rise above it (#122:
-  the Laravel toolbar flyout went hidden).
+  the Laravel toolbar flyout went hidden). Measure the anchor with
+  `getBoundingClientRect` and a `ResizeObserver` while open.
 - To lighten every default border inside one surface, re-root
   `[--contrast-border:<token>]` on it. `border-border` reads `--contrast-border`,
   which is computed at `:root` from `--border`, so re-rooting `--border` does
@@ -80,6 +94,14 @@ table is in [references/tokens.md](references/tokens.md).
 - Floating surfaces (menus, selects, popovers, tooltips, toasts, annotation
   panels) use `dropdown-glass` with `rounded-xl` and `rounded-lg` rows. The
   user wants mostly opaque fills with heavy blur, so content behind stays calm.
+  Menu separators and section dividers inside glass use `--glass-divider`.
+- Large floating sheets (the Laravel toolbar flyout) float as a card: inset
+  from the panel sides and from the bar below by the bar's side padding
+  (`TOOLBAR_SHEET_INSET`, 6px), `rounded-xl` (large surfaces read sharper at
+  the same radius), the `--shell-control` fill with the group border, and a
+  click-through band behind it with a two-layer progressive backdrop blur,
+  strongest at the bar and clear at the sheet's top. Resizing stops at the
+  same inset from the top of the page area.
 
 ### Surfaces
 
@@ -91,8 +113,16 @@ table is in [references/tokens.md](references/tokens.md).
   settings card has no fill of its own.
 - Empty-state icon tiles use `--shell-tile` (lighter than the card) with a
   `--shell-tile-border` border, not `bg-card`.
-- Soft fields use `--shell-field`. `ToolbarGroup` uses `--shell-control`,
-  slightly darker than the field.
+- Soft fields use `--shell-field`, slightly lighter than `ToolbarGroup`'s
+  `--shell-control`.
+- `ToolbarGroup` paints `--toolbar-group-fill` and `--toolbar-group-border`
+  (default `--shell-control` / `--shell-divider-header`). A surface that itself
+  uses `--shell-control` (the toolbar sheet) re-roots them to
+  `--shell-control-raised` / `--shell-control-raised-border`, so its groups
+  stay one step lighter than it.
+- Table and list rows inside panels are transparent. Hover is
+  `bg-foreground/4`; the selected row is `--shell-highlight` (lighter than the
+  surface, never darker `bg-muted`). Tab strips have no fill either.
 - Selected rail workspace: `ring-2 ring-inset ring-sidebar-foreground/90`, tile
   shrunk to leave a visible gap inside the ring.
 
@@ -112,6 +142,10 @@ table is in [references/tokens.md](references/tokens.md).
   exists.
 - List rows (Agents, keybindings, settings) get a divider between rows, not
   after the last one.
+- Chat timeline status rows (Working, worktree setup) use
+  `border-(--shell-divider-header)!` under them.
+- Progress or duration bars drawn at a row's bottom sit on the row divider
+  (`-bottom-px`), not 1px above it.
 
 ### Typography
 
@@ -132,16 +166,34 @@ table is in [references/tokens.md](references/tokens.md).
 - Switches are pills (`--switch-radius: 9999px`). The checked track is
   `--switch-on` on every switch, including menu switch items.
 - Button and toggle corners come from `--control-radius`, set once on the
-  container: 9999px in the chat and Settings headers, 6px in the right panel
-  and inside `ToolbarGroup`. Toggles and toggle groups follow it too.
-- Search and address fields use `InputGroup variant="soft"`: `rounded-lg`, a
-  `--shell-divider-header` border, a leading lucide search icon, 13px text, and
-  an icon inset equal to the vertical inset.
-- `ToolbarGroup` (`components/ToolbarGroup.tsx`) wraps related icon buttons:
-  h-8, `rounded-lg`, same height and radius as the soft field. Group only
-  tools that belong together (navigation; page actions). Do not give each
-  action its own box, and do not put every action in one group.
+  container: 9999px in the chat and Settings headers, 6px in the right panel.
+  Inside `ToolbarGroup` it is `--toolbar-control-radius`. Toggles and toggle
+  groups follow it too.
+- Toolbar shape is one switch in `index.css`: `--toolbar-radius` (groups and
+  soft fields) and `--toolbar-control-radius` (buttons inside groups). Current
+  look is pills (`9999px` / `9999px`); the alternative the user also liked is
+  the rounded rectangle (`var(--radius)` / `6px`). Change both together.
+- Search and address fields use `InputGroup variant="soft"`: h-8,
+  `rounded-(--toolbar-radius)`, a `--shell-divider-header` border, a leading
+  lucide search icon, 13px text, and an icon inset equal to the vertical inset.
+  The browser address bar uses the same field as the Files search.
+- `ToolbarGroup` (`components/ToolbarGroup.tsx`) wraps related controls in
+  every panel toolbar: browser chrome, Files, file preview, terminal, the
+  Laravel toolbar bar and its panel headers, and the compact open-in-editor
+  picker. h-8, same height and radius as the soft field, 3px inner padding so
+  24px buttons sit 4px in, `empty:hidden`. Buttons inside are
+  `variant="ghost"` `size="icon-xs"` (or `xs` with a label). Group only tools
+  that belong together (navigation; page actions; view toggles; file actions;
+  request metrics). Do not give each action its own box, and do not put every
+  action in one group.
 - Gap between toolbar groups is 8px (`gap-2`).
+- Pressed toggles in toolbars have no fill. The icon brightens to
+  `text-foreground` instead; never primary blue.
+- Chat header action buttons are 28px on desktop (the touch size), icons
+  unchanged, while the header stays 44px. Plain CSS in `index.css` keyed to the
+  element and the `sm:size-6` / `sm:h-6` / `sm:w-6` classes keeps icon-only
+  buttons circular. Key on the element, not `[data-slot="button"]`: a Button
+  rendered through a tooltip or menu trigger takes the trigger's `data-slot`.
 - Header and action buttons that look like buttons use `variant="outline"`
   with a visible border. Icon-to-label gap is 6px.
 - Key caps use `Kbd variant="raised"`: `--shell-highlight` fill, light text.
@@ -160,7 +212,11 @@ table is in [references/tokens.md](references/tokens.md).
 
 - Scroll areas in cards use `scrollbar-gutter-both scrollbar-inset`: a fully
   rounded thumb 5px from the side, top and bottom edges, so it follows the
-  card corner. Settings and the chat timeline use it.
+  card corner. Settings, the chat timeline, the file preview and the read-only
+  source preview use it.
+- Pierre file trees render in a shadow root, which `.scrollbar-inset` cannot
+  reach. `pierre-tree-theme.ts` injects the same rules (plus 4px track margin)
+  through `PIERRE_TREE_UNSAFE_CSS`.
 - `.scrollbar-inset` is plain unlayered CSS on purpose. A Tailwind utility
   loses to the global `::-webkit-scrollbar` rules.
 
@@ -184,6 +240,11 @@ table is in [references/tokens.md](references/tokens.md).
   where the first tab icon starts. Tree icons align with the search icon.
 - The terminal's first line centers on the action group and starts with the
   first tab (`ps-4 pt-4`).
+- The file preview's first code line sits level with the explorer's search
+  placeholder (`pt-1.5` on the scroller over Pierre's 8px block gap).
+- An end group follows the corner around it: its side inset equals its
+  vertical inset (toolbar sheet panel headers `pe-1.5` in a 44px row; the
+  Laravel toolbar bar `px-1.5`).
 - Bottom padding matches top padding. Side inset matches top inset.
 - Tree rows are 28px. Tree carets are 12px and use `--muted-foreground` in
   Files and Diff.
@@ -195,9 +256,8 @@ Do not reintroduce these:
 
 - Rounded-square switches (`--switch-radius: 6px`). Reverted to pills.
 - A separate bordered box per browser action (`d0d43e2b40`, reverted).
-- A fully rounded (pill) address bar or Files search. Replaced by the
-  `rounded-lg` soft field.
-- A fully rounded navigation group. It now matches the field shape.
+- A pill-only address bar with its own variant (`pill`). Fields share the
+  soft variant; pill or rectangle is now the `--toolbar-radius` switch.
 - Inverted key caps (light fill, dark text). Replaced by `raised`.
 - ChatGPT's own colors. Keep the theme palette.
 - Cards made "too dark", and headings darker than the header.
@@ -215,6 +275,10 @@ Do not reintroduce these:
      block at the end, `shell-divider-r|l`, mock window classes.
    - `lib/utils.ts` tailwind-merge registration of `text-ui`.
    - `components/ToolbarGroup.tsx`, `ui/input-group.tsx` (`soft`),
+     `files/fileSurfaceChrome.tsx` (ghost actions), `chat/OpenInPicker.tsx`
+     (compact group), `laravelToolbar/ui/*` (sheet, groups, rows),
+     `pierre-tree-theme.ts` (tree scrollbar),
+     `apps/desktop/src/window/DesktopWindow.ts` (traffic lights),
      `ui/kbd.tsx` (`raised`), `ui/switch.tsx`, `ui/menu.tsx`,
      `ui/toggle.tsx`, `ui/toggle-group.tsx`, `ui/sidebar.tsx` (`row`,
      dividers), `ui/empty.tsx`, `chat/ComposerControl.tsx` (`field`).
@@ -234,7 +298,9 @@ Do not reintroduce these:
    `h-dvh` page frame to `h-full`; `bg-card` tile to `--shell-tile`;
    `text-xs` panel text to `text-ui`; mono version text to sans; ungrouped
    toolbar icon buttons to `ToolbarGroup`; `rounded-md` hover rows to the
-   container's radius or `--control-radius`; new popups to `dropdown-glass`.
+   container's radius or `--control-radius`; new popups to `dropdown-glass`;
+   `bg-muted` selected rows to `--shell-highlight`; `outline` buttons in panel
+   toolbars to ghost buttons in a `ToolbarGroup`.
 
 3. Check that new scroll containers in cards use `scrollbar-inset`, and new
    switches use the primitive (no own track color).

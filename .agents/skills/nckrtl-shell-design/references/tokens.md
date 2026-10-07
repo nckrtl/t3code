@@ -46,12 +46,26 @@ values before you change a token.
 
 ## Controls
 
-| Token                   | Value                           | Use                                                                                                       |
-| ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `--switch-on`           | primary 70% + fg                | Checked track of every switch (`ui/switch.tsx`, menu switch item).                                        |
-| `--switch-radius`       | 9999px                          | Switch track. Keep the pill. 6px gives the rejected rounded square.                                       |
-| `--switch-thumb-radius` | `max(switch-radius - 2px, 1px)` | Knob, concentric with the track.                                                                          |
-| `--control-radius`      | set per container               | Button and toggle corners. Chat and Settings headers: 9999px. Right panel card: 6px. `ToolbarGroup`: 6px. |
+| Token                   | Value                           | Use                                                                                                                              |
+| ----------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `--switch-on`           | primary 70% + fg                | Checked track of every switch (`ui/switch.tsx`, menu switch item).                                                               |
+| `--switch-radius`       | 9999px                          | Switch track. Keep the pill. 6px gives the rejected rounded square.                                                              |
+| `--switch-thumb-radius` | `max(switch-radius - 2px, 1px)` | Knob, concentric with the track.                                                                                                 |
+| `--control-radius`      | set per container               | Button and toggle corners. Chat and Settings headers: 9999px. Right panel card: 6px. `ToolbarGroup`: `--toolbar-control-radius`. |
+
+## Toolbar controls
+
+| Token                           | Value (dark)                   | Use                                                                                            |
+| ------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `--toolbar-radius`              | `9999px` (alt `var(--radius)`) | `ToolbarGroup` and soft field corners. The pill vs rounded-rectangle switch.                   |
+| `--toolbar-control-radius`      | `9999px` (alt `6px`)           | Buttons inside a `ToolbarGroup`. Change together with `--toolbar-radius`.                      |
+| `--toolbar-group-fill`          | `var(--shell-control)`         | What `ToolbarGroup` paints. Re-root on a surface to raise its groups.                          |
+| `--toolbar-group-border`        | `var(--shell-divider-header)`  | `ToolbarGroup` border. Re-root together with the fill.                                         |
+| `--shell-control-raised`        | sidebar 86% + foreground       | Group fill on a surface that itself uses `--shell-control` (toolbar sheet).                    |
+| `--shell-control-raised-border` | sidebar 74% + foreground       | Group border on that surface.                                                                  |
+| `--workspace-controls-right`    | safe area + 11px               | Inset of the fixed header controls; aligns the last toggle with the panel's last group button. |
+| `--glass-divider`               | foreground 8%, transparent     | Set by `dropdown-glass`: its edge, menu separators and section dividers inside glass.          |
+| `TOOLBAR_SHEET_INSET`           | 6px (`panelResize.ts`)         | Laravel toolbar sheet inset from the panel sides, the bar and the page top.                    |
 
 ## Scale additions (`@theme inline`)
 
@@ -71,7 +85,8 @@ values before you change a token.
   border color, so no `!` is needed.
 - `.scrollbar-inset`: plain unlayered CSS. 16px lane, 6px thumb with a 5px
   transparent border, `border-radius: 9999px`, track `margin-block: 0`. Pair it
-  with `scrollbar-gutter-both`. Used by `SettingsPageContainer` and the chat
-  timeline.
+  with `scrollbar-gutter-both`. Used by `SettingsPageContainer`, the chat
+  timeline, the file preview and the read-only source preview. Pierre trees get
+  the same rules through `PIERRE_TREE_UNSAFE_CSS`.
 - `.mock-window-shadow`, `.mock-traffic-light-*`: web-only mock window in
   `routes/__root.tsx`. Fixed system colors on purpose.
