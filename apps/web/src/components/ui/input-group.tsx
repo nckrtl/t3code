@@ -18,6 +18,8 @@ const inputGroupVariants = cva(
           "border-input bg-background not-dark:bg-clip-padding shadow-xs/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--control-radius)-1px)] not-has-[input:disabled,textarea:disabled]:not-has-[input:focus-visible,textarea:focus-visible]:not-has-[input[aria-invalid],textarea[aria-invalid]]:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:not-has-[input:disabled,textarea:disabled]:not-has-[input:focus-visible,textarea:focus-visible]:not-has-[input[aria-invalid],textarea[aria-invalid]]:before:shadow-[0_-1px_--theme(--color-white/6%)]",
         ghost:
           "border-transparent bg-transparent shadow-none hover:bg-muted/40 has-[input:focus-visible,textarea:focus-visible]:bg-background",
+        // A fully rounded outlined field, like a browser address bar.
+        pill: "rounded-full border-border bg-transparent shadow-none hover:bg-muted/40 has-[input:focus-visible,textarea:focus-visible]:bg-background [&_input]:ps-3",
         soft: "rounded-lg border-border text-ui sm:text-ui bg-muted/40 shadow-none hover:bg-muted/60 has-[input:focus-visible,textarea:focus-visible]:bg-background [&_input]:pe-3.5 [&_input]:ps-[11px] [&_[data-slot=input-group-addon]]:ps-[9px]",
       },
     },

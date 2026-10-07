@@ -118,10 +118,14 @@ export function PreviewChromeRow({
     <div className="relative">
       <form
         onSubmit={submit}
-        className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-border/60 bg-background px-2 in-data-[preview-panel-mode=inline]:mb-3 in-data-[preview-panel-mode=inline]:h-7 in-data-[preview-panel-mode=inline]:min-h-7 in-data-[preview-panel-mode=inline]:border-b-transparent"
+        className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-(--shell-divider)! bg-background px-2 in-data-[preview-panel-mode=inline]:h-auto in-data-[preview-panel-mode=inline]:min-h-0 in-data-[preview-panel-mode=inline]:py-toolbar"
         data-surface-subheader
       >
-        <div className="flex items-center gap-0.5" role="group" aria-label="Navigation">
+        <div
+          className="flex h-7 items-center gap-0.5 rounded-full border border-border px-0.5 [--control-radius:9999px]"
+          role="group"
+          aria-label="Navigation"
+        >
           <Tooltip>
             <TooltipTrigger
               render={
@@ -177,7 +181,7 @@ export function PreviewChromeRow({
 
         {leadingActions}
 
-        <InputGroup variant="ghost" className="group/address h-7 min-w-0 flex-1">
+        <InputGroup variant="pill" className="group/address h-7 min-w-0 flex-1">
           <Tooltip>
             <TooltipTrigger
               render={
