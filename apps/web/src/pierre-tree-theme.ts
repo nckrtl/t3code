@@ -16,6 +16,18 @@ export const PIERRE_TREE_UNSAFE_CSS = `
   /* Row backgrounds start 8px (6 padding + 2 margin) from the panel edge, like the search field; icons start 16px (+8 row padding), like its icon. */
   [data-file-tree-virtualized-scroll='true'][data-file-tree-virtualized-scroll='true'] { padding-inline: 6px; }
   [data-icon-name='file-tree-icon-chevron'] { width: 12px; height: 12px; }
+  /* The app's inset scrollbar (.scrollbar-inset), which cannot reach into this shadow root:
+     a round thumb held 5px off the edge and the ends, plus 4px more at the top and bottom
+     so it stays clear of the panel's toolbar and rounded corner. */
+  [data-file-tree-virtualized-scroll='true']::-webkit-scrollbar { width: 16px; }
+  [data-file-tree-virtualized-scroll='true']::-webkit-scrollbar-track { background: transparent; margin-block: 4px; }
+  [data-file-tree-virtualized-scroll='true']::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    border: 5px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  [data-file-tree-virtualized-scroll='true']::-webkit-scrollbar-thumb:hover { background: var(--app-scrollbar-thumb-hover); background-clip: padding-box; }
 `;
 
 /** Host styles that keep a Pierre tree on the active color scheme and foreground. */
