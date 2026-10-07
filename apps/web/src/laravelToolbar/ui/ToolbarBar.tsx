@@ -100,7 +100,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
       onMouseLeave={panels.leave}
       onClick={() => panels.toggle(id)}
       className={cn(
-        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md px-2 font-medium text-foreground text-xs outline-none hover:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring data-pressed:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground sm:[&_svg]:size-3.5",
+        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md px-2 font-medium text-foreground text-xs outline-none hover:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring data-pressed:bg-foreground/10 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
         shrink ? "shrink" : "shrink-0",
       )}
     >
