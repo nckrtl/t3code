@@ -10,9 +10,8 @@ import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
 
 type DependencyTab = "composer" | "javascript";
 
-export function DependenciesPanel() {
+export function useOrbitDependencies() {
   const { state, source } = useOrbitTool();
-  const [tab, setTab] = useState<DependencyTab>("composer");
   const instanceId = state.status === "ready" ? state.page.instanceId : null;
   const [loaded, setLoaded] = useState<{
     source: typeof source;
@@ -42,6 +41,16 @@ export function DependenciesPanel() {
   }, [source, instanceId]);
   const result =
     loaded?.source === source && loaded?.instanceId === instanceId ? loaded : undefined;
+  return result;
+}
+
+export function DependenciesPanel({
+  tab,
+  result,
+}: {
+  tab: DependencyTab;
+  result: ReturnType<typeof useOrbitDependencies>;
+}) {
   const dependencies = result?.data;
   const sorting = useTableSort();
   const packages = dependencies?.[tab];
@@ -54,31 +63,6 @@ export function DependenciesPanel() {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <nav aria-label="Dependency ecosystems" className="w-44 shrink-0 border-r">
-        {(["composer", "javascript"] as const).map((ecosystem) => (
-          <button
-            key={ecosystem}
-            type="button"
-            aria-pressed={tab === ecosystem}
-            onClick={() => setTab(ecosystem)}
-            className={cn(
-              "flex w-full cursor-pointer items-center justify-between gap-2 border-b px-3 py-3 text-left text-xs outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
-              tab === ecosystem
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-            )}
-          >
-            <span>
-              {ecosystem === "composer"
-                ? "Composer"
-                : (dependencies?.package_manager ?? "JavaScript")}
-            </span>
-            <span className="text-muted-foreground tabular-nums">
-              {dependencies?.[ecosystem]?.length ?? "–"}
-            </span>
-          </button>
-        ))}
-      </nav>
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         {packages == null ? (
           <EmptyRow>

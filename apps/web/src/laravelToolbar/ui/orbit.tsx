@@ -1,4 +1,4 @@
-import { DependenciesPanel } from "./dependencies";
+import { DependenciesPanel, useOrbitDependencies } from "./dependencies";
 import { ArrowDownToLine, Copy, Play, RotateCw, Square } from "lucide-react";
 import { type ReactNode, type SVGProps, useEffect, useRef, useState } from "react";
 
@@ -206,8 +206,10 @@ function useProcessLog(processId: number | null, status: ProcessStatus | null, f
 }
 
 export function OrbitPanel() {
-  const [tab, setTab] = useState<"instance" | "processes" | "dependencies">("instance");
+  const [tab, setTab] = useState<"instance" | "processes" | "composer" | "javascript">("instance");
   const { state, refresh, act } = useOrbitTool();
+  const dependencyResult = useOrbitDependencies();
+  const dependencies = dependencyResult?.data;
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [follow, setFollow] = useState(true);
   const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
@@ -301,7 +303,14 @@ export function OrbitPanel() {
         tabs={[
           ["instance", "Instance"],
           ["processes", "Processes"],
-          ["dependencies", "Dependencies"],
+          [
+            "composer",
+            `Composer${dependencies?.composer ? ` ${dependencies.composer.length}` : ""}`,
+          ],
+          [
+            "javascript",
+            `${dependencies?.package_manager ?? "JavaScript"}${dependencies?.javascript ? ` ${dependencies.javascript.length}` : ""}`,
+          ],
         ]}
       />
       {tab === "instance" ? (
@@ -329,8 +338,8 @@ export function OrbitPanel() {
             ]}
           />
         </ScrollArea>
-      ) : tab === "dependencies" ? (
-        <DependenciesPanel />
+      ) : tab === "composer" || tab === "javascript" ? (
+        <DependenciesPanel tab={tab} result={dependencyResult} />
       ) : processes.length === 0 || !selected ? (
         <EmptyRow>This Orbit Instance runs no processes</EmptyRow>
       ) : (
