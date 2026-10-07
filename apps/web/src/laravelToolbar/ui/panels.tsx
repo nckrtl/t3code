@@ -23,7 +23,6 @@ import type { ToolbarData } from "../types";
 import {
   cellClass,
   EmptyRow,
-  headCellClass,
   headRowClass,
   KeyValueRows,
   MetaDot,
@@ -40,6 +39,8 @@ import {
 } from "./parts";
 
 /** Shown while a history request's payload loads from the page. */
+import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
+
 function Loading() {
   return <EmptyRow>Loading request…</EmptyRow>;
 }
@@ -397,7 +398,14 @@ export function DatabasePanel() {
 
 export function ModelsPanel() {
   const { selected } = useToolbarTab();
-  const models = selected?.models ?? [];
+  const sorting = useTableSort();
+  const models = sortTableRows(selected?.models ?? [], sorting.sort, (model, column) => {
+    if (column === "model") return model.model?.split("\\").pop();
+    if (column === "retrieved") return model.retrieved ?? 0;
+    if (column === "created") return model.created ?? 0;
+    if (column === "updated") return model.updated ?? 0;
+    return model.deleted ?? 0;
+  });
   const total = models.reduce((sum, model) => sum + (model.retrieved ?? 0), 0);
   const max = Math.max(1, ...models.map((model) => model.retrieved ?? 0));
   return (
@@ -429,11 +437,11 @@ export function ModelsPanel() {
           </colgroup>
           <thead>
             <tr className={headRowClass}>
-              <th className={headCellClass}>Model</th>
-              <th className={headCellClass}>Retrieved</th>
-              <th className={cn(headCellClass, "text-right")}>Created</th>
-              <th className={cn(headCellClass, "text-right")}>Updated</th>
-              <th className={cn(headCellClass, "text-right")}>Deleted</th>
+              <SortHeader column="model" label="Model" {...sorting} />
+              <SortHeader column="retrieved" label="Retrieved" {...sorting} />
+              <SortHeader column="created" label="Created" {...sorting} align="right" />
+              <SortHeader column="updated" label="Updated" {...sorting} align="right" />
+              <SortHeader column="deleted" label="Deleted" {...sorting} align="right" />
             </tr>
           </thead>
           <tbody>

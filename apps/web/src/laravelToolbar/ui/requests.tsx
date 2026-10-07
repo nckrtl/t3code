@@ -13,7 +13,6 @@ import { headerRows, type PropRow, propRows, routeUri, shortLocation, summarize 
 import {
   cellClass,
   EmptyRow,
-  headCellClass,
   headRowClass,
   KeyValueRows,
   MethodBadge,
@@ -27,6 +26,8 @@ import {
   tableClass,
   UnderlineTabs,
 } from "./parts";
+
+import { durationSortValue, SortHeader, sortTableRows, useTableSort } from "./tableSort";
 
 const KIND_LABEL = { page: "page", inertia: "inertia", xhr: "xhr" } as const;
 
@@ -57,8 +58,9 @@ export function RequestsPanel() {
     setSearchOpen(false);
     searchButtonRef.current?.focus();
   };
+  const sorting = useTableSort();
   const needle = query.trim().toLowerCase();
-  const rows = tab.history
+  const filtered = tab.history
     .map((entry) => ({ entry, summary: summarize(entry.row, tab.details[entry.row.id]) }))
     .filter(
       ({ summary }) =>
@@ -67,6 +69,16 @@ export function RequestsPanel() {
         (summary.component ?? "").toLowerCase().includes(needle) ||
         summary.route.toLowerCase().includes(needle),
     );
+  const rows = sortTableRows(filtered, sorting.sort, ({ entry, summary }, column) => {
+    if (column === "duration") return durationSortValue(summary.duration);
+    if (column === "time") return entry.receivedAt;
+    if (column === "status") return summary.status;
+    if (column === "method") return summary.method;
+    if (column === "uri") return summary.uri;
+    if (column === "component") return summary.component;
+    if (column === "route") return summary.route;
+    return KIND_LABEL[summary.kind];
+  });
   return (
     <PanelShell
       icon={ListIcon}
@@ -120,25 +132,30 @@ export function RequestsPanel() {
         <div className="@container">
           <table className={tableClass}>
             <colgroup>
-              <col className="w-16" />
+              <col className="w-20" />
               <col className="w-18" />
               <col />
               <col className={cn("w-36", WIDE.component.col)} />
               <col className={cn("w-44", WIDE.route.col)} />
               <col className={cn("w-18", WIDE.type.col)} />
-              <col className="w-20" />
-              <col className="w-22" />
+              <col className="w-24" />
+              <col className="w-24" />
             </colgroup>
             <thead>
               <tr className={headRowClass}>
-                <th className={headCellClass}>Status</th>
-                <th className={headCellClass}>Method</th>
-                <th className={headCellClass}>URI</th>
-                <th className={cn(headCellClass, WIDE.component.cell)}>Component</th>
-                <th className={cn(headCellClass, WIDE.route.cell)}>Route</th>
-                <th className={cn(headCellClass, WIDE.type.cell)}>Type</th>
-                <th className={cn(headCellClass, "text-right")}>Duration</th>
-                <th className={cn(headCellClass, "text-right")}>Time</th>
+                <SortHeader column="status" label="Status" {...sorting} />
+                <SortHeader column="method" label="Method" {...sorting} />
+                <SortHeader column="uri" label="URI" {...sorting} />
+                <SortHeader
+                  column="component"
+                  label="Component"
+                  {...sorting}
+                  className={WIDE.component.cell}
+                />
+                <SortHeader column="route" label="Route" {...sorting} className={WIDE.route.cell} />
+                <SortHeader column="type" label="Type" {...sorting} className={WIDE.type.cell} />
+                <SortHeader column="duration" label="Duration" {...sorting} align="right" />
+                <SortHeader column="time" label="Time" {...sorting} align="right" />
               </tr>
             </thead>
             <tbody>
@@ -313,7 +330,20 @@ export function RequestPanel() {
   const summary = row ? summarize(row, selected) : null;
   const props = propRows(selected);
   const componentPath = selected?.inertia?.component_path ?? null;
-  const cookies = selected?.response?.cookies ?? [];
+  const cookieSorting = useTableSort();
+  const cookies = sortTableRows(
+    selected?.response?.cookies ?? [],
+    cookieSorting.sort,
+    (cookie, column) => {
+      if (column === "name") return cookie.name;
+      if (column === "value") return cookie.value;
+      if (column === "path") return cookie.path ?? "/";
+      if (column === "sameSite") return cookie.same_site;
+      return [cookie.secure ? "Secure" : "", cookie.http_only ? "HttpOnly" : ""]
+        .filter(Boolean)
+        .join(" ");
+    },
+  );
   const contentType = selected?.response?.content_type ?? "";
   const responseKind = selected?.request?.is_inertia
     ? "Inertia"
@@ -421,11 +451,11 @@ export function RequestPanel() {
           </colgroup>
           <thead>
             <tr className={headRowClass}>
-              <th className={headCellClass}>Name</th>
-              <th className={headCellClass}>Value</th>
-              <th className={headCellClass}>Path</th>
-              <th className={headCellClass}>SameSite</th>
-              <th className={headCellClass}>Flags</th>
+              <SortHeader column="name" label="Name" {...cookieSorting} />
+              <SortHeader column="value" label="Value" {...cookieSorting} />
+              <SortHeader column="path" label="Path" {...cookieSorting} />
+              <SortHeader column="sameSite" label="SameSite" {...cookieSorting} />
+              <SortHeader column="flags" label="Flags" {...cookieSorting} />
             </tr>
           </thead>
           <tbody>

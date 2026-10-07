@@ -7,7 +7,6 @@ import { useToolbarTab } from "../context";
 import {
   cellClass,
   EmptyRow,
-  headCellClass,
   headRowClass,
   PanelShell,
   rowClass,
@@ -15,13 +14,22 @@ import {
   UnderlineTabs,
 } from "./parts";
 
+import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
+
 type DependencyTab = "composer" | "javascript";
 
 export function DependenciesPanel() {
   const { selected } = useToolbarTab();
   const [tab, setTab] = useState<DependencyTab>("composer");
   const dependencies = selected?.dependencies;
+  const sorting = useTableSort();
   const packages = dependencies?.[tab];
+  const sortedPackages = sortTableRows(packages ?? [], sorting.sort, (dependency, column) => {
+    if (column === "name") return dependency.name;
+    if (column === "version") return dependency.version;
+    if (column === "constraint") return dependency.constraint;
+    return dependency.development ? "Dev" : "Production";
+  });
   const manager = tab === "javascript" ? dependencies?.package_manager : null;
 
   return (
@@ -64,14 +72,14 @@ export function DependenciesPanel() {
             </colgroup>
             <thead>
               <tr className={headRowClass}>
-                <th className={headCellClass}>Package</th>
-                <th className={headCellClass}>Version</th>
-                <th className={headCellClass}>Requirement</th>
-                <th className={headCellClass}>Type</th>
+                <SortHeader column="name" label="Package" {...sorting} />
+                <SortHeader column="version" label="Version" {...sorting} />
+                <SortHeader column="constraint" label="Requirement" {...sorting} />
+                <SortHeader column="type" label="Type" {...sorting} />
               </tr>
             </thead>
             <tbody>
-              {packages.map((dependency) => (
+              {sortedPackages.map((dependency) => (
                 <tr key={dependency.name} className={rowClass}>
                   <td className={cellClass}>
                     <span className="block truncate font-mono">{dependency.name}</span>
