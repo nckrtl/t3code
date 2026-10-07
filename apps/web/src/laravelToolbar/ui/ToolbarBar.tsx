@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
 import { cn } from "~/lib/utils";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 
 import { useOrbitTool, useToolbarTab } from "../context";
 import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
@@ -89,7 +90,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   const row = tab.history.find((entry) => entry.row.id === selectedId);
   const summary = row ? summarize(row.row, selected) : null;
 
-  // Bar items are flat: no border, a light fill on hover, a stronger one while open.
+  // Bar items are flat inside their ToolbarGroup: a light fill on hover, a stronger one while open.
   const item = (id: PanelId, label: string, children: ReactNode, shrink = false) => (
     <button
       type="button"
@@ -99,7 +100,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
       onMouseLeave={panels.leave}
       onClick={() => panels.toggle(id)}
       className={cn(
-        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-md pr-2 font-medium text-foreground text-xs outline-none hover:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring data-pressed:bg-foreground/10 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
+        "inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-(--control-radius) pr-2 font-medium text-foreground text-ui outline-none hover:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring data-pressed:bg-foreground/10 [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
         id === "request" ? "pl-1" : "pl-2",
         shrink ? "shrink" : "shrink-0",
       )}
@@ -136,31 +137,33 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
         </div>
       ) : null}
       {/* Narrow browsers drop the versions; the route name truncates. */}
-      <div className="@container flex h-9 items-center gap-0.5 overflow-hidden border-t border-border/60 bg-background px-2">
-        {item(
-          "requests",
-          "Requests on this page",
-          <>
-            <ListIcon />
-            <span className="tabular-nums">{tab.history.length}</span>
-          </>,
-        )}
-        {summary
-          ? item(
-              "request",
-              "Request details",
-              <>
-                <StatusBadge status={summary.status} />
-                <MethodBadge method={summary.method} />
-                <span className="truncate text-muted-foreground">
-                  {summary.routeName ?? "Unnamed route"}
-                </span>
-              </>,
-              true,
-            )
-          : null}
+      <div className="@container flex items-center gap-2 overflow-hidden border-t border-(--shell-divider)! bg-background px-2 py-toolbar">
+        <ToolbarGroup className="min-w-0 shrink">
+          {item(
+            "requests",
+            "Requests on this page",
+            <>
+              <ListIcon />
+              <span className="tabular-nums">{tab.history.length}</span>
+            </>,
+          )}
+          {summary
+            ? item(
+                "request",
+                "Request details",
+                <>
+                  <StatusBadge status={summary.status} />
+                  <MethodBadge method={summary.method} />
+                  <span className="truncate text-muted-foreground">
+                    {summary.routeName ?? "Unnamed route"}
+                  </span>
+                </>,
+                true,
+              )
+            : null}
+        </ToolbarGroup>
         {selected ? (
-          <>
+          <ToolbarGroup className="shrink-0">
             {item(
               "timings",
               "Timings",
@@ -201,11 +204,12 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                 <span className="tabular-nums">{modelCount(selected)}</span>
               </>,
             )}
-          </>
+          </ToolbarGroup>
         ) : null}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          {orbit.state.status === "ready"
-            ? item(
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {orbit.state.status === "ready" ? (
+            <ToolbarGroup>
+              {item(
                 "orbit",
                 "Orbit",
                 <span className="relative">
@@ -218,10 +222,11 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                     />
                   ) : null}
                 </span>,
-              )
-            : null}
+              )}
+            </ToolbarGroup>
+          ) : null}
           {selected ? (
-            <div className="hidden items-center @2xl:flex">
+            <ToolbarGroup className="hidden @2xl:flex">
               {item(
                 "environment",
                 "Laravel and PHP",
@@ -239,7 +244,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                   </span>
                 </>,
               )}
-            </div>
+            </ToolbarGroup>
           ) : null}
         </div>
       </div>
