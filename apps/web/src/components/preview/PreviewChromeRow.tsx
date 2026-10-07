@@ -122,7 +122,7 @@ export function PreviewChromeRow({
         data-surface-subheader
       >
         <div
-          className="flex h-7 items-center gap-0.5 rounded-full border border-(--shell-divider-header)! bg-(--shell-frame) px-0.5 [--control-radius:9999px]"
+          className="flex h-8 items-center gap-0.5 rounded-lg border border-(--shell-divider-header)! bg-(--shell-frame) px-0.75 [--control-radius:6px]"
           role="group"
           aria-label="Navigation"
         >
