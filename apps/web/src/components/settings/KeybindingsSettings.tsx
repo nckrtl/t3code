@@ -82,7 +82,7 @@ function KeybindingPill({ value }: { value: string }) {
   return (
     <KbdGroup>
       {parts.map(({ part, key }) => (
-        <Kbd key={key} variant="inverted">
+        <Kbd key={key} variant="raised">
           {part === "mod"
             ? navigator.platform.toLowerCase().includes("mac")
               ? "⌘"
@@ -1291,7 +1291,7 @@ function KeybindingsList(props: KeybindingsListProps) {
     return ids;
   }, [rows]);
   return (
-    <div>
+    <div className="[&>*+*]:border-t [&>*+*]:border-(--shell-divider-raised)!">
       {isAddingBinding ? <NewKeybindingSettingsRow {...newProps} /> : null}
       {rows.map((row) => (
         <KeybindingSettingsRow

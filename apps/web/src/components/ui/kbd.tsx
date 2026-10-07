@@ -10,8 +10,8 @@ const kbdVariants = cva(
     variants: {
       variant: {
         default: "bg-muted text-muted-foreground",
-        // Light cap, dark glyph: the theme's foreground as the fill, the background as the glyph.
-        inverted: "bg-foreground/90 text-background",
+        // A cap one step lighter than the surface it sits on, with a light glyph.
+        raised: "bg-(--shell-highlight) text-foreground/90",
       },
     },
   },
