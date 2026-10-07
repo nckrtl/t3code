@@ -267,6 +267,8 @@ export function DatabasePanel() {
   const { selected, openSource } = useToolbarTab();
   const [filter, setFilter] = useState<QueryFilter>("all");
   const all = selected ? toQueries(selected) : [];
+  const duplicateCount = all.filter((query) => query.isDuplicate).length;
+  const slowCount = all.filter((query) => query.isSlow).length;
   const sorting = useTableSort();
   const visible = sortTableRows(
     all.filter((query) =>
@@ -303,8 +305,8 @@ export function DatabasePanel() {
         onChange={setFilter}
         tabs={[
           ["all", "All"],
-          ["duplicates", "Duplicates"],
-          ["slow", "Slow"],
+          ["duplicates", `Duplicates ${duplicateCount}`],
+          ["slow", `Slow ${slowCount}`],
         ]}
       />
       <div className="min-h-0 flex-1 overflow-auto">
