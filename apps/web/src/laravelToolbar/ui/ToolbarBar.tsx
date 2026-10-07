@@ -119,6 +119,10 @@ function useHostRect(hostRef: RefObject<HTMLDivElement | null>, open: boolean) {
   return rect;
 }
 
+// Two stacked blurs with offset masks read as one blur that strengthens toward the bar.
+const PROGRESSIVE_BLUR_LIGHT = "linear-gradient(to top, black 0%, black 40%, transparent 100%)";
+const PROGRESSIVE_BLUR_HEAVY = "linear-gradient(to top, black 0%, transparent 55%)";
+
 /** The bar under the browser page, with its flyout panels. */
 export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | null }) {
   const panels = usePanels(initialPanel);
@@ -155,31 +159,56 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           above the bar so the page shows around it. */}
       {panels.active && hostRect
         ? createPortal(
+            // A click-through band the sheet's height, inset around it: the page behind blurs
+            // progressively, fully at the bar and clear at the sheet's top edge.
             <div
-              className="fixed z-40 overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+              className="pointer-events-none fixed z-40"
               style={{
-                left: hostRect.left + TOOLBAR_SHEET_INSET,
-                width: hostRect.width - 2 * TOOLBAR_SHEET_INSET,
-                top: hostRect.top - TOOLBAR_SHEET_INSET - resize.height,
-                height: resize.height,
-              }}
-              onMouseEnter={panels.stay}
-              onMouseLeave={() => {
-                if (panels.pinned === null) panels.leave();
+                left: hostRect.left,
+                width: hostRect.width,
+                top: hostRect.top - resize.height - 2 * TOOLBAR_SHEET_INSET,
+                height: resize.height + 2 * TOOLBAR_SHEET_INSET,
               }}
             >
-              <RenderErrorBoundary
-                fallback={
-                  <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
-                    This panel cannot show this request's data.
-                  </div>
-                }
-                resetKeys={[panels.active, selected]}
+              <div
+                aria-hidden
+                className="absolute inset-0 backdrop-blur-sm"
+                style={{
+                  maskImage: PROGRESSIVE_BLUR_LIGHT,
+                  WebkitMaskImage: PROGRESSIVE_BLUR_LIGHT,
+                }}
+              />
+              <div
+                aria-hidden
+                className="absolute inset-0 backdrop-blur-lg"
+                style={{
+                  maskImage: PROGRESSIVE_BLUR_HEAVY,
+                  WebkitMaskImage: PROGRESSIVE_BLUR_HEAVY,
+                }}
+              />
+              <div
+                className="pointer-events-auto absolute overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+                style={{
+                  inset: TOOLBAR_SHEET_INSET,
+                }}
+                onMouseEnter={panels.stay}
+                onMouseLeave={() => {
+                  if (panels.pinned === null) panels.leave();
+                }}
               >
-                <ToolbarPanelResizeContext value={resize}>
-                  {PANELS[panels.active]()}
-                </ToolbarPanelResizeContext>
-              </RenderErrorBoundary>
+                <RenderErrorBoundary
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+                      This panel cannot show this request's data.
+                    </div>
+                  }
+                  resetKeys={[panels.active, selected]}
+                >
+                  <ToolbarPanelResizeContext value={resize}>
+                    {PANELS[panels.active]()}
+                  </ToolbarPanelResizeContext>
+                </RenderErrorBoundary>
+              </div>
             </div>,
             document.body,
           )
