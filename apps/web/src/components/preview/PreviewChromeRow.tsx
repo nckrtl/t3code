@@ -73,10 +73,6 @@ const NOOP = () => {};
 const CHROME_GROUP_CLASS_NAME =
   "flex h-8 items-center gap-0.5 rounded-lg border border-(--shell-divider-header)! bg-(--shell-control) px-0.75 [--control-radius:6px]";
 
-function ChromeGroup({ children }: { children: ReactNode }) {
-  return <div className={CHROME_GROUP_CLASS_NAME}>{children}</div>;
-}
-
 export function PreviewChromeRow({
   url,
   loading,
@@ -247,90 +243,84 @@ export function PreviewChromeRow({
           ) : null}
         </InputGroup>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className={cn(CHROME_GROUP_CLASS_NAME, "shrink-0 empty:hidden")}>
           {onPickElement ? (
-            <ChromeGroup>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant={pickActive ? "secondary" : "ghost"}
-                      size="icon-xs"
-                      onClick={onPickElement}
-                      disabled={pickDisabled}
-                      aria-label={pickActive ? "Cancel annotation" : "Annotate preview"}
-                      aria-pressed={pickActive ? "true" : "false"}
-                      type="button"
-                    />
-                  }
-                >
-                  <MousePointerClick className={cn(pickActive && "text-primary")} />
-                </TooltipTrigger>
-                <TooltipPopup>
-                  {pickDisabled && pickDisabledReason
-                    ? pickDisabledReason
-                    : pickActive
-                      ? "Cancel annotation (Esc)"
-                      : "Annotate elements, regions, and drawings"}
-                </TooltipPopup>
-              </Tooltip>
-            </ChromeGroup>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant={pickActive ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    onClick={onPickElement}
+                    disabled={pickDisabled}
+                    aria-label={pickActive ? "Cancel annotation" : "Annotate preview"}
+                    aria-pressed={pickActive ? "true" : "false"}
+                    type="button"
+                  />
+                }
+              >
+                <MousePointerClick className={cn(pickActive && "text-primary")} />
+              </TooltipTrigger>
+              <TooltipPopup>
+                {pickDisabled && pickDisabledReason
+                  ? pickDisabledReason
+                  : pickActive
+                    ? "Cancel annotation (Esc)"
+                    : "Annotate elements, regions, and drawings"}
+              </TooltipPopup>
+            </Tooltip>
           ) : null}
-          {annotationAction ? <ChromeGroup>{annotationAction}</ChromeGroup> : null}
+          {annotationAction}
           {onCapture ? (
-            <ChromeGroup>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant={recording ? "secondary" : "ghost"}
-                      size="icon-xs"
-                      onClick={(event) => onCapture(event.shiftKey)}
-                      aria-label={recording ? "Stop recording" : "Capture screenshot"}
-                      type="button"
-                      className="relative"
-                      disabled={captureDisabled}
-                    />
-                  }
-                >
-                  <Camera className={cn(recording && "text-destructive")} />
-                  {recording ? (
-                    <span className="absolute right-0.5 top-0.5 size-1.5 animate-status-pulse rounded-full bg-destructive" />
-                  ) : null}
-                </TooltipTrigger>
-                <TooltipPopup>
-                  {recording ? "Stop recording" : "Screenshot · Shift-click to record"}
-                </TooltipPopup>
-              </Tooltip>
-            </ChromeGroup>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant={recording ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    onClick={(event) => onCapture(event.shiftKey)}
+                    aria-label={recording ? "Stop recording" : "Capture screenshot"}
+                    type="button"
+                    className="relative"
+                    disabled={captureDisabled}
+                  />
+                }
+              >
+                <Camera className={cn(recording && "text-destructive")} />
+                {recording ? (
+                  <span className="absolute right-0.5 top-0.5 size-1.5 animate-status-pulse rounded-full bg-destructive" />
+                ) : null}
+              </TooltipTrigger>
+              <TooltipPopup>
+                {recording ? "Stop recording" : "Screenshot · Shift-click to record"}
+              </TooltipPopup>
+            </Tooltip>
           ) : null}
           {onPictureInPicture ? (
-            <ChromeGroup>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant={pictureInPicture ? "secondary" : "ghost"}
-                      size="icon-xs"
-                      onClick={onPictureInPicture}
-                      aria-label={
-                        pictureInPicture ? "Close floating preview" : "Float preview over chat"
-                      }
-                      aria-pressed={pictureInPicture ? "true" : "false"}
-                      type="button"
-                      disabled={pictureInPictureDisabled}
-                    />
-                  }
-                >
-                  <PictureInPicture2 className={cn(pictureInPicture && "text-primary")} />
-                </TooltipTrigger>
-                <TooltipPopup>
-                  {pictureInPicture ? "Close floating preview" : "Float preview over chat"}
-                </TooltipPopup>
-              </Tooltip>
-            </ChromeGroup>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant={pictureInPicture ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    onClick={onPictureInPicture}
+                    aria-label={
+                      pictureInPicture ? "Close floating preview" : "Float preview over chat"
+                    }
+                    aria-pressed={pictureInPicture ? "true" : "false"}
+                    type="button"
+                    disabled={pictureInPictureDisabled}
+                  />
+                }
+              >
+                <PictureInPicture2 className={cn(pictureInPicture && "text-primary")} />
+              </TooltipTrigger>
+              <TooltipPopup>
+                {pictureInPicture ? "Close floating preview" : "Float preview over chat"}
+              </TooltipPopup>
+            </Tooltip>
           ) : null}
-          {trailingActions ? <ChromeGroup>{trailingActions}</ChromeGroup> : null}
+          {trailingActions}
         </div>
       </form>
       <div
