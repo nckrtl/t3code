@@ -2333,7 +2333,7 @@ code {
   /* The header runs on the lighter frame, so its stretch of divider is lighter. */
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 78%, var(--foreground));
-  --shell-tile: color-mix(in oklab, var(--sidebar) 85%, var(--foreground));
+  --shell-tile: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 
