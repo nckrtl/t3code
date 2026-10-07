@@ -156,7 +156,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
       {panels.active && hostRect
         ? createPortal(
             <div
-              className="fixed z-40 overflow-hidden rounded-lg border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+              className="fixed z-40 overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
               style={{
                 left: hostRect.left + TOOLBAR_SHEET_INSET,
                 width: hostRect.width - 2 * TOOLBAR_SHEET_INSET,
