@@ -38,9 +38,9 @@ import {
   tableClass,
 } from "./parts";
 
-/** Shown while a history request's payload loads from the page. */
 import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
 
+/** Shown while a history request's payload loads from the page. */
 function Loading() {
   return <EmptyRow>Loading request…</EmptyRow>;
 }
@@ -270,8 +270,13 @@ export function DatabasePanel() {
   const all = selected ? toQueries(selected) : [];
   const duplicates = all.filter((query) => query.isDuplicate).length;
   const slow = all.filter((query) => query.isSlow).length;
-  const visible = all.filter((query) =>
-    filter === "duplicates" ? query.isDuplicate : filter === "slow" ? query.isSlow : true,
+  const sorting = useTableSort();
+  const visible = sortTableRows(
+    all.filter((query) =>
+      filter === "duplicates" ? query.isDuplicate : filter === "slow" ? query.isSlow : true,
+    ),
+    sorting.sort,
+    (query, column) => (column === "duration" ? query.durationMs : query.sql),
   );
   const totalTime = selected?.queries?.totalTime ?? 0;
   const wall = selected ? wallTimeMs(selected) : 0;
@@ -331,62 +336,78 @@ export function DatabasePanel() {
               {all.length === 0 ? "No queries in this request" : "No queries match"}
             </EmptyRow>
           ) : (
-            <div className="divide-y">
-              {visible.map((query) => {
-                const location = shortLocation(query.file, query.line);
-                return (
-                  <div
-                    key={`${query.offset}:${query.sql}`}
-                    className="relative flex items-center gap-3 px-3 py-2.5 text-xs hover:bg-muted/50"
-                  >
-                    <RowMarker
-                      className={cn(
-                        "h-8",
-                        query.isSlow
-                          ? "bg-info"
-                          : query.isDuplicate
-                            ? "bg-warning"
-                            : "bg-muted-foreground/30",
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <SqlText sql={query.sql} />
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        {location ? (
-                          <SourceLink
-                            onOpen={
-                              openSource && query.file
-                                ? () => openSource(`${query.file}:${query.line ?? 1}`)
-                                : undefined
-                            }
-                          >
-                            {location}
-                          </SourceLink>
-                        ) : null}
-                        {query.isDuplicate ? <Badge variant="warning">Duplicate</Badge> : null}
-                        {query.isSlow ? <Badge variant="info">Slow</Badge> : null}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right font-mono tabular-nums">
-                      <div>{formatMs(query.durationMs)}</div>
-                      <div className="text-muted-foreground">+{formatMs(query.offset * wall)}</div>
-                    </div>
-                    {/* When the query ran within the request, as a share of the row width. */}
-                    <div className="absolute inset-x-3 bottom-0 h-px">
-                      <div
-                        className="absolute inset-y-0 bg-primary/60"
-                        style={{
-                          left: `${query.offset * 100}%`,
-                          width: `${Math.max(query.share * 100, 0.4)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <table className={tableClass}>
+              <colgroup>
+                <col />
+                <col className="w-28" />
+              </colgroup>
+              <thead>
+                <tr className={headRowClass}>
+                  <SortHeader column="query" label="Query" {...sorting} />
+                  <SortHeader column="duration" label="Duration" {...sorting} align="right" />
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((query) => {
+                  const location = shortLocation(query.file, query.line);
+                  return (
+                    <tr
+                      key={`${query.offset}:${query.sql}`}
+                      className="relative border-b text-xs hover:bg-muted/50"
+                    >
+                      <td className="relative px-3 py-2.5 align-middle">
+                        <RowMarker
+                          className={cn(
+                            "h-8",
+                            query.isSlow
+                              ? "bg-info"
+                              : query.isDuplicate
+                                ? "bg-warning"
+                                : "bg-muted-foreground/30",
+                          )}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <SqlText sql={query.sql} />
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            {location ? (
+                              <SourceLink
+                                onOpen={
+                                  openSource && query.file
+                                    ? () => openSource(`${query.file}:${query.line ?? 1}`)
+                                    : undefined
+                                }
+                              >
+                                {location}
+                              </SourceLink>
+                            ) : null}
+                            {query.isDuplicate ? <Badge variant="warning">Duplicate</Badge> : null}
+                            {query.isSlow ? <Badge variant="info">Slow</Badge> : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-right align-middle font-mono tabular-nums">
+                        <div>{formatMs(query.durationMs)}</div>
+                        <div className="text-muted-foreground">
+                          +{formatMs(query.offset * wall)}
+                        </div>
+                        {/* When the query ran within the request, as a share of the row width. */}
+                        <div className="absolute inset-x-3 bottom-0 h-px">
+                          <div
+                            className="absolute inset-y-0 bg-primary/60"
+                            style={{
+                              left: `${query.offset * 100}%`,
+                              width: `${Math.max(query.share * 100, 0.4)}%`,
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </>
       )}
