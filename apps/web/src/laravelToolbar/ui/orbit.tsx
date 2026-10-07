@@ -207,7 +207,7 @@ function useProcessLog(processId: number | null, status: ProcessStatus | null, f
 
 export function OrbitPanel() {
   const [tab, setTab] = useState<"instance" | "processes" | "composer" | "javascript">("instance");
-  const { state, refresh, act } = useOrbitTool();
+  const { state, refresh, act, warnings } = useOrbitTool();
   const dependencyResult = useOrbitDependencies();
   const dependencies = dependencyResult?.data;
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -261,14 +261,6 @@ export function OrbitPanel() {
       actions={
         tab === "processes" ? (
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 text-muted-foreground text-xs">
-              <span>
-                <span className="font-medium text-foreground tabular-nums">
-                  {running.length} of {processes.length}
-                </span>{" "}
-                running
-              </span>
-            </span>
             {processes.length > 0 ? (
               <div className="flex items-center gap-1">
                 <Button
@@ -300,6 +292,7 @@ export function OrbitPanel() {
       <UnderlineTabs
         value={tab}
         onChange={setTab}
+        warnings={warnings}
         tabs={[
           ["instance", "Instance"],
           ["processes", "Processes"],

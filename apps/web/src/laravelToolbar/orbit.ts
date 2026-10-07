@@ -17,6 +17,10 @@ export interface OrbitProcess {
   readonly memoryBytes: number | null;
 }
 
+export function hasProcessWarning(processes: readonly OrbitProcess[]): boolean {
+  return processes.some((process) => process.status !== "running");
+}
+
 export interface OrbitPage {
   readonly domain: string;
   readonly instanceId: number;

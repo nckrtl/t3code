@@ -204,7 +204,22 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           </>
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          {orbit.state.status === "ready" ? item("orbit", "Orbit", <OrbitIcon />) : null}
+          {orbit.state.status === "ready"
+            ? item(
+                "orbit",
+                "Orbit",
+                <span className="relative">
+                  <OrbitIcon />
+                  {Object.values(orbit.warnings).some(Boolean) ? (
+                    <span
+                      role="img"
+                      aria-label={Object.values(orbit.warnings).filter(Boolean).join(". ")}
+                      className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-warning"
+                    />
+                  ) : null}
+                </span>,
+              )
+            : null}
           {selected ? (
             <div className="hidden items-center @2xl:flex">
               {item(

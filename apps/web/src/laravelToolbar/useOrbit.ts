@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { hasProcessWarning } from "./orbit";
 import type { OrbitPage, OrbitProcess, OrbitSource, ProcessAction } from "./orbit";
 
 export type OrbitState =
@@ -16,6 +17,7 @@ export type OrbitState =
 
 export interface OrbitTool {
   readonly state: OrbitState;
+  readonly warnings: Partial<Record<"processes" | "composer" | "javascript", string>>;
   readonly source: OrbitSource | null;
   readonly refresh: () => Promise<void>;
   readonly act: (process: OrbitProcess, action: ProcessAction) => Promise<void>;
@@ -113,5 +115,15 @@ export function useOrbit(source: OrbitSource | null): OrbitTool {
     [refresh, source, update],
   );
 
-  return useMemo(() => ({ state, source, refresh, act }), [act, refresh, source, state]);
+  const warnings = useMemo<OrbitTool["warnings"]>(
+    () =>
+      state.status === "ready" && hasProcessWarning(state.processes)
+        ? { processes: "Some processes are not running" }
+        : {},
+    [state],
+  );
+  return useMemo(
+    () => ({ state, source, refresh, act, warnings }),
+    [act, refresh, source, state, warnings],
+  );
 }

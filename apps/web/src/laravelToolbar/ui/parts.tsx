@@ -274,10 +274,12 @@ export function UnderlineTabs<T extends string>({
   value,
   tabs,
   onChange,
+  warnings,
 }: {
   value: T;
   tabs: ReadonlyArray<readonly [T, string]>;
   onChange: (tab: T) => void;
+  warnings?: Partial<Record<T, string>> | undefined;
 }) {
   return (
     <div className="flex h-9 shrink-0 items-stretch gap-4 border-b px-3">
@@ -292,6 +294,13 @@ export function UnderlineTabs<T extends string>({
           )}
         >
           {label}
+          {warnings?.[id] ? (
+            <span
+              role="img"
+              aria-label={warnings[id]}
+              className="absolute top-1.5 -right-1.5 size-1.5 rounded-full bg-warning"
+            />
+          ) : null}
           {value === id ? (
             <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
           ) : null}
