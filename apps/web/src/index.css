@@ -2301,7 +2301,7 @@ code {
   --switch-on: color-mix(in oklab, var(--primary) 70%, var(--foreground));
   /* Switch shape. 9999px gives the classic pill; a small radius gives a rounded square.
      The knob stays concentric with the track across its 2px inset. */
-  --switch-radius: 6px;
+  --switch-radius: 9999px;
   --switch-thumb-radius: max(calc(var(--switch-radius) - 2px), 1px);
 }
 
