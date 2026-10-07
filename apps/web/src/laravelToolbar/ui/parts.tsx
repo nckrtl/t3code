@@ -283,6 +283,7 @@ export function UnderlineTabs<T extends string>({
 // Plain table pieces with the shadcn table rhythm: muted sentence-case headers, 12 px rows.
 export const tableClass = "w-full table-fixed text-left text-xs";
 export const headRowClass = "border-b";
-export const headCellClass = "h-9 px-3 font-medium text-muted-foreground";
+export const headCellClass =
+  "sticky top-0 z-10 h-9 bg-background px-3 font-medium text-muted-foreground";
 export const rowClass = "border-b transition-colors hover:bg-muted/50";
 export const cellClass = "px-3 py-3 align-middle";
