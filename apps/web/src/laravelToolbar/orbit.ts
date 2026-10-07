@@ -1,3 +1,4 @@
+import { gatewayApplicationLogs, type FollowApplicationLogs } from "./applicationLogs";
 // The Orbit tool: the processes of the Orbit Instance that serves the page, and their logs.
 // Calls go through the Gateway like T3's other Orbit features (see ~/orbit/orbitTransport.ts).
 import { callOrbit, listOrbitNodes, OrbitApiError } from "~/orbit/orbitApi";
@@ -45,6 +46,7 @@ export interface LogLine {
 /** What the toolbar asks of Orbit; the browser pane and the design page each provide one. */
 export interface OrbitSource {
   readonly page: () => Promise<OrbitPage | null>;
+  readonly applicationLogs: FollowApplicationLogs;
   readonly processes: (instanceId: number) => Promise<OrbitProcess[]>;
   readonly dependencies: (instanceId: number) => Promise<OrbitDependencies>;
   readonly logs: (processId: number, lines: number) => Promise<string>;
@@ -223,6 +225,7 @@ export function gatewayOrbitSource(transport: OrbitTransport, domain: string): O
   // The domain's Instance does not change while the page is open; ask once, retry on errors.
   let page: Promise<OrbitPage | null> | null = null;
   return {
+    applicationLogs: gatewayApplicationLogs(transport),
     page: () =>
       (page ??= resolvePage().catch((error: unknown) => {
         page = null;

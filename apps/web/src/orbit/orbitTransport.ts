@@ -21,7 +21,7 @@ const GATEWAY_URL_STORAGE_KEY = "t3code:orbit-gateway-url";
 const ORBIT_CONTROL_THREAD_ID = ThreadId.make("orbit-control");
 
 export interface OrbitHttpRequest {
-  readonly method: "GET" | "POST" | "PATCH";
+  readonly method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   readonly path: string;
   readonly query?: Readonly<Record<string, string>>;
   readonly body?: unknown;

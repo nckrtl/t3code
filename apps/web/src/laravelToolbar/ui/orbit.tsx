@@ -1,3 +1,4 @@
+import type { ApplicationLogUpdate } from "../applicationLogs";
 import { DependenciesPanel, useOrbitDependencies } from "./dependencies";
 import { ArrowDownToLine, Copy, Play, RotateCw, Square } from "lucide-react";
 import { type ReactNode, type SVGProps, useEffect, useRef, useState } from "react";
@@ -205,8 +206,76 @@ function useProcessLog(processId: number | null, status: ProcessStatus | null, f
   return log?.processId === processId ? log.text : null;
 }
 
+function ApplicationLogsPanel() {
+  const { state, source } = useOrbitTool();
+  const instanceId = state.status === "ready" ? state.page.instanceId : null;
+  const [following, setFollowing] = useState(true);
+  const [log, setLog] = useState<ApplicationLogUpdate>({
+    text: "",
+    status: "connecting",
+    error: null,
+  });
+  const end = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!source || instanceId === null || !following) return;
+    return source.applicationLogs(instanceId, setLog);
+  }, [source, instanceId, following]);
+  useEffect(() => {
+    if (!following || !log.text) return;
+    const viewport = end.current?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+  }, [following, log.text]);
+  const lines = parseLogLines(log.text);
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
+        <span className="font-mono text-muted-foreground">storage/logs/laravel.log</span>
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-2xs text-muted-foreground">
+            {following
+              ? log.status === "live"
+                ? "Live"
+                : log.status === "refreshing"
+                  ? "Refreshing"
+                  : "Connecting…"
+              : "Paused"}
+          </span>
+          <Button variant="ghost" size="xs" onClick={() => setFollowing((value) => !value)}>
+            {following ? <Square /> : <Play />}
+            {following ? "Pause" : "Follow"}
+          </Button>
+          <IconAction
+            label="Copy application log"
+            disabled={!log.text}
+            onClick={() => void navigator.clipboard.writeText(log.text)}
+          >
+            <Copy />
+          </IconAction>
+        </div>
+      </div>
+      {log.error ? (
+        <div className="border-b px-3 py-2 text-xs text-destructive">{log.error}</div>
+      ) : null}
+      <ScrollArea radius="none" scrollFade className="min-h-0 flex-1">
+        <div className="py-2 font-mono text-xs leading-5">
+          {lines.length ? (
+            lines.map((line) => <LogLineRow key={line.id} time={line.time} text={line.text} />)
+          ) : (
+            <div className="px-3 text-muted-foreground">
+              {log.status === "connecting" ? "Reading the application log…" : "No log lines yet"}
+            </div>
+          )}
+          <div ref={end} />
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export function OrbitPanel() {
-  const [tab, setTab] = useState<"instance" | "processes" | "composer" | "javascript">("instance");
+  const [tab, setTab] = useState<"instance" | "processes" | "logs" | "composer" | "javascript">(
+    "instance",
+  );
   const { state, refresh, act, warnings } = useOrbitTool();
   const dependencyResult = useOrbitDependencies();
   const dependencies = dependencyResult?.data;
@@ -296,6 +365,7 @@ export function OrbitPanel() {
         tabs={[
           ["instance", "Instance"],
           ["processes", "Processes"],
+          ["logs", "Logs"],
           [
             "composer",
             `Composer${dependencies?.composer ? ` ${dependencies.composer.length}` : ""}`,
@@ -331,6 +401,8 @@ export function OrbitPanel() {
             ]}
           />
         </ScrollArea>
+      ) : tab === "logs" ? (
+        <ApplicationLogsPanel />
       ) : tab === "composer" || tab === "javascript" ? (
         <DependenciesPanel tab={tab} result={dependencyResult} />
       ) : processes.length === 0 || !selected ? (

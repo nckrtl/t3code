@@ -17,7 +17,8 @@ context, store, T3 components and CSS from this checkout. There is no second too
   Dependencies live inside Orbit and load the saved instance inventory from the Gateway.
   An instance needs an Orbit dependency scan before live package data appears. Start, stop and
   restart only change this preview's in-memory process data. Reload resets the fixtures.
-  Source paths are examples; this preview has no editor connection.
+  Logs uses illustrative application log lines; live pages follow Orbit’s leased Reverb stream,
+  with tail refresh when streaming is unavailable. Source paths are examples; this preview has no editor connection.
 - `panel=` opens and pins requests, request, timings, memory, database, models, orbit
   or environment. Composer and the detected JavaScript package manager are tabs inside Orbit. `theme=light` and `theme=dark` select stock themes; no theme argument
   uses Nick's Dark Ocean theme. Check Dark Ocean and light after color changes.

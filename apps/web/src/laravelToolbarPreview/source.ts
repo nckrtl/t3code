@@ -190,6 +190,14 @@ export function createPreviewSource(): ToolbarSource {
     processes.map((process) => [process.id, [...(previewLogs[process.name] ?? [])]]),
   );
   const orbit: OrbitSource = {
+    applicationLogs: (_id, onUpdate) => {
+      onUpdate({
+        text: "[2026-10-07 12:00:00] local.INFO: Preview application log\n[2026-10-07 12:00:01] local.WARNING: Example warning",
+        status: "live",
+        error: null,
+      });
+      return () => {};
+    },
     page: async () => ({ domain: "main.drift-website.test", instanceId: 271, nodeName: "beast" }),
     dependencies: async () => previewDependencies,
     processes: async () => processes.map((process) => ({ ...process })),
