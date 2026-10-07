@@ -6,6 +6,7 @@ import { cn } from "~/lib/utils";
 
 import { useOrbitTool, useToolbarTab } from "../context";
 import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
+import { LaravelIcon, PhpIcon } from "./brandIcons";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
 import { OrbitIcon, OrbitPanel } from "./orbit";
 import { StatusBadge } from "./parts";
@@ -230,10 +231,19 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
               {item(
                 "environment",
                 "Laravel and PHP",
-                <span className="text-muted-foreground">
-                  Laravel {selected.laravel?.version?.split(".").slice(0, 2).join(".") ?? "–"} · PHP{" "}
-                  {selected.php?.version?.split(".").slice(0, 2).join(".") ?? "–"}
-                </span>,
+                <>
+                  <LaravelIcon />
+                  <span className="text-muted-foreground">
+                    {selected.laravel?.version?.split(".").slice(0, 2).join(".") ?? "–"}
+                  </span>
+                  <span className="text-muted-foreground" aria-hidden="true">
+                    ·
+                  </span>
+                  <PhpIcon />
+                  <span className="text-muted-foreground">
+                    {selected.php?.version?.split(".").slice(0, 2).join(".") ?? "–"}
+                  </span>
+                </>,
               )}
             </div>
           ) : null}

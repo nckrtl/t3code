@@ -45,7 +45,7 @@ normal web/desktop entry does not load fixture data.
 
 ## Design rules
 
-- Bar icons use Lucide, with the custom Orbit mark as the exception. Match the browser
+- Bar icons use Lucide, except for the Orbit, Laravel and PHP brand marks. Match the browser
   bar's `Button` `icon-xs` sizing: 14 px on desktop (`sm:size-3.5`), 16 px below `sm`
   (`size-4`). Keep Lucide's default stroke width.
 - Two sizes: 12 px (`text-xs`) for text, 18 px (`text-lg`) for stat values.
