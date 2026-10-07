@@ -38,6 +38,7 @@ import { useWorkspaceMutationRefresh } from "~/hooks/useWorkspaceMutationRefresh
 import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { PREFERRED_HIGHLIGHTER } from "~/lib/syntaxHighlighting";
 import { cn } from "~/lib/utils";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 import { isPreviewSupportedInRuntime } from "~/previewStateStore";
 import { isAbsolutePath, resolvePathLinkTarget } from "~/terminal-links";
 import { ScrollArea } from "~/components/ui/scroll-area";
@@ -1127,52 +1128,56 @@ export default function FilePreviewPanel({
               enableShortcut={false}
             />
           ) : null}
-          {canToggleRendered && renderedMode ? (
-            <FileSurfaceAction
-              label={renderedToggleLabel(renderedMode, rendered)}
-              pressed={rendered}
-              onPress={() => {
-                const pressed = !rendered;
-                setRenderedPreferred(pressed);
-                setHandledReveal(
-                  pressed && relativePath !== null
-                    ? { path: relativePath, requestId: revealRequestId }
-                    : null,
-                );
-              }}
-            >
-              {rendered ? (
-                <Code2 className="size-3.5" />
-              ) : renderedMode === "table" ? (
-                <Table2 className="size-3.5" />
-              ) : (
-                <Eye className="size-3.5" />
-              )}
-            </FileSurfaceAction>
-          ) : null}
-          {showsRawText ? (
-            <FileSurfaceAction
-              label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
-              pressed={wordWrap}
-              onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
-            >
-              <WrapTextIcon className="size-3.5" />
-            </FileSurfaceAction>
-          ) : null}
-          {canOpenInBrowser ? (
-            <FileSurfaceAction label="Open file in preview browser" onPress={handleOpenInBrowser}>
-              <Globe2 className="size-3.5" />
-            </FileSurfaceAction>
-          ) : null}
-          {!isHostFile && previewPath !== null ? (
-            <FileSurfaceAction
-              label={explorerOpen ? "Hide file explorer" : "Show file explorer"}
-              pressed={explorerOpen}
-              onPress={toggleExplorer}
-            >
-              <FolderTree className="size-3.5" />
-            </FileSurfaceAction>
-          ) : null}
+          <ToolbarGroup className="shrink-0">
+            {canToggleRendered && renderedMode ? (
+              <FileSurfaceAction
+                label={renderedToggleLabel(renderedMode, rendered)}
+                pressed={rendered}
+                onPress={() => {
+                  const pressed = !rendered;
+                  setRenderedPreferred(pressed);
+                  setHandledReveal(
+                    pressed && relativePath !== null
+                      ? { path: relativePath, requestId: revealRequestId }
+                      : null,
+                  );
+                }}
+              >
+                {rendered ? (
+                  <Code2 className="size-3.5" />
+                ) : renderedMode === "table" ? (
+                  <Table2 className="size-3.5" />
+                ) : (
+                  <Eye className="size-3.5" />
+                )}
+              </FileSurfaceAction>
+            ) : null}
+            {showsRawText ? (
+              <FileSurfaceAction
+                label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
+                pressed={wordWrap}
+                onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
+              >
+                <WrapTextIcon className="size-3.5" />
+              </FileSurfaceAction>
+            ) : null}
+          </ToolbarGroup>
+          <ToolbarGroup className="shrink-0">
+            {canOpenInBrowser ? (
+              <FileSurfaceAction label="Open file in preview browser" onPress={handleOpenInBrowser}>
+                <Globe2 className="size-3.5" />
+              </FileSurfaceAction>
+            ) : null}
+            {!isHostFile && previewPath !== null ? (
+              <FileSurfaceAction
+                label={explorerOpen ? "Hide file explorer" : "Show file explorer"}
+                pressed={explorerOpen}
+                onPress={toggleExplorer}
+              >
+                <FolderTree className="size-3.5" />
+              </FileSurfaceAction>
+            ) : null}
+          </ToolbarGroup>
         </div>
       ) : null}
       {previewPath &&

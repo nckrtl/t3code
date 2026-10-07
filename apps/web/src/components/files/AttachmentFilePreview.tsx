@@ -24,6 +24,7 @@ import { toastManager } from "~/components/ui/toast";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useClientSettings, useUpdateClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 
 import { AudioPreview } from "./AudioPreview";
 import { BrowserDocumentFrame } from "./BrowserDocumentFrame";
@@ -299,57 +300,61 @@ export function AttachmentFilePreview(props: {
             {formatAttachmentSize(props.sizeBytes)}
           </span>
         </div>
-        {renderedMode ? (
-          <FileSurfaceAction
-            label={renderedToggleLabel(renderedMode, rendered)}
-            pressed={rendered}
-            onPress={() => setRendered((value) => !value)}
-          >
-            {rendered ? (
-              <Code2 className="size-3.5" />
-            ) : renderedMode === "table" ? (
-              <Table2 className="size-3.5" />
-            ) : (
-              <Eye className="size-3.5" />
-            )}
-          </FileSurfaceAction>
-        ) : null}
-        {showsRawText ? (
-          <FileSurfaceAction
-            label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
-            pressed={wordWrap}
-            onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
-          >
-            <WrapTextIcon className="size-3.5" />
-          </FileSurfaceAction>
-        ) : null}
-        {content ? (
-          <FileSurfaceAction
-            label={isCopied ? "Copied" : content.truncated ? "Copy preview" : "Copy contents"}
-            onPress={() => copyToClipboard(content.text, undefined)}
-          >
-            {isCopied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
-          </FileSurfaceAction>
-        ) : null}
-        {url ? (
-          <FileSurfaceAction
-            label={saving ? "Preparing file…" : "Save file"}
-            disabled={saving}
-            onPress={save}
-          >
-            <DownloadIcon className="size-3.5" />
-          </FileSurfaceAction>
-        ) : null}
-        {props.onRemove ? (
-          <FileSurfaceAction label="Remove from draft" onPress={props.onRemove}>
-            <Trash2Icon className="size-3.5" />
-          </FileSurfaceAction>
-        ) : null}
-        {props.onClose ? (
-          <FileSurfaceAction label="Close" onPress={props.onClose}>
-            <XIcon className="size-3.5" />
-          </FileSurfaceAction>
-        ) : null}
+        <ToolbarGroup className="shrink-0">
+          {renderedMode ? (
+            <FileSurfaceAction
+              label={renderedToggleLabel(renderedMode, rendered)}
+              pressed={rendered}
+              onPress={() => setRendered((value) => !value)}
+            >
+              {rendered ? (
+                <Code2 className="size-3.5" />
+              ) : renderedMode === "table" ? (
+                <Table2 className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
+            </FileSurfaceAction>
+          ) : null}
+          {showsRawText ? (
+            <FileSurfaceAction
+              label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
+              pressed={wordWrap}
+              onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
+            >
+              <WrapTextIcon className="size-3.5" />
+            </FileSurfaceAction>
+          ) : null}
+        </ToolbarGroup>
+        <ToolbarGroup className="shrink-0">
+          {content ? (
+            <FileSurfaceAction
+              label={isCopied ? "Copied" : content.truncated ? "Copy preview" : "Copy contents"}
+              onPress={() => copyToClipboard(content.text, undefined)}
+            >
+              {isCopied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+            </FileSurfaceAction>
+          ) : null}
+          {url ? (
+            <FileSurfaceAction
+              label={saving ? "Preparing file…" : "Save file"}
+              disabled={saving}
+              onPress={save}
+            >
+              <DownloadIcon className="size-3.5" />
+            </FileSurfaceAction>
+          ) : null}
+          {props.onRemove ? (
+            <FileSurfaceAction label="Remove from draft" onPress={props.onRemove}>
+              <Trash2Icon className="size-3.5" />
+            </FileSurfaceAction>
+          ) : null}
+          {props.onClose ? (
+            <FileSurfaceAction label="Close" onPress={props.onClose}>
+              <XIcon className="size-3.5" />
+            </FileSurfaceAction>
+          ) : null}
+        </ToolbarGroup>
       </div>
       {content?.truncated ? (
         <FileSurfaceNotice>
