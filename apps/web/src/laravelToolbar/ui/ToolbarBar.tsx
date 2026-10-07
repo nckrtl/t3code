@@ -1,4 +1,4 @@
-import { Box, Database, ListIcon, MemoryStick, Package, Timer, X } from "lucide-react";
+import { Box, Database, ListIcon, MemoryStick, Package, Timer } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
@@ -87,7 +87,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   const panels = usePanels(initialPanel);
   const hostRef = useRef<HTMLDivElement>(null);
   const resize = useToolbarPanelResize(hostRef, panels.pin);
-  const { tab, selectedId, selected, viewingHistory, select } = useToolbarTab();
+  const { tab, selectedId, selected } = useToolbarTab();
   const orbit = useOrbitTool();
   const orbitProcesses = orbit.state.status === "ready" ? orbit.state.processes : [];
   const row = tab.history.find((entry) => entry.row.id === selectedId);
@@ -163,17 +163,6 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
               true,
             )
           : null}
-        {/* Shown while an older request is selected; returns to the page's own request. */}
-        {viewingHistory && row ? (
-          <button
-            type="button"
-            onClick={() => select(null)}
-            className="inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md bg-info/15 px-2 font-medium text-info-foreground text-xs outline-none hover:bg-info/20 focus-visible:ring-1 focus-visible:ring-ring [&_svg]:size-4 sm:[&_svg]:size-3.5"
-          >
-            {new Date(row.receivedAt).toLocaleTimeString([], { hour12: false })}
-            <X />
-          </button>
-        ) : null}
         {selected ? (
           <>
             {item(
