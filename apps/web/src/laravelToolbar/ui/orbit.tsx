@@ -259,7 +259,7 @@ export function OrbitPanel() {
           {processes.length > 0 ? (
             <div className="flex items-center gap-1">
               <Button
-                variant="outline"
+                variant="outline-muted"
                 size="xs"
                 type="button"
                 disabled={down.length === 0}
@@ -269,7 +269,7 @@ export function OrbitPanel() {
                 Start all
               </Button>
               <Button
-                variant="outline"
+                variant="outline-muted"
                 size="xs"
                 type="button"
                 disabled={running.length === 0}
