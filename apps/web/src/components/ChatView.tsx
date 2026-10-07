@@ -9598,7 +9598,7 @@ export default function ChatView(props: ChatViewProps) {
         // header can shrink behind the right panel without moving the controls.
         "pointer-events-none fixed right-[var(--workspace-controls-right)] z-50 mr-px flex items-center gap-1 [-webkit-app-region:no-drag]",
         isElectron
-          ? "top-[var(--workspace-controls-top)] h-[var(--workspace-topbar-height)]"
+          ? "top-[var(--workspace-controls-top)] h-(--shell-header-height)"
           : "top-[8px] h-7",
       )}
       data-workspace-titlebar-controls
