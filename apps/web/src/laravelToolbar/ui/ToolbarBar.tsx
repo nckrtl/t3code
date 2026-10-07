@@ -89,7 +89,6 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   const resize = useToolbarPanelResize(hostRef, panels.pin);
   const { tab, selectedId, selected } = useToolbarTab();
   const orbit = useOrbitTool();
-  const orbitProcesses = orbit.state.status === "ready" ? orbit.state.processes : [];
   const row = tab.history.find((entry) => entry.row.id === selectedId);
   const summary = row ? summarize(row.row, selected) : null;
 
@@ -208,25 +207,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           </>
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          {orbit.state.status === "ready"
-            ? item(
-                "orbit",
-                "Orbit processes",
-                <>
-                  <span className="relative">
-                    <OrbitIcon />
-                    {/* Red on the icon when a process that should run is down. */}
-                    {orbitProcesses.some((process) => process.status === "crashed") ? (
-                      <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-destructive" />
-                    ) : null}
-                  </span>
-                  <span className="tabular-nums">
-                    {orbitProcesses.filter((process) => process.status === "running").length}/
-                    {orbitProcesses.length}
-                  </span>
-                </>,
-              )
-            : null}
+          {orbit.state.status === "ready" ? item("orbit", "Orbit", <OrbitIcon />) : null}
           {selected ? (
             <div className="hidden items-center @2xl:flex">
               {item("dependencies", "Dependencies", <Package />)}

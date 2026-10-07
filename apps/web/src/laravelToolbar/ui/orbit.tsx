@@ -15,7 +15,15 @@ import {
   type ProcessStatus,
   splitLogLevels,
 } from "../orbit";
-import { EmptyRow, PanelShell, secondaryLineClass } from "./parts";
+import {
+  EmptyRow,
+  KeyValueRows,
+  PanelShell,
+  secondaryLineClass,
+  Stat,
+  StatStrip,
+  UnderlineTabs,
+} from "./parts";
 
 const LOG_LINES = 200;
 const PROCESS_REFRESH_MS = 5_000;
@@ -197,6 +205,7 @@ function useProcessLog(processId: number | null, status: ProcessStatus | null, f
 }
 
 export function OrbitPanel() {
+  const [tab, setTab] = useState<"instance" | "processes">("instance");
   const { state, refresh, act } = useOrbitTool();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [follow, setFollow] = useState(true);
@@ -207,7 +216,11 @@ export function OrbitPanel() {
   const selected = processes.find((process) => process.id === selectedId) ?? processes[0] ?? null;
   const canFollow = selected?.status === "running" || selected?.status === "starting";
   const following = follow && canFollow;
-  const logText = useProcessLog(selected?.id ?? null, selected?.status ?? null, following);
+  const logText = useProcessLog(
+    tab === "processes" ? (selected?.id ?? null) : null,
+    selected?.status ?? null,
+    following,
+  );
   const lines = logText === null ? null : parseLogLines(logText);
 
   // Process states change behind our back (crashes, other clients); refresh while open.
@@ -240,45 +253,81 @@ export function OrbitPanel() {
     <PanelShell
       icon={OrbitIcon}
       title="Orbit"
+      hasTabs
       flush
       actions={
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2 text-muted-foreground text-xs">
-            <span>
-              <span className="font-medium text-foreground tabular-nums">
-                {running.length} of {processes.length}
-              </span>{" "}
-              running
+        tab === "processes" ? (
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-2 text-muted-foreground text-xs">
+              <span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {running.length} of {processes.length}
+                </span>{" "}
+                running
+              </span>
             </span>
-          </span>
-          {processes.length > 0 ? (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline-muted"
-                size="xs"
-                type="button"
-                disabled={down.length === 0}
-                onClick={() => void run(down, "start")}
-              >
-                <Play />
-                <span className="ml-0.5">Start all</span>
-              </Button>
-              <Button
-                variant="outline-muted"
-                size="xs"
-                type="button"
-                disabled={running.length === 0}
-                onClick={() => void run(running, "restart")}
-              >
-                <RotateCw />
-                <span className="ml-0.5">Restart all</span>
-              </Button>
-            </div>
-          ) : null}
-        </div>
+            {processes.length > 0 ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline-muted"
+                  size="xs"
+                  type="button"
+                  disabled={down.length === 0}
+                  onClick={() => void run(down, "start")}
+                >
+                  <Play />
+                  <span className="ml-0.5">Start all</span>
+                </Button>
+                <Button
+                  variant="outline-muted"
+                  size="xs"
+                  type="button"
+                  disabled={running.length === 0}
+                  onClick={() => void run(running, "restart")}
+                >
+                  <RotateCw />
+                  <span className="ml-0.5">Restart all</span>
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : undefined
       }
     >
-      {processes.length === 0 || !selected ? (
+      <UnderlineTabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          ["instance", "Instance"],
+          ["processes", "Processes"],
+        ]}
+      />
+      {tab === "instance" ? (
+        <ScrollArea radius="none" scrollFade hideScrollbars className="min-h-0 flex-1">
+          <StatStrip>
+            <Stat label="Processes" value={processes.length} />
+            <Stat label="Running" value={running.length} tone="success" />
+            <Stat
+              label="Stopped"
+              value={processes.filter((process) => process.status === "stopped").length}
+            />
+            <Stat
+              label="Crashed"
+              value={processes.filter((process) => process.status === "crashed").length}
+              tone={
+                processes.some((process) => process.status === "crashed") ? "danger" : "default"
+              }
+            />
+          </StatStrip>
+          <KeyValueRows
+            rows={[
+              ["Instance ID", state.page.instanceId],
+              ["Domain", state.page.domain, "mono"],
+              ["Node", state.page.nodeName ?? "–"],
+            ]}
+          />
+        </ScrollArea>
+      ) : processes.length === 0 || !selected ? (
         <EmptyRow>This Orbit Instance runs no processes</EmptyRow>
       ) : (
         <div className="flex min-h-0 flex-1">
