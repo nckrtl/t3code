@@ -18,7 +18,11 @@ import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../
 import { LaravelIcon, PhpIcon } from "./brandIcons";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
 import { OrbitIcon, OrbitPanel } from "./orbit";
-import { ToolbarPanelResizeContext, useToolbarPanelResize } from "./panelResize";
+import {
+  TOOLBAR_SHEET_INSET,
+  ToolbarPanelResizeContext,
+  useToolbarPanelResize,
+} from "./panelResize";
 import { MethodBadge, StatusBadge } from "./parts";
 import { RequestPanel, RequestsPanel } from "./requests";
 
@@ -147,16 +151,16 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
 
   return (
     <div ref={hostRef} className="relative shrink-0">
-      {/* The flyout spans the browser edge to edge and sits directly on the bar, on the
-          card colour like the bar (popover is the small-menu surface). */}
+      {/* The flyout is a floating sheet over the page: inset like the bar's groups, with a gap
+          above the bar so the page shows around it. */}
       {panels.active && hostRect
         ? createPortal(
             <div
-              className="fixed z-40 border-t border-(--shell-divider)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+              className="fixed z-40 overflow-hidden rounded-lg border border-(--shell-divider-header)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
               style={{
-                left: hostRect.left,
-                width: hostRect.width,
-                top: hostRect.top - resize.height,
+                left: hostRect.left + TOOLBAR_SHEET_INSET,
+                width: hostRect.width - 2 * TOOLBAR_SHEET_INSET,
+                top: hostRect.top - TOOLBAR_SHEET_INSET - resize.height,
                 height: resize.height,
               }}
               onMouseEnter={panels.stay}

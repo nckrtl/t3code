@@ -114,11 +114,11 @@ describe("toolbar panel resizing", () => {
   it("fits small page areas without overwriting the saved height", async () => {
     values.set(storageKey, "500");
     await mount();
-    expect(resize.maxHeight).toBe(660);
+    expect(resize.maxHeight).toBe(644);
     top = 180;
     await act(async () => measure());
-    expect(resize.height).toBe(140);
-    expect(resize.minHeight).toBe(140);
+    expect(resize.height).toBe(124);
+    expect(resize.minHeight).toBe(124);
     expect(values.get(storageKey)).toBe("500");
     top = 700;
     await act(async () => measure());
@@ -134,9 +134,9 @@ describe("toolbar panel resizing", () => {
         preventDefault: vi.fn(),
       }) as unknown as KeyboardEvent<HTMLDivElement>;
     await act(async () => resize.onKeyDown(key("End")));
-    expect(resize.height).toBe(660);
+    expect(resize.height).toBe(644);
     await act(async () => resize.onKeyDown(key("ArrowUp")));
-    expect(resize.height).toBe(660);
+    expect(resize.height).toBe(644);
     await act(async () => resize.onKeyDown(key("Home")));
     expect(resize.height).toBe(192);
     await act(async () => renderer?.unmount());

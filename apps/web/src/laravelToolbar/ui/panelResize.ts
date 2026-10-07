@@ -14,6 +14,8 @@ import { useResizeDrag } from "~/hooks/useResizeDrag";
 const STORAGE_KEY = "t3code:laravel-toolbar-panel-height";
 const DEFAULT_HEIGHT = 384;
 const MIN_HEIGHT = 192;
+/** The floating sheet keeps this gap to the page edges and the bar (the bar's own side padding). */
+export const TOOLBAR_SHEET_INSET = 8;
 
 function readHeight() {
   try {
@@ -48,7 +50,8 @@ export function useToolbarPanelResize(
       setAvailableHeight(
         Math.max(
           0,
-          Math.floor(host.getBoundingClientRect().top - page.getBoundingClientRect().top),
+          Math.floor(host.getBoundingClientRect().top - page.getBoundingClientRect().top) -
+            2 * TOOLBAR_SHEET_INSET,
         ),
       );
     };
