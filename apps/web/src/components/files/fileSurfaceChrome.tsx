@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import { Spinner } from "~/components/ui/spinner";
 import { Button } from "~/components/ui/button";
-import { Toggle } from "~/components/ui/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { DIFF_SURFACE_THEME_UNSAFE_CSS } from "~/lib/diffRendering";
 import { cn } from "~/lib/utils";
@@ -76,36 +75,27 @@ export function FileSurfaceAction(props: {
   readonly onPress: () => void;
   readonly children: ReactNode;
 }) {
-  const pressed = props.pressed;
+  const { pressed } = props;
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          pressed === undefined ? (
-            <Button
-              type="button"
-              className="shrink-0"
-              disabled={props.disabled ?? false}
-              onClick={props.onPress}
-              aria-label={props.label}
-              variant="ghost"
-              size="icon-xs"
-            >
+          // A pressed toggle shows a primary icon, not a fill, like the browser bar's
+          // active tools (aria-pressed still reports it).
+          <Button
+            type="button"
+            className="shrink-0"
+            disabled={props.disabled ?? false}
+            onClick={props.onPress}
+            aria-label={props.label}
+            aria-pressed={pressed === undefined ? undefined : pressed}
+            variant="ghost"
+            size="icon-xs"
+          >
+            <span className={cn("contents", pressed && "[&_svg]:text-primary!")}>
               {props.children}
-            </Button>
-          ) : (
-            <Toggle
-              className="shrink-0"
-              pressed={pressed}
-              disabled={props.disabled ?? false}
-              onPressedChange={props.onPress}
-              aria-label={props.label}
-              variant="ghost"
-              size="xs"
-            >
-              {props.children}
-            </Toggle>
-          )
+            </span>
+          </Button>
         }
       />
       <TooltipPopup>{props.label}</TooltipPopup>
