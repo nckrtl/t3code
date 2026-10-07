@@ -227,14 +227,14 @@ export function SettingsUnavailableGroup({
   if (message === undefined) return children;
 
   return (
-    <div className="border-(--shell-divider-header)! pt-1 pb-1.5">
-      <div className="px-1 pb-1">
-        <div className="flex items-start gap-2 rounded-md bg-info/10 px-2.5 py-2 text-ui leading-relaxed text-info sm:px-3">
-          <InfoIcon className="mt-0.75 size-3.5 shrink-0" />
+    <div className="border-(--shell-divider-header)! pb-1.5">
+      <div className="p-1">
+        <div className="flex items-center gap-2 rounded-md bg-info/10 px-2.5 py-2 text-ui text-info-foreground sm:px-3">
+          <InfoIcon className="size-3.5 shrink-0" />
           <p>{message}</p>
         </div>
       </div>
-      <div className="[&_h3]:opacity-64 [&_p]:opacity-64 [&>*+*]:border-t [&>*+*]:border-(--shell-divider-raised)!">
+      <div className="border-t border-(--shell-divider-raised)! [&_h3]:opacity-64 [&_p]:opacity-64 [&>*+*]:border-t [&>*+*]:border-(--shell-divider-raised)!">
         {children}
       </div>
     </div>
