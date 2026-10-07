@@ -1739,6 +1739,20 @@ code {
   background-clip: padding-box;
 }
 
+/* Chat header actions: 28px buttons (the touch size) on desktop too, with the icons kept at
+   their size, so the actions read larger while the 44px header keeps its height. Keyed to the
+   xs / icon-xs size classes; plain CSS so it beats the button's own utilities. */
+@media (min-width: 40rem) {
+  [data-chat-header] [data-slot="button"].sm\:size-6 {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  [data-chat-header] [data-slot="button"].sm\:h-6 {
+    height: 1.75rem;
+    padding-inline: 0.625rem;
+  }
+}
+
 /* Chat markdown rendering */
 
 .chat-markdown > :first-child {
