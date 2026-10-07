@@ -230,7 +230,7 @@ export function BrowserAnnotationControl({
               </div>
             </div>
             {confirmingRemove && idle > 0 ? (
-              <div className="flex items-center justify-between gap-3 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui">
+              <div className="flex items-center justify-between gap-3 border-t border-(--glass-divider)! px-3 py-2 text-ui">
                 <span className="text-muted-foreground">
                   {`Remove ${idle} ${idle === 1 ? "annotation" : "annotations"} for everyone? Work in progress stays.`}
                 </span>
@@ -252,17 +252,17 @@ export function BrowserAnnotationControl({
               </div>
             ) : null}
             {!available ? (
-              <p className="border-t border-(--shell-divider-raised)! px-3 py-3 text-ui text-muted-foreground">
+              <p className="border-t border-(--glass-divider)! px-3 py-3 text-ui text-muted-foreground">
                 This page has no annotator. Open a page that serves one, then click an element.
               </p>
             ) : queue.length === 0 ? (
-              <p className="border-t border-(--shell-divider-raised)! px-3 py-3 text-ui text-muted-foreground">
+              <p className="border-t border-(--glass-divider)! px-3 py-3 text-ui text-muted-foreground">
                 No annotations yet. Click the button, then click an element on the page.
               </p>
             ) : (
               <ol
                 role="list"
-                className="max-h-80 overflow-y-auto border-t border-(--shell-divider-raised)! p-1.5 text-ui"
+                className="max-h-80 overflow-y-auto border-t border-(--glass-divider)! p-1.5 text-ui"
               >
                 {queue.map((annotation) => {
                   const state = annotationState(annotation);
@@ -303,7 +303,7 @@ export function BrowserAnnotationControl({
                 })}
               </ol>
             )}
-            <div className="border-t border-(--shell-divider-raised)! px-3 py-2.5">
+            <div className="border-t border-(--glass-divider)! px-3 py-2.5">
               {watching ? (
                 <p className="text-ui text-muted-foreground">
                   New annotations go to this thread when it is idle.
@@ -329,7 +329,7 @@ export function BrowserAnnotationControl({
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui">
+            <div className="flex items-center gap-2 border-t border-(--glass-divider)! px-3 py-2 text-ui">
               <MicIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="shrink-0 font-medium text-muted-foreground">Dictation</span>
               <DraftInput
@@ -344,7 +344,7 @@ export function BrowserAnnotationControl({
             </div>
             <label
               htmlFor={watchSwitchId}
-              className="flex cursor-pointer items-center justify-between gap-3 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui"
+              className="flex cursor-pointer items-center justify-between gap-3 border-t border-(--glass-divider)! px-3 py-2 text-ui"
             >
               <span className="min-w-0">
                 <span className="block font-medium text-muted-foreground">Watch</span>

@@ -404,10 +404,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   /* Floating surfaces share the shell's overlay: mostly fill, heavy blur. Rows
      inside highlight with the shell's highlight instead of the faint accent. */
   --accent: var(--shell-highlight);
+  /* Section dividers inside a glass surface match its edge. */
+  --glass-divider: color-mix(in srgb, var(--foreground) 8%, transparent);
   background: var(--shell-overlay);
   -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
   backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
-  border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  border: 1px solid var(--glass-divider);
 
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     background: var(--popover) !important;
