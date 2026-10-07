@@ -9,6 +9,7 @@ import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../
 import { LaravelIcon, PhpIcon } from "./brandIcons";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
 import { OrbitIcon, OrbitPanel } from "./orbit";
+import { ToolbarPanelResizeContext, useToolbarPanelResize } from "./panelResize";
 import { StatusBadge } from "./parts";
 import { RequestPanel, RequestsPanel } from "./requests";
 
@@ -61,6 +62,11 @@ function usePanels(initialPinned: PanelId | null) {
       timer.current = window.setTimeout(() => setHovered(id), OPEN_DELAY_MS);
     },
     stay: clear,
+    pin: () => {
+      clear();
+      setPinned(hovered ?? pinned);
+      setHovered(null);
+    },
     leave: () => {
       clear();
       timer.current = window.setTimeout(() => setHovered(null), CLOSE_DELAY_MS);
@@ -76,6 +82,8 @@ function usePanels(initialPinned: PanelId | null) {
 /** The bar under the browser page, with its flyout panels. */
 export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | null }) {
   const panels = usePanels(initialPanel);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const resize = useToolbarPanelResize(hostRef, panels.pin);
   const { tab, selectedId, selected, viewingHistory, select } = useToolbarTab();
   const orbit = useOrbitTool();
   const orbitProcesses = orbit.state.status === "ready" ? orbit.state.processes : [];
@@ -101,12 +109,13 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   );
 
   return (
-    <div className="relative shrink-0">
+    <div ref={hostRef} className="relative shrink-0">
       {/* The flyout spans the browser edge to edge and sits directly on the bar, on the
           theme's canvas like the bar (popover is the small-menu surface). */}
       {panels.active ? (
         <div
           className="absolute inset-x-0 bottom-full z-40 border-t bg-background text-foreground shadow-lg"
+          style={{ height: resize.height }}
           onMouseEnter={panels.stay}
           onMouseLeave={() => {
             if (panels.pinned === null) panels.leave();
@@ -114,13 +123,15 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
         >
           <RenderErrorBoundary
             fallback={
-              <div className="flex h-96 items-center justify-center text-muted-foreground text-xs">
+              <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
                 This panel cannot show this request's data.
               </div>
             }
             resetKeys={[panels.active, selected]}
           >
-            {PANELS[panels.active]()}
+            <ToolbarPanelResizeContext value={resize}>
+              {PANELS[panels.active]()}
+            </ToolbarPanelResizeContext>
           </RenderErrorBoundary>
         </div>
       ) : null}

@@ -54,7 +54,9 @@ normal web/desktop entry does not load fixture data.
 - Panels use `bg-background text-foreground`, the same canvas as the bar.
   Dark Ocean's `bg-popover` is the lighter small-menu surface.
 - One panel at a time; hover opens, click pins. Panels are edge to edge, attached to
-  the bar, `h-96`, with scrolling content and thin dividers. No cards or rounded corners.
+  the bar, with scrolling content and thin dividers. Drag the header to resize; the
+  shared height persists across reloads and stays within the browser's page area.
+  No cards or rounded corners. Stat blocks use labels without decorative icons.
 - Underlined tabs inside panels; colored pills for status; thin vertical stage/process
   markers; stage colors come from the Laravel payload. Source links have faint underlines.
 - Follow the fork's lint rules and shared component variants. Use duty-cycled status

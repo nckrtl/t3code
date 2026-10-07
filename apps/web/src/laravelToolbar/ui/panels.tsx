@@ -1,16 +1,4 @@
-import {
-  Box,
-  Bug,
-  Copy,
-  Cpu,
-  Database,
-  Gauge,
-  Globe,
-  Layers,
-  MemoryStick,
-  Server,
-  Timer,
-} from "lucide-react";
+import { Box, Database, MemoryStick, Server, Timer } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -323,21 +311,19 @@ export function DatabasePanel() {
       ) : (
         <>
           <StatStrip>
-            <Stat icon={Database} label="Queries" value={all.length} />
+            <Stat label="Queries" value={all.length} />
             <Stat
-              icon={Timer}
               label="Query time"
               value={formatMs(totalTime)}
               hint={wall ? `${Math.round((totalTime / wall) * 100)}% of the request` : undefined}
             />
             <Stat
-              icon={Copy}
               label="Duplicates"
               value={duplicates}
               hint="Same SQL and bindings"
               tone={duplicates > 0 ? "warning" : "default"}
             />
-            <Stat icon={Gauge} label="Slow" value={slow} />
+            <Stat label="Slow" value={slow} />
           </StatStrip>
           {visible.length === 0 ? (
             <EmptyRow>
@@ -517,16 +503,15 @@ function LaravelTab({ selected }: { selected: ToolbarData }) {
   return (
     <>
       <StatStrip>
-        <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} />
-        <Stat icon={Globe} label="Environment" value={laravel?.environment ?? "–"} hint="APP_ENV" />
+        <Stat label="Laravel" value={laravel?.version ?? "–"} />
+        <Stat label="Environment" value={laravel?.environment ?? "–"} hint="APP_ENV" />
         <Stat
-          icon={Bug}
           label="Debug"
           value={isDebug(laravel) ? "On" : "Off"}
           hint="APP_DEBUG"
           tone={isDebug(laravel) ? "warning" : "default"}
         />
-        <Stat icon={Box} label="Inertia" value={selected.inertia?.version ?? "–"} hint="Client" />
+        <Stat label="Inertia" value={selected.inertia?.version ?? "–"} hint="Client" />
       </StatStrip>
       <KeyValueRows
         rows={[
@@ -549,21 +534,14 @@ function PhpTab({ php }: { php: NonNullable<ToolbarData["php"]> }) {
   return (
     <>
       <StatStrip>
-        <Stat icon={Cpu} label="PHP" value={php.version ?? "–"} hint={php.sapi ?? "Runtime"} />
+        <Stat label="PHP" value={php.version ?? "–"} hint={php.sapi ?? "Runtime"} />
+        <Stat label="Memory limit" value={phpLimit(php.memory_limit)} hint="Per request" />
         <Stat
-          icon={MemoryStick}
-          label="Memory limit"
-          value={phpLimit(php.memory_limit)}
-          hint="Per request"
-        />
-        <Stat
-          icon={Timer}
           label="Max execution"
           value={phpLimit(php.max_execution_time, "s")}
           hint="Per request"
         />
         <Stat
-          icon={Gauge}
           label="OPcache"
           value={
             opcache?.enabled
@@ -662,21 +640,18 @@ function FpmTab({ fpm }: { fpm: NonNullable<NonNullable<ToolbarData["php"]>["fpm
     <>
       <StatStrip>
         <Stat
-          icon={Cpu}
           label="Active workers"
           value={fpm.active_processes ?? "–"}
           hint={maxChildren ? `of ${maxChildren} max children` : "Now"}
         />
-        <Stat icon={Layers} label="Idle workers" value={fpm.idle_processes ?? "–"} hint="Now" />
+        <Stat label="Idle workers" value={fpm.idle_processes ?? "–"} hint="Now" />
         <Stat
-          icon={Timer}
           label="Listen queue"
           value={fpm.listen_queue ?? "–"}
           hint={`Peak ${fpm.max_listen_queue ?? "–"}`}
           tone={(fpm.listen_queue ?? 0) > 0 ? "warning" : "default"}
         />
         <Stat
-          icon={Gauge}
           label="Max children reached"
           value={reached}
           hint="Since start"

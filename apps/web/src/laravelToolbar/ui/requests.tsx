@@ -1,13 +1,4 @@
-import {
-  Box,
-  ChevronRight,
-  CornerDownRight,
-  Globe,
-  Layers,
-  ListIcon,
-  Search,
-  Timer,
-} from "lucide-react";
+import { ChevronRight, CornerDownRight, Globe, ListIcon, Search } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -321,7 +312,6 @@ export function RequestPanel() {
       <>
         <StatStrip>
           <Stat
-            icon={Globe}
             label="Status"
             value={summary?.status ?? "–"}
             tone={
@@ -342,19 +332,13 @@ export function RequestPanel() {
               </>
             }
           />
-          <Stat icon={Timer} label="Duration" value={summary?.duration ?? "–"} hint="Wall time" />
+          <Stat label="Duration" value={summary?.duration ?? "–"} hint="Wall time" />
           <Stat
-            icon={Layers}
             label="Memory"
             value={selected.profiler?.total_allocated_memory?.formattedValue ?? "–"}
             hint="Peak allocated"
           />
-          <Stat
-            icon={Box}
-            label="Response"
-            value={responseKind}
-            hint={summary?.size ?? undefined}
-          />
+          <Stat label="Response" value={responseKind} hint={summary?.size ?? undefined} />
         </StatStrip>
         <Section title="Route">
           <KeyValueRows

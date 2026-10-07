@@ -2,13 +2,15 @@
 // (laravelToolbarPreview/DESIGN.md): 12 px text, 18 px stat values,
 // medium weight, mono only for code, flush grid with thin dividers, no cards.
 import type { LucideIcon } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import { type ComponentType, type ReactNode, useContext } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { cn } from "~/lib/utils";
 
-/** Every panel has the same fixed height, so switching tools never resizes the flyout. */
+import { ToolbarPanelResizeContext } from "./panelResize";
+
+/** Panels fill the flyout, sharing its resizable header and saved height. */
 export function PanelShell({
   icon: Icon,
   title,
@@ -25,9 +27,26 @@ export function PanelShell({
   flush?: boolean;
   children: ReactNode;
 }) {
+  const resize = useContext(ToolbarPanelResizeContext);
   return (
-    <div className="flex h-96 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div
+        className="relative flex h-11 shrink-0 touch-none cursor-row-resize select-none items-center gap-3 border-b px-3"
+        {...resize?.handlers}
+      >
+        {resize ? (
+          <div
+            role="separator"
+            aria-label="Resize toolbar panel"
+            aria-orientation="horizontal"
+            aria-valuemin={resize.minHeight}
+            aria-valuemax={resize.maxHeight}
+            aria-valuenow={resize.height}
+            tabIndex={0}
+            onKeyDown={resize.onKeyDown}
+            className="absolute inset-x-0 top-0 h-1 outline-none focus-visible:bg-ring"
+          />
+        ) : null}
         <div className="flex min-w-0 items-center gap-2">
           <Icon className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate font-medium text-xs">{title}</span>
@@ -89,13 +108,11 @@ export function StatStrip({ children }: { children: ReactNode }) {
 }
 
 export function Stat({
-  icon: Icon,
   label,
   value,
   hint,
   tone = "default",
 }: {
-  icon?: LucideIcon;
   label: string;
   value: ReactNode;
   hint?: ReactNode;
@@ -105,7 +122,6 @@ export function Stat({
     <div className="flex min-w-0 flex-col gap-0.5 p-3">
       <div className="flex items-center justify-between gap-2 text-muted-foreground text-xs">
         <span className="truncate font-medium">{label}</span>
-        {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
       </div>
       <div
         className={cn(
