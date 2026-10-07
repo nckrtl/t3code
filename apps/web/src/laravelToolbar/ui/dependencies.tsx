@@ -69,12 +69,9 @@ export function DependenciesPanel() {
             )}
           >
             <span>
-              <span className="block">{ecosystem === "composer" ? "Composer" : "JavaScript"}</span>
-              {ecosystem === "javascript" && dependencies?.package_manager ? (
-                <span className="mt-1 block text-2xs leading-4 text-muted-foreground">
-                  {dependencies.package_manager}
-                </span>
-              ) : null}
+              {ecosystem === "composer"
+                ? "Composer"
+                : (dependencies?.package_manager ?? "JavaScript")}
             </span>
             <span className="text-muted-foreground tabular-nums">
               {dependencies?.[ecosystem]?.length ?? "–"}
