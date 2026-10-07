@@ -44,11 +44,9 @@ type PreviewWebview = HTMLElement & {
   executeJavaScript?: (code: string) => Promise<unknown>;
 };
 
-// The panel sits on the theme's canvas, like T3's own panels and the Laravel Toolbar
-// flyout; the popover surface is the small-menu overlay, which themes may set to a
-// light, untinted colour.
+// Floating glass surface shared with the app's popovers and menus.
 const PANEL_CLASS_NAME =
-  "w-96 max-w-(--available-width) origin-(--transform-origin) rounded-lg border bg-background text-foreground shadow-lg outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 data-ending-style:opacity-0";
+  "dropdown-glass w-96 max-w-(--available-width) origin-(--transform-origin) rounded-xl text-foreground shadow-lg outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 data-ending-style:opacity-0";
 
 function runInPage(runtimeTabId: string, code: string): void {
   // The element is replaced after a crash, so look it up on every call.
@@ -176,8 +174,8 @@ export function BrowserAnnotationControl({
           <PopoverPrimitive.Popup className={PANEL_CLASS_NAME}>
             <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
               <div className="min-w-0">
-                <div className="text-sm font-medium">Annotations</div>
-                <div className="truncate text-xs text-muted-foreground">
+                <div className="text-ui font-medium">Annotations</div>
+                <div className="truncate text-ui text-muted-foreground">
                   {endpoint.origin} ·{" "}
                   {!available
                     ? "no annotator on this page"
@@ -232,7 +230,7 @@ export function BrowserAnnotationControl({
               </div>
             </div>
             {confirmingRemove && idle > 0 ? (
-              <div className="flex items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs">
+              <div className="flex items-center justify-between gap-3 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui">
                 <span className="text-muted-foreground">
                   {`Remove ${idle} ${idle === 1 ? "annotation" : "annotations"} for everyone? Work in progress stays.`}
                 </span>
@@ -254,24 +252,24 @@ export function BrowserAnnotationControl({
               </div>
             ) : null}
             {!available ? (
-              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+              <p className="border-t border-(--shell-divider-raised)! px-3 py-3 text-ui text-muted-foreground">
                 This page has no annotator. Open a page that serves one, then click an element.
               </p>
             ) : queue.length === 0 ? (
-              <p className="border-t border-border/60 px-3 py-3 text-xs text-muted-foreground">
+              <p className="border-t border-(--shell-divider-raised)! px-3 py-3 text-ui text-muted-foreground">
                 No annotations yet. Click the button, then click an element on the page.
               </p>
             ) : (
               <ol
                 role="list"
-                className="max-h-80 overflow-y-auto border-t border-border/60 p-1.5 text-sm"
+                className="max-h-80 overflow-y-auto border-t border-(--shell-divider-raised)! p-1.5 text-ui"
               >
                 {queue.map((annotation) => {
                   const state = annotationState(annotation);
                   return (
                     <li
                       key={annotation.id}
-                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-md px-1.5 py-1.5 hover:bg-accent"
+                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-lg px-1.5 py-1.5 hover:bg-accent"
                     >
                       <span
                         className={cn(
@@ -292,12 +290,12 @@ export function BrowserAnnotationControl({
                         >
                           {annotation.comment}
                         </div>
-                        <div className="mt-0.5 truncate text-xs text-muted-foreground/70">
+                        <div className="mt-0.5 truncate text-ui text-muted-foreground">
                           {annotation.summary ?? annotation.element ?? annotation.pathname}
                           {annotation.source ? ` · ${annotation.source}` : ""}
                         </div>
                       </div>
-                      <span className="mt-0.5 text-xs">
+                      <span className="mt-0.5 text-ui">
                         <QueueStateLabel state={state} />
                       </span>
                     </li>
@@ -305,9 +303,9 @@ export function BrowserAnnotationControl({
                 })}
               </ol>
             )}
-            <div className="border-t border-border/60 px-3 py-2.5">
+            <div className="border-t border-(--shell-divider-raised)! px-3 py-2.5">
               {watching ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-ui text-muted-foreground">
                   New annotations go to this thread when it is idle.
                   {counts.question > 0 ? " Questions wait for your answer in the thread." : ""}
                 </p>
@@ -331,7 +329,7 @@ export function BrowserAnnotationControl({
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui">
               <MicIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="shrink-0 font-medium text-muted-foreground">Dictation</span>
               <DraftInput
@@ -346,11 +344,11 @@ export function BrowserAnnotationControl({
             </div>
             <label
               htmlFor={watchSwitchId}
-              className="flex cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-3 py-2 text-xs"
+              className="flex cursor-pointer items-center justify-between gap-3 border-t border-(--shell-divider-raised)! px-3 py-2 text-ui"
             >
               <span className="min-w-0">
                 <span className="block font-medium text-muted-foreground">Watch</span>
-                <span className="block text-muted-foreground/70">
+                <span className="block text-muted-foreground">
                   Send new annotations automatically
                 </span>
               </span>
