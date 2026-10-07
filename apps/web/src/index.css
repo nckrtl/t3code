@@ -164,6 +164,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
      3xs is 10px. Provider icon overlays use 4xs (8px) and 5xs (7px) to fit
      their smaller badges. Registered with tailwind-merge in
      lib/utils.ts so cn() treats them as font sizes, not colours. */
+  /* The shell's UI text size (13px): titles, labels and controls in panels and settings. */
+  --text-ui: 0.8125rem;
+  --text-ui--line-height: calc(1.25 / 0.8125);
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(1 / 0.6875);
   --text-3xs: 0.625rem;
@@ -261,6 +264,14 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-active: var(--sidebar-row-active);
   --color-sidebar-row-selected: var(--sidebar-row-selected);
   --color-sidebar-border: var(--contrast-sidebar-border);
+  /* Workspace tile inside a rail button: concentric with its 10px radius at a 5px inset. */
+  --radius-tile: calc(var(--radius) - 5px);
+  /* The user's chat message bubble. */
+  --radius-bubble: calc(var(--radius) + 6px);
+  /* Panel toolbar rows (Files search, Diff toolbar, file breadcrumbs): vertical padding,
+     and the end padding that keeps a 24px button's side gap equal to its top gap. */
+  --spacing-toolbar: 7.5px;
+  --spacing-toolbar-end: 11.5px;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -1705,6 +1716,26 @@ code {
   background: var(--app-scrollbar-thumb-hover);
 }
 
+/* Inset page scrollbar for native scroll containers: a 6px fully rounded thumb
+   whose transparent 5px border keeps it 5px from the right edge and from the
+   top and bottom ends, so it follows the card's rounded corners. The wider lane also widens topbar-scroll-fade's opaque scrollbar strip, which
+   reads --app-scrollbar-width. Plain (unlayered) rules on purpose: the global
+   ::-webkit-scrollbar rules above are unlayered, so a Tailwind utility would
+   lose to them. */
+.scrollbar-inset {
+  --app-scrollbar-width: 16px;
+}
+
+.scrollbar-inset::-webkit-scrollbar-track {
+  margin-block: 0;
+}
+
+.scrollbar-inset::-webkit-scrollbar-thumb {
+  border: 5px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
 /* Chat markdown rendering */
 
 .chat-markdown > :first-child {
@@ -2262,6 +2293,8 @@ code {
   --shell-divider: color-mix(in oklab, var(--sidebar) 90%, var(--foreground));
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 84%, var(--foreground));
   --shell-header-height: 44px;
+  /* The checked track of every switch (the Switch primitive and the menu's switch items). */
+  --switch-on: color-mix(in oklab, var(--primary) 70%, var(--foreground));
 }
 
 :root.dark {
@@ -2309,4 +2342,25 @@ code {
       var(--shell-divider) var(--shell-header-height)
     )
     1;
+}
+
+/* Web-only mock macOS window (routes/__root.tsx): its drop shadow and the fixed
+   system colors of the traffic lights, which no theme should recolor. */
+.mock-window-shadow {
+  box-shadow: 0 25px 60px -15px rgb(0 0 0 / 70%);
+}
+
+.mock-traffic-light-close {
+  background-color: #ff5f57;
+  border-color: rgb(224 68 62 / 50%);
+}
+
+.mock-traffic-light-minimize {
+  background-color: #febc2e;
+  border-color: rgb(216 158 36 / 50%);
+}
+
+.mock-traffic-light-zoom {
+  background-color: #28c840;
+  border-color: rgb(26 171 41 / 50%);
 }

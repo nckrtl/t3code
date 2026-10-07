@@ -759,7 +759,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
               tooltipText={`Link created at ${formatAccessTimestamp(pairingLink.createdAt)}`}
               dotClassName="bg-warning"
             />
-            <h3 className="text-sm font-medium text-foreground">{primaryLabel}</h3>
+            <h3 className="text-ui font-medium text-foreground">{primaryLabel}</h3>
           </div>
           <p className="text-xs text-muted-foreground">
             <Tooltip>
@@ -838,7 +838,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
                   onClick={(event) => event.currentTarget.select()}
                 />
                 {isRevealValueUrl && isRevealValueQrShareable ? (
-                  <div className="flex justify-center rounded-xl border border-border/60 bg-muted/30 p-4">
+                  <div className="flex justify-center rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) p-4">
                     <QRCodeSvg
                       value={revealValue}
                       size={132}
@@ -874,7 +874,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
       {isQrPanelOpen && qrPairingUrl !== null ? (
         <div
           id={qrPanelId}
-          className="mt-3 flex flex-col gap-4 border-t border-border/50 pt-3 sm:flex-row sm:items-start sm:justify-between"
+          className="mt-3 flex flex-col gap-4 border-t border-(--shell-divider-header)! pt-3 sm:flex-row sm:items-start sm:justify-between"
         >
           <div className="min-w-0 flex-1 space-y-3">
             {endpointCopyOptions.length > 1 ? (
@@ -896,7 +896,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
                         "flex w-full items-baseline gap-2 rounded-lg border px-2.5 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isSelected
                           ? "border-foreground/60 bg-muted/30"
-                          : "border-border/50 hover:bg-muted/20",
+                          : "border-(--shell-divider-header)! hover:bg-(--shell-highlight)",
                       )}
                       onClick={() => setQrEndpointId(option.id)}
                     >
@@ -916,7 +916,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
                 })}
               </div>
             ) : null}
-            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-2.5 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) px-2.5 py-1.5">
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -951,7 +951,7 @@ const PairingLinkListRow = memo(function PairingLinkListRow({
               />
             </div>
           ) : (
-            <div className="flex size-[192px] shrink-0 items-center justify-center self-center rounded-xl border border-border/50 p-4 sm:self-start">
+            <div className="flex size-[192px] shrink-0 items-center justify-center self-center rounded-lg border border-(--shell-divider-header)! p-4 sm:self-start">
               <p className="text-center text-2xs text-muted-foreground/70">
                 No QR for this endpoint. Another device scanning a loopback link would dial itself;
                 copy the URL for use on this machine instead.
@@ -1010,7 +1010,7 @@ const ConnectedClientListRow = memo(function ConnectedClientListRow({
               dotClassName={isLive ? "bg-success" : "bg-muted-foreground/30"}
               pingClassName={isLive ? "bg-success/60 duration-2000" : null}
             />
-            <h3 className="text-sm font-medium text-foreground">{primaryLabel}</h3>
+            <h3 className="text-ui font-medium text-foreground">{primaryLabel}</h3>
             {clientSession.current ? (
               <span className="text-3xs text-muted-foreground/80 rounded-md border border-border/50 bg-muted/50 px-1 py-0.5">
                 This device
@@ -1173,7 +1173,7 @@ const AuthorizedClientsHeaderAction = memo(function AuthorizedClientsHeaderActio
                   </Button>
                 </div>
               </div>
-              <div className="divide-y divide-border/60 rounded-lg border border-input bg-muted/25">
+              <div className="divide-y divide-(--shell-divider-header)! rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight)">
                 {PAIRING_SCOPE_OPTIONS.map(({ scope, title, description }) => (
                   <label
                     key={scope}
@@ -1320,7 +1320,7 @@ const AdvertisedEndpointListRow = memo(function AdvertisedEndpointListRow({
       ) : null}
       <div className="flex min-h-6 min-w-0 flex-col gap-2 sm:-my-0.5 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-baseline gap-3">
-          <h3 className="shrink-0 text-sm leading-5 font-medium text-foreground">
+          <h3 className="shrink-0 text-ui leading-5 font-medium text-foreground">
             {endpoint.label}
           </h3>
           {shouldShowEndpointUrl ? (
@@ -2627,7 +2627,9 @@ export function ConnectionsSettings() {
         aria-pressed={selected}
         className={cn(
           "group flex min-h-24 items-start gap-3 rounded-lg border p-4 text-left",
-          selected ? "border-primary/50 bg-primary/5" : "border-border/60 hover:bg-muted/40",
+          selected
+            ? "border-primary/50 bg-primary/5"
+            : "border-(--shell-divider-header)! hover:bg-(--shell-highlight)",
         )}
         disabled={isAddingSavedBackend}
         onClick={() => {
@@ -2647,7 +2649,7 @@ export function ConnectionsSettings() {
           </span>
         ) : null}
         <span className="min-w-0">
-          <span className="block text-sm font-medium text-foreground">{input.title}</span>
+          <span className="block text-ui font-medium text-foreground">{input.title}</span>
           <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
             {input.description}
           </span>
@@ -2756,7 +2758,7 @@ export function ConnectionsSettings() {
                           value={target}
                           className="h-8 min-h-8 whitespace-nowrap"
                         >
-                          <span className="min-w-0 truncate text-sm font-medium">
+                          <span className="min-w-0 truncate text-ui font-medium">
                             {target.alias}
                           </span>
                           {address !== target.alias ? (
@@ -3624,7 +3626,7 @@ export function ConnectionsSettings() {
               </DialogHeader>
               <DialogPanel>
                 <label className="block">
-                  <span className="text-sm font-medium text-foreground">HTTPS port</span>
+                  <span className="text-ui font-medium text-foreground">HTTPS port</span>
                   <Input
                     className="mt-2"
                     type="number"
@@ -3640,7 +3642,7 @@ export function ConnectionsSettings() {
                 {!isTailscaleServePortValid ? (
                   <p className="mt-2 text-xs text-destructive">Enter a port from 1 to 65535.</p>
                 ) : null}
-                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2">
+                <div className="rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) px-3 py-2">
                   <p className="text-xs font-medium text-muted-foreground">HTTPS endpoint</p>
                   <Tooltip>
                     <TooltipTrigger

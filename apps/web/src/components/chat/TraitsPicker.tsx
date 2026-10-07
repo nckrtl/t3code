@@ -36,6 +36,7 @@ import {
   ComposerControl,
   ComposerControlChevron,
   ComposerControlIcon,
+  type ComposerControlAppearance,
   type ComposerControlSize,
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
@@ -550,11 +551,14 @@ export const TraitsPicker = memo(function TraitsPicker({
   triggerClassName,
   isComposerOwned,
   size = "sm",
+  appearance = "composer",
   hidden = false,
   ...persistence
 }: TraitsMenuContentProps &
   TraitsPersistence & {
     size?: ComposerControlSize;
+    /** `field` renders the trigger like a Select, for settings rows. */
+    appearance?: ComposerControlAppearance;
     hidden?: boolean;
   }) {
   const composerFloatingLayerProps = useComposerMenuProps();
@@ -627,6 +631,7 @@ export const TraitsPicker = memo(function TraitsPicker({
                   aria-label={accessibleLabel}
                   data-composer-shortcut={isComposerOwned ? "composer.effort" : undefined}
                   size={size}
+                  appearance={appearance}
                   className={cn(
                     isCodexStyle
                       ? "min-w-0 max-w-40 shrink justify-start overflow-hidden whitespace-nowrap sm:max-w-48"
@@ -658,7 +663,7 @@ export const TraitsPicker = memo(function TraitsPicker({
               <span data-composer-control-label className="min-w-0 truncate">
                 {triggerLabel}
               </span>
-              <ComposerControlChevron size={size} />
+              <ComposerControlChevron size={size} appearance={appearance} />
             </span>
           ) : (
             <>
@@ -671,7 +676,7 @@ export const TraitsPicker = memo(function TraitsPicker({
                 </span>
               )}
               <span data-composer-control-label>{triggerLabel}</span>
-              <ComposerControlChevron size={size} />
+              <ComposerControlChevron size={size} appearance={appearance} />
             </>
           )}
         </TooltipTrigger>

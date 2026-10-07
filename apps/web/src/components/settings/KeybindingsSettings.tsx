@@ -82,7 +82,7 @@ function KeybindingPill({ value }: { value: string }) {
   return (
     <KbdGroup>
       {parts.map(({ part, key }) => (
-        <Kbd key={key}>
+        <Kbd key={key} variant="inverted">
           {part === "mod"
             ? navigator.platform.toLowerCase().includes("mac")
               ? "⌘"
@@ -389,7 +389,7 @@ function WhenExpressionNodeEditor({
       : [condition.identifier];
 
     return (
-      <div className="flex items-center gap-2 rounded-md border border-border/70 bg-background/60 px-2 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) px-2 py-2">
         <Toggle
           pressed={condition.negated}
           onPressedChange={(pressed) => onChange(setConditionNegated(node, pressed))}
@@ -420,8 +420,8 @@ function WhenExpressionNodeEditor({
     return (
       <div
         className={cn(
-          "space-y-2 rounded-lg border border-border/70 bg-muted/20 p-2",
-          depth > 0 && "border-border/50 bg-background/50",
+          "space-y-2 rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) p-2",
+          depth > 0 && "bg-transparent",
         )}
       >
         <div className="flex items-center gap-2">
@@ -522,8 +522,8 @@ function WhenExpressionNodeEditor({
   return (
     <div
       className={cn(
-        "space-y-2 rounded-lg border border-border/60 bg-muted/10 p-2",
-        depth > 0 && "border-border/70 bg-background/55",
+        "space-y-2 rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) p-2",
+        depth > 0 && "bg-transparent",
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -636,7 +636,7 @@ function WhenExpressionBuilder({
     <div className="w-[min(34rem,calc(100vw-2rem))] space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-foreground">When</div>
+          <div className="text-ui font-medium text-foreground">When</div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" variant="outline" size="compact" onClick={addRootCondition}>
@@ -684,7 +684,7 @@ function WhenExpressionBuilder({
             onRemove={() => updateExpressionValue(undefined)}
           />
         ) : (
-          <div className="rounded-md border border-dashed border-border/80 bg-muted/15 p-3">
+          <div className="rounded-lg border border-dashed border-(--shell-divider-header)! bg-(--shell-highlight) p-3">
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="compact" onClick={addRootCondition}>
                 <PlusIcon className="size-3.5" />
@@ -897,7 +897,7 @@ function WhenClauseControl({
         }
         aria-label={`Edit when clause for ${label}`}
       >
-        <span className="truncate font-mono">{expression || "Always"}</span>
+        <span className="truncate font-sans text-ui">{expression || "Always"}</span>
         <ChevronDownIcon className="size-3.5 shrink-0 opacity-60" />
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={6}>
@@ -990,7 +990,7 @@ function KeybindingRowWhen({
 }) {
   return (
     <span className="flex h-6 items-center gap-1.5">
-      <span className="text-xs leading-none text-muted-foreground/70">When</span>
+      <span className="text-ui leading-none text-muted-foreground/70">When</span>
       <WhenClauseControl
         label={commandLabel(row.command)}
         expression={editor.whenDraftExpression}
@@ -1232,11 +1232,11 @@ function NewKeybindingSettingsRow(props: NewKeybindingProps) {
 
   return (
     <SettingsRow
-      className="rounded-none bg-muted/15"
+      className="rounded-none bg-(--shell-highlight)"
       title="New keybinding"
       description={
         <span className="flex h-6 items-center gap-1.5">
-          <span className="text-xs leading-none text-muted-foreground/70">When</span>
+          <span className="text-ui leading-none text-muted-foreground/70">When</span>
           <NewKeybindingWhen draft={draft} variables={variables} />
         </span>
       }
@@ -1314,7 +1314,7 @@ function KeybindingsList(props: KeybindingsListProps) {
 /** Shown in the browser build only; the desktop app receives every shortcut. */
 function BrowserKeybindingNotice() {
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 text-xs leading-normal text-muted-foreground sm:px-4">
+    <div className="flex items-center gap-2 px-3 py-2.5 text-ui leading-normal text-muted-foreground sm:px-4">
       <TriangleAlertIcon className="size-3.5 shrink-0 text-warning" aria-hidden />
       <span>
         Some shortcuts may be claimed by the browser before T3 Code sees them. Use the desktop app

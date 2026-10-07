@@ -320,7 +320,10 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           {isOnSettings ? (
             <>
               <SidebarChromeHeader isElectron={isElectron} />
-              <SettingsSidebarNav pathname={pathname} />
+              {/* The same inset panel as the thread list. */}
+              <div className="relative z-10 -mt-[calc(var(--workspace-topbar-height)-44px)] mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-lg rounded-bl-(--shell-corner) bg-(--shell-panel)">
+                <SettingsSidebarNav pathname={pathname} />
+              </div>
             </>
           ) : legacySidebarEnabled ? (
             <LegacyThreadSidebar />

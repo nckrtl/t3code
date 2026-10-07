@@ -382,4 +382,11 @@ export const DIFF_SURFACE_THEME_UNSAFE_CSS = `
   background-color: var(--diffs-bg) !important;
   color: var(--code-foreground) !important;
 }
+
+/* File-header line counts match the toolbar stat (13px). */
+[data-diffs-header] [data-metadata],
+[data-diffs-header] [data-additions-count],
+[data-diffs-header] [data-deletions-count] {
+  font-size: 13px;
+}
 `;

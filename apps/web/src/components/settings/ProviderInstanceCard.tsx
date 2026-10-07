@@ -594,7 +594,7 @@ export function ProviderInstanceCard({
   ) : null;
 
   const versionCodeNode = versionLabel ? (
-    <code className="text-xs text-muted-foreground">{versionLabel}</code>
+    <span className="text-ui text-muted-foreground">{versionLabel}</span>
   ) : null;
 
   // Healthy and disabled rows read fine from their text; only trouble gets a dot.
@@ -637,7 +637,7 @@ export function ProviderInstanceCard({
       <div
         data-slot="settings-row"
         className={cn(
-          "group flex min-h-18 items-center gap-3 px-3 py-3 transition-colors sm:px-4",
+          "group flex min-h-18 items-start gap-3 px-3 py-3 transition-colors sm:px-4",
           selected ? "bg-muted/45" : "hover:bg-muted/25",
         )}
       >
@@ -657,7 +657,7 @@ export function ProviderInstanceCard({
           {titleIconNode}
           <span className="min-w-0 flex-1">
             <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm font-medium text-foreground">{displayName}</span>
+              <span className="truncate text-ui font-medium text-foreground">{displayName}</span>
               {versionLabel ? (
                 <code className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
                   {versionLabel}
@@ -774,7 +774,7 @@ export function ProviderInstanceCard({
             <PopoverPopup side="bottom" align="end" width="md">
               <div className="grid min-w-0 gap-3">
                 <div className="grid gap-0.5">
-                  <p className="text-sm font-semibold leading-tight text-foreground">
+                  <p className="text-ui font-semibold leading-tight text-foreground">
                     {versionAdvisory.title}
                   </p>
                   <p

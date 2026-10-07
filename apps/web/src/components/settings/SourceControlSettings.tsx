@@ -21,6 +21,7 @@ import {
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
+import { stripAnsi } from "~/lib/stripAnsi";
 import { cn } from "../../lib/utils";
 import { useEnvironmentQuery } from "../../state/query";
 import { sourceControlEnvironment } from "../../state/sourceControl";
@@ -164,6 +165,7 @@ function RedactedAccount(props: { readonly account: string | null }) {
       ariaLabel="Toggle source control account visibility"
       revealTooltip="Click to reveal account"
       hideTooltip="Click to hide account"
+      className="text-ui!"
     />
   );
 }
@@ -245,15 +247,17 @@ function itemSummary({
       return (
         <span>
           {item.label} is not authenticated on this server. Sign in or configure credentials using
-          the <code className="rounded bg-muted px-1 py-px text-2xs">{item.executable}</code> tool
-          on the server host to enable change request features.
+          the <code className="rounded bg-muted px-1 py-px text-ui">{item.executable}</code> tool on
+          the server host to enable change request features.
         </span>
       );
     }
+    // CLIs may colorize their error output; drop leftovers that carry no words.
     const authDetail = optionLabel(auth.detail);
+    const cleanDetail = authDetail ? stripAnsi(authDetail).trim() : "";
     return (
       <span>
-        Could not verify {item.label}. {authDetail ?? item.installHint}
+        Could not verify {item.label}. {/\w/.test(cleanDetail) ? cleanDetail : item.installHint}
       </span>
     );
   }
@@ -297,12 +301,12 @@ function DiscoveryItemRow({
       )}
     >
       <div className="px-3 py-3 sm:px-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <SourceControlItemMark item={item} />
-              <span className="truncate text-sm font-medium text-foreground">{item.label}</span>
-              {version ? <code className="text-xs text-muted-foreground">{version}</code> : null}
+              <span className="truncate text-ui font-medium text-foreground">{item.label}</span>
+              {version ? <span className="text-ui text-muted-foreground">{version}</span> : null}
               {isVcsNotReady(item) ? (
                 <Badge variant="warning" size="sm">
                   Coming Soon
@@ -314,11 +318,11 @@ function DiscoveryItemRow({
                 </Badge>
               ) : null}
             </div>
-            <p className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs leading-normal text-muted-foreground/80">
+            <p className="flex min-w-0 flex-wrap items-center gap-x-1 text-ui leading-normal text-muted-foreground/80">
               {itemSummary({ item, auth, authAccount })}
             </p>
           </div>
-          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="flex w-full shrink-0 items-center gap-2 sm:h-5 sm:w-auto sm:justify-end">
             {hasDetails ? (
               <Button
                 size="icon-xs"
@@ -371,7 +375,7 @@ function GitFetchIntervalSettings() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 items-center gap-1">
-            <span className="text-xs font-medium text-foreground">{setting.title}</span>
+            <span className="text-ui font-medium text-foreground">{setting.title}</span>
             <PolicyTooltip>
               This interval is configured for Git only. The shared Background activity policy still
               decides whether Git refreshes may run when the timer fires. Custom intervals appear as
@@ -398,7 +402,7 @@ function GitFetchIntervalSettings() {
               ) : null}
             </span>
           </div>
-          <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
+          <p className="max-w-2xl text-ui leading-relaxed text-muted-foreground">
             Refresh remote branches in the background. Set to 0 to avoid automatic Git prompts.
           </p>
         </div>
@@ -423,7 +427,7 @@ function GitFetchIntervalSettings() {
               <NumberFieldIncrement aria-label="Increase fetch interval" />
             </NumberFieldGroup>
           </NumberField>
-          <span className="text-xs text-muted-foreground">seconds</span>
+          <span className="text-ui text-muted-foreground">seconds</span>
         </div>
       </div>
     </SettingsSearchTarget>

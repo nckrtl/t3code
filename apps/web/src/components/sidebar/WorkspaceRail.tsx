@@ -131,7 +131,9 @@ function RailButton({
               // Follows the window corner. The badge inside stays rounded, 4px in.
               "relative flex size-9.5 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
               "outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring",
-              active && "bg-sidebar-row-active text-sidebar-foreground hover:bg-sidebar-row-active",
+              // Selected: a 2px near-white inset ring (no layout shift) over the subtle row fill.
+              active &&
+                "bg-sidebar-row-active text-sidebar-foreground ring-2 ring-inset ring-sidebar-foreground/90 hover:bg-sidebar-row-active",
               sortable && "touch-none",
               sortable?.isDragging && "z-10 opacity-70",
               className,
@@ -256,8 +258,8 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
           {/* Its own square, like a workspace badge, so the selected highlight rings it the same way. */}
           <span
             aria-hidden="true"
-            // Concentric with the button: its 10px radius minus the 4px inset.
-            className="flex size-7.5 items-center justify-center rounded-[6px] bg-sidebar-foreground/10"
+            // Concentric with the button: its 10px radius minus the 5px inset.
+            className="flex size-7 items-center justify-center rounded-tile bg-sidebar-foreground/10"
           >
             <LayersIcon className="size-4" />
           </span>

@@ -73,7 +73,7 @@ export function WorkspaceBadge({
         aria-hidden="true"
         src={workspace.image}
         draggable={false}
-        className={cn("size-7.5 rounded object-cover select-none", className)}
+        className={cn("size-7 rounded-tile object-cover select-none", className)}
       />
     );
   }
@@ -81,7 +81,7 @@ export function WorkspaceBadge({
     <span
       aria-hidden="true"
       className={cn(
-        "flex size-7.5 items-center justify-center rounded text-sm font-semibold select-none",
+        "flex size-7 items-center justify-center rounded-tile text-sm font-semibold select-none",
         WORKSPACE_COLOR_CLASSES[workspace.color],
         className,
       )}

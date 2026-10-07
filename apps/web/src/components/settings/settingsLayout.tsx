@@ -202,7 +202,7 @@ export function SettingsSection({
           className="flex min-h-7 items-start justify-between gap-4 px-3 sm:px-4"
         >
           <div className="min-w-0">
-            <h2 className="flex min-h-7 items-center gap-2 text-sm font-normal text-foreground/70">
+            <h2 className="flex min-h-7 items-center gap-2 text-ui font-medium text-foreground">
               {icon}
               {title}
             </h2>
@@ -227,12 +227,14 @@ export function SettingsUnavailableGroup({
   if (message === undefined) return children;
 
   return (
-    <div className="border-border/60 bg-muted/20 py-1.5">
-      <div className="flex items-start gap-2 px-3 py-2 text-xs leading-relaxed text-muted-foreground sm:px-4">
+    <div className="border-(--shell-divider-header)! py-1.5">
+      <div className="flex items-start gap-2 px-3 py-2 text-ui leading-relaxed text-muted-foreground sm:px-4">
         <InfoIcon className="mt-0.5 size-3.5 shrink-0 text-warning" />
         <p>{message}</p>
       </div>
-      <div className="[&_h3]:opacity-64 [&_p]:opacity-64">{children}</div>
+      <div className="[&_h3]:opacity-64 [&_p]:opacity-64 [&>*+*]:border-t [&>*+*]:border-(--shell-divider-header)!">
+        {children}
+      </div>
     </div>
   );
 }
@@ -427,15 +429,15 @@ export function SettingsRow({
       tabIndex={rowProps.id ? -1 : rowProps.tabIndex}
       data-slot="settings-row"
       className={cn(
-        "@container/settings-row rounded-xl px-3 sm:px-4 aria-disabled:opacity-64 aria-disabled:[&_*]:text-muted-foreground",
+        "@container/settings-row rounded-lg px-3 sm:px-4 aria-disabled:opacity-64 aria-disabled:[&_*]:text-muted-foreground",
         children ? "pt-3 pb-1" : "py-3",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 @min-[32rem]/settings-row:grid @min-[32rem]/settings-row:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] @min-[32rem]/settings-row:items-center @min-[32rem]/settings-row:gap-8">
+      <div className="flex flex-col gap-3 @min-[32rem]/settings-row:grid @min-[32rem]/settings-row:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] @min-[32rem]/settings-row:items-start @min-[32rem]/settings-row:gap-8">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-h-5 items-center gap-1.5">
-            <h3 className="text-sm font-medium text-foreground">{title}</h3>
+            <h3 className="text-ui font-medium text-foreground">{title}</h3>
             {renderedInheritance ? (
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
                 {renderedInheritance}
@@ -446,16 +448,16 @@ export function SettingsRow({
             </span>
           </div>
           {description ? (
-            <p className="max-w-xl text-xs leading-normal text-muted-foreground/80">
+            <p className="max-w-xl text-ui leading-normal text-muted-foreground/80">
               {description}
             </p>
           ) : null}
           {renderedStatus ? (
-            <div className="pt-0.5 text-xs text-muted-foreground">{renderedStatus}</div>
+            <div className="pt-0.5 text-ui text-muted-foreground">{renderedStatus}</div>
           ) : null}
         </div>
         {renderedControl ? (
-          <div className="flex w-full min-w-0 shrink-0 items-center gap-2 @min-[32rem]/settings-row:w-auto @min-[32rem]/settings-row:justify-end">
+          <div className="flex w-full min-w-0 shrink-0 items-center gap-2 @min-[32rem]/settings-row:h-5 @min-[32rem]/settings-row:w-auto @min-[32rem]/settings-row:justify-end [&_button]:text-ui [&_input]:text-ui">
             {renderedControl}
           </div>
         ) : null}
@@ -537,7 +539,7 @@ export function SettingsPageContainer({
       onTargetHandled={clearTargetHash}
     >
       <div
-        className="topbar-scroll-fade scrollbar-gutter-both flex-1 overflow-y-auto"
+        className="topbar-scroll-fade scrollbar-gutter-both scrollbar-inset flex-1 overflow-y-auto"
         data-settings-page-scroll
       >
         <WorkspacePageContainer width={width} className={cn("gap-8", className)}>

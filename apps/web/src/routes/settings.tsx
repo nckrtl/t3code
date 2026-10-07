@@ -33,12 +33,12 @@ function RestoreDeviceDefaultsButton({ onRestored }: { onRestored: () => void })
   return (
     <Button
       size="xs"
-      variant="ghost"
+      variant="outline"
       disabled={changedSettingLabels.length === 0}
       onClick={() => void restoreDefaults()}
     >
-      <RotateCcwIcon className="mx-1 size-3.5" />
-      Restore device defaults
+      <RotateCcwIcon className="size-3.5" />
+      <span className="ms-0.5">Restore device defaults</span>
     </Button>
   );
 }
@@ -118,9 +118,13 @@ function SettingsContentLayout() {
   const [restoreSignal, setRestoreSignal] = useState(0);
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
-        <WorkspacePageHeader electron={isElectron}>
+    <SidebarInset className="h-full min-h-0 overflow-hidden overscroll-y-none isolate">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-(--shell-fill) backdrop-blur-(--shell-blur) backdrop-saturate-(--shell-saturate) text-foreground">
+        {/* Transparent glass header over the shell, like the chat header; the content below is an inset card. */}
+        <WorkspacePageHeader
+          electron={isElectron}
+          className="relative z-10 h-[44px] min-h-[44px] shrink-0 bg-transparent! [--control-radius:9999px]"
+        >
           <div className="flex w-full items-center gap-3">
             <SettingsBreadcrumb pathname={location.pathname} />
             {location.pathname === "/settings/general" ? (
@@ -135,7 +139,8 @@ function SettingsContentLayout() {
 
         <div
           key={`${JSON.stringify(search)}:${restoreSignal}`}
-          className="min-h-0 flex flex-1 flex-col"
+          // Same card as the chat: shell fill, --shell-inset gap, right corners match the nav panel's left corners.
+          className="relative z-0 mr-(--shell-inset) mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tr-lg rounded-br-(--shell-corner) bg-(--shell-card) [--background:var(--shell-card)]"
         >
           <SettingsScopeBoundary pathname={location.pathname}>
             <Outlet />

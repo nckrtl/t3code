@@ -1528,7 +1528,7 @@ export default function ThreadTerminalDrawer({
                         }
                       }}
                     >
-                      <div className="h-full">
+                      <div className="h-full px-2 pt-toolbar pb-2">
                         <TerminalViewport
                           advancedTypography={advancedTypography}
                           threadRef={threadRef}
@@ -1557,7 +1557,7 @@ export default function ThreadTerminalDrawer({
                 })}
               </div>
             ) : (
-              <div className="h-full">
+              <div className="h-full px-2 pt-toolbar pb-2">
                 <TerminalViewport
                   advancedTypography={advancedTypography}
                   key={resolvedActiveTerminalId}
@@ -1679,7 +1679,7 @@ export default function ThreadTerminalDrawer({
                             <div
                               key={terminalId}
                               className={cn(
-                                "group/tab flex h-6 w-full items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
+                                "group/tab flex h-6 w-full items-center gap-0.5 rounded-md pr-2 pl-1.5 text-sm",
                                 isActive
                                   ? "bg-accent text-foreground"
                                   : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -1690,7 +1690,7 @@ export default function ThreadTerminalDrawer({
                                 onClick={() => confirmCloseTerminal(terminalId)}
                                 tooltip={closeTerminalLabel}
                               >
-                                <TerminalSquare className="size-3 shrink-0" />
+                                <TerminalSquare className="size-4 shrink-0" />
                               </PanelTabCloseButton>
                               <button
                                 type="button"

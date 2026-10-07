@@ -228,12 +228,12 @@ function RootRouteView() {
         backgroundAttachment: "fixed",
       }}
     >
-      <div className="relative flex h-full w-full max-w-[1720px] overflow-hidden rounded-(--window-radius) border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/5 [transform:translateZ(0)] select-text">
+      <div className="relative flex h-full w-full max-w-[1720px] overflow-hidden rounded-(--window-radius) border border-white/10 mock-window-shadow ring-1 ring-white/5 [transform:translateZ(0)] select-text">
         {/* Native-style macOS window controls seated at the top-left of the sidebar */}
         <div className="pointer-events-none absolute left-4 top-4 z-50 flex gap-2">
-          <span className="size-3 rounded-full bg-[#ff5f57] border border-[#e0443e]/50" />
-          <span className="size-3 rounded-full bg-[#febc2e] border border-[#d89e24]/50" />
-          <span className="size-3 rounded-full bg-[#28c840] border border-[#1aab29]/50" />
+          <span className="mock-traffic-light-close size-3 rounded-full border" />
+          <span className="mock-traffic-light-minimize size-3 rounded-full border" />
+          <span className="mock-traffic-light-zoom size-3 rounded-full border" />
         </div>
         {appInner}
       </div>

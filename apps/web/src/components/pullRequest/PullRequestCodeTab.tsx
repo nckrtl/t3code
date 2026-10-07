@@ -828,7 +828,7 @@ function PullRequestCodeTab({
         <PullRequestDiffStat
           additions={additions}
           deletions={deletions}
-          className="font-mono text-2xs"
+          className="font-mono text-xs"
         />
       );
       const viewedFiles = filesViewedRef.current;

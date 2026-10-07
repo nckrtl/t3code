@@ -155,19 +155,21 @@ function AgentRow({ agent }: { agent: RuntimeSubagent }) {
   ].filter((value): value is string => value !== null);
 
   return (
-    <div className="grid h-[3.875rem] grid-cols-[0.375rem_minmax(0,1fr)_auto] grid-rows-[1.25rem_1.125rem_1rem] items-center gap-x-2 rounded-md px-1.5 py-1">
+    <div className="grid h-[3.875rem] grid-cols-[0.375rem_minmax(0,1fr)_auto] grid-rows-[1.25rem_1.125rem_1rem] items-center gap-x-2 rounded-md px-1.5 py-1 in-data-[preview-panel-mode=inline]:h-auto in-data-[preview-panel-mode=inline]:grid-rows-[1.25rem_1.25rem_1.25rem] in-data-[preview-panel-mode=inline]:rounded-none in-data-[preview-panel-mode=inline]:px-4 in-data-[preview-panel-mode=inline]:py-3 in-data-[preview-panel-mode=inline]:not-last:border-b in-data-[preview-panel-mode=inline]:not-last:border-(--shell-divider)!">
       <span className="col-start-1 row-start-1 flex items-center">
         <StatusDot status={agent.status} />
       </span>
       <span className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-2">
-        <span className="min-w-0 truncate text-sm font-medium">{agent.title}</span>
+        <span className="min-w-0 truncate text-sm font-medium in-data-[preview-panel-mode=inline]:text-ui">
+          {agent.title}
+        </span>
         {role ? (
           <span className="max-w-28 shrink-0 truncate rounded-sm border border-border/60 px-1 font-mono text-3xs text-muted-foreground">
             {role}
           </span>
         ) : null}
       </span>
-      <span className="col-start-3 row-start-1 min-w-14 text-right font-mono text-2xs text-muted-foreground/80">
+      <span className="col-start-3 row-start-1 min-w-14 text-right font-mono text-2xs text-muted-foreground/80 in-data-[preview-panel-mode=inline]:font-sans in-data-[preview-panel-mode=inline]:text-ui in-data-[preview-panel-mode=inline]:leading-5">
         <span className="inline-flex items-center gap-1">
           <AgentElapsed agent={agent} />
           {agent.status === "completed" ? (
@@ -177,13 +179,13 @@ function AgentRow({ agent }: { agent: RuntimeSubagent }) {
       </span>
       <span
         className={cn(
-          "col-start-2 col-end-4 row-start-2 block truncate text-xs",
+          "col-start-2 col-end-4 row-start-2 block truncate text-xs in-data-[preview-panel-mode=inline]:text-ui in-data-[preview-panel-mode=inline]:leading-5",
           agent.status === "failed" ? "text-destructive-foreground" : "text-muted-foreground",
         )}
       >
         {activity ?? statusLabel}
       </span>
-      <span className="col-start-2 col-end-4 row-start-3 truncate font-mono text-2xs tabular-nums text-muted-foreground/70">
+      <span className="col-start-2 col-end-4 row-start-3 truncate font-mono text-2xs tabular-nums text-muted-foreground/70 in-data-[preview-panel-mode=inline]:font-sans in-data-[preview-panel-mode=inline]:text-ui in-data-[preview-panel-mode=inline]:leading-5">
         {metadata.join(" · ")}
       </span>
       <span className="sr-only">{statusLabel}</span>
@@ -546,18 +548,27 @@ export function AgentsPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-2 p-2">
-          {model.workflows.map((group) => (
-            <WorkflowSection
-              key={group.workflow.id}
-              group={group}
-              environmentId={environmentId}
-              threadId={threadId}
-            />
-          ))}
+        <div className="flex flex-col gap-2 p-2 in-data-[preview-panel-mode=inline]:gap-0 in-data-[preview-panel-mode=inline]:p-0">
+          {model.workflows.length > 0 ? (
+            <div className="flex flex-col gap-2 in-data-[preview-panel-mode=inline]:p-2">
+              {model.workflows.map((group) => (
+                <WorkflowSection
+                  key={group.workflow.id}
+                  group={group}
+                  environmentId={environmentId}
+                  threadId={threadId}
+                />
+              ))}
+            </div>
+          ) : null}
           {model.directAgents.length > 0 ? (
-            <section>
-              <div className="px-1.5 pt-1 text-3xs font-medium uppercase tracking-wider text-muted-foreground">
+            <section
+              className={cn(
+                model.workflows.length > 0 &&
+                  "in-data-[preview-panel-mode=inline]:border-t in-data-[preview-panel-mode=inline]:border-(--shell-divider)!",
+              )}
+            >
+              <div className="px-1.5 pt-1 text-3xs font-medium uppercase tracking-wider text-muted-foreground in-data-[preview-panel-mode=inline]:flex in-data-[preview-panel-mode=inline]:h-11 in-data-[preview-panel-mode=inline]:items-center in-data-[preview-panel-mode=inline]:border-b in-data-[preview-panel-mode=inline]:border-(--shell-divider)! in-data-[preview-panel-mode=inline]:px-4 in-data-[preview-panel-mode=inline]:py-0 in-data-[preview-panel-mode=inline]:text-ui in-data-[preview-panel-mode=inline]:normal-case in-data-[preview-panel-mode=inline]:tracking-normal in-data-[preview-panel-mode=inline]:text-foreground">
                 Direct spawns
               </div>
               {model.directAgents.map((agent) => (

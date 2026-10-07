@@ -6,11 +6,11 @@ import type {
 import type { EnvironmentId, ProjectEntry } from "@t3tools/contracts";
 import { FileTree, useFileTree, useFileTreeSearch, useFileTreeSelector } from "@pierre/trees/react";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
-import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
+import { ChevronsDownUpIcon, ChevronsUpDownIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
-import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
 import { toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useComposerHandleContext } from "~/composerHandleContext";
@@ -74,7 +74,10 @@ function FileSearchField(props: {
   value: string;
 }) {
   return (
-    <InputGroup variant="ghost" className="h-7 min-w-0 flex-1">
+    <InputGroup variant="soft" className="mr-2 h-8 min-w-0 flex-1">
+      <InputGroupAddon>
+        <SearchIcon aria-hidden />
+      </InputGroupAddon>
       <InputGroupInput
         type="search"
         name={props.name}
@@ -259,6 +262,7 @@ export default function FileBrowserPanel({
     // composer; rearranging files inside the tree stays off.
     dragAndDrop: { canDrop: () => false },
     density: "compact",
+    itemHeight: 28,
     fileTreeSearchMode: "hide-non-matches",
     flattenEmptyDirectories: true,
     initialExpansion: "closed",
@@ -488,10 +492,9 @@ export default function FileBrowserPanel({
       data-file-browser-panel={`${environmentId}:${cwd}`}
     >
       <div
-        className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-border/60 bg-background px-2 in-data-[preview-panel-mode=inline]:mb-1 in-data-[preview-panel-mode=inline]:h-9 in-data-[preview-panel-mode=inline]:min-h-9 in-data-[preview-panel-mode=inline]:border-b-transparent"
+        className="flex shrink-0 items-center gap-1 border-b border-border/60 bg-background py-toolbar ps-2 pe-toolbar-end in-data-[preview-panel-mode=inline]:border-b-transparent"
         data-surface-subheader
       >
-        <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
         <FileSearchField
           name="project-files-search"
           ariaLabel={`Search ${projectName} files`}
@@ -499,6 +502,7 @@ export default function FileBrowserPanel({
           onValueChange={handleSearchValueChange}
           onClose={closeSearch}
         />
+        <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
         {directoryPaths.length > 0 ? (
           <Tooltip>
             <TooltipTrigger

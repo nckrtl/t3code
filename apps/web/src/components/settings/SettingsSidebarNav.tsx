@@ -236,7 +236,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
       <SidebarContent className="overflow-x-hidden">
         <SidebarGroup>
           <div className="flex flex-col gap-2">
-            <div className="flex h-8 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground">
+            <div className="flex h-8 items-center gap-2 rounded-md px-2 py-1.5 text-ui font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground">
               <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
               <SidebarInput
                 ref={searchInputRef}
@@ -302,6 +302,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                       tabIndex={-1}
                       size="sm"
                       isActive={index === activeResultIndex}
+                      variant="row"
                       className="h-auto min-h-10 items-start"
                       onMouseMove={() => setActiveResultIndex(index)}
                       onClick={() => handleSearchResultClick(item)}
@@ -334,6 +335,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                     <SidebarMenuItem key={item.to}>
                       <SidebarMenuButton
                         isActive={isActive}
+                        variant="row"
                         onClick={() => handleSectionClick(item.to)}
                       >
                         <Icon />

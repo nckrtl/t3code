@@ -650,8 +650,8 @@ function PreviewFavicon({ capturedUrl, url }: { capturedUrl: string | null; url:
   return (
     <FaviconImage
       sources={[capturedUrl, publicProviderUrl]}
-      fallback={<Globe2 className="size-3 shrink-0" />}
-      className="size-3 shrink-0 rounded-sm object-contain"
+      fallback={<Globe2 className="size-4 shrink-0" />}
+      className="size-4 shrink-0 rounded-sm object-contain"
     />
   );
 }
@@ -689,20 +689,20 @@ function SurfaceIcon({
       return <PreviewFavicon capturedUrl={capturedUrl} url={url} />;
     }
     case "diff":
-      return <FileDiff className="size-3 shrink-0" />;
+      return <FileDiff className="size-4 shrink-0" />;
     case "files":
-      return <Files className="size-3 shrink-0" />;
+      return <Files className="size-4 shrink-0" />;
     case "file":
       return (
         <PierreEntryIcon
           pathValue={surface.relativePath}
           kind="file"
           theme={theme}
-          className="size-3"
+          className="size-4"
         />
       );
     case "terminal":
-      return <TerminalSquare className="size-3 shrink-0" />;
+      return <TerminalSquare className="size-4 shrink-0" />;
     case "pull-request":
       return (
         <PullRequestSurfaceIcon
@@ -712,16 +712,16 @@ function SurfaceIcon({
         />
       );
     case "pull-requests":
-      return <PullRequestGlyph.link className="size-3 shrink-0" />;
+      return <PullRequestGlyph.link className="size-4 shrink-0" />;
     case "agents":
-      return <Bot className="size-3 shrink-0" />;
+      return <Bot className="size-4 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
-        <AppleIcon className="size-3 shrink-0" />
+        <AppleIcon className="size-4 shrink-0" />
       ) : surface.target?.platform === "android" ? (
-        <AndroidIcon className="size-3 shrink-0" />
+        <AndroidIcon className="size-4 shrink-0" />
       ) : (
-        <Smartphone className="size-3 shrink-0" />
+        <Smartphone className="size-4 shrink-0" />
       );
   }
 }
@@ -815,13 +815,13 @@ function PullRequestSurfaceIcon({
   // detail data arrives.
   const status = linkedSnapshot ?? newestPullRequestSummary(detail, sharedSummary) ?? seed ?? null;
   if (status === null) {
-    return <PullRequestGlyph.pullRequest className="size-3 shrink-0 text-muted-foreground" />;
+    return <PullRequestGlyph.pullRequest className="size-4 shrink-0 text-muted-foreground" />;
   }
   const presentation = resolvePullRequestState({
     state: status.state,
     isDraft: status.isDraft ?? detail?.isDraft ?? seed?.isDraft ?? false,
   });
-  return <presentation.Icon className={cn("size-3 shrink-0", presentation.toneClassName)} />;
+  return <presentation.Icon className={cn("size-4 shrink-0", presentation.toneClassName)} />;
 }
 
 export function RightPanelTabs(props: RightPanelTabsProps) {
@@ -1154,7 +1154,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                   onAuxClick={(event) => handleTabAuxClick(event, surface)}
                   onContextMenu={(event) => void handleTabContextMenu(event, surface)}
                   className={cn(
-                    "cursor-pointer group/tab flex h-7 max-w-40 shrink-0 items-center gap-1 rounded-lg pr-2 pl-2 text-xs",
+                    "cursor-pointer group/tab flex h-7 max-w-40 shrink-0 items-center gap-1 rounded-lg pr-2 pl-2 text-sm",
                     ownsDesktopTitleBar && "[-webkit-app-region:no-drag]",
                     // Tabs sit on the glass header: a soft highlight pill, not a solid accent.
                     active
@@ -1187,7 +1187,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                         render={
                           <button
                             type="button"
-                            className="cursor-pointer flex size-4 shrink-0 items-center justify-center rounded-sm hover:bg-muted"
+                            className="cursor-pointer flex size-5 shrink-0 items-center justify-center rounded-sm hover:bg-muted"
                             aria-label={audio === "muted" ? `Unmute ${title}` : `Mute ${title}`}
                             onClick={(event) => {
                               // Sibling of the close button, inside a tab that
@@ -1199,9 +1199,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                             }}
                           >
                             {audio === "muted" ? (
-                              <VolumeOff className="size-3" />
+                              <VolumeOff className="size-4" />
                             ) : (
-                              <Volume2 className="size-3" />
+                              <Volume2 className="size-4" />
                             )}
                           </button>
                         }
@@ -1276,7 +1276,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
                     />
                   }
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-4" />
                 </MenuTrigger>
                 <MenuPopup
                   align="start"
@@ -1414,7 +1414,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           "flex min-h-0 flex-1 flex-col",
           // Same card as the chat and thread panel: tinted glass, right corners match the thread panel.
           props.mode === "inline" &&
-            "overflow-hidden rounded-tr-lg rounded-br-(--shell-corner) bg-(--shell-card) [--background:var(--shell-card)]",
+            "overflow-hidden rounded-tr-lg rounded-br-(--shell-corner) bg-(--shell-card) [--control-radius:6px] [--background:var(--shell-card)] [--terminal-background:var(--shell-card)]",
         )}
         data-right-panel-surface-content
       >

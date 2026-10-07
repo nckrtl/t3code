@@ -21,6 +21,7 @@ import { shouldShowInstanceBadge, type ProviderInstanceEntry } from "../../provi
 import {
   ComposerControl,
   ComposerControlChevron,
+  type ComposerControlAppearance,
   type ComposerControlSize,
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
@@ -44,6 +45,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   activeProviderIconClassName?: string;
   instanceIndicatorBackground?: string;
   size?: ComposerControlSize;
+  /** `field` renders the trigger like a Select, for settings rows. */
+  appearance?: ComposerControlAppearance;
   isComposerOwned?: boolean;
   disabled?: boolean;
   terminalOpen?: boolean;
@@ -206,6 +209,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           <ComposerControl
             aria-label={props.triggerAriaLabel ?? allModelNames}
             size={size}
+            appearance={props.appearance ?? "composer"}
             data-chat-provider-model-picker="true"
             className={cn(
               "min-w-0 shrink justify-between whitespace-nowrap",
@@ -276,7 +280,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           ) : null}
         </span>
         <span aria-hidden="true" className="flex items-center">
-          <ComposerControlChevron size={size} />
+          <ComposerControlChevron size={size} appearance={props.appearance ?? "composer"} />
         </span>
       </PopoverTrigger>
       <PopoverPopup

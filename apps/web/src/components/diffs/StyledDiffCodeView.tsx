@@ -84,11 +84,12 @@ const DIFF_VIEW_UNSAFE_CSS = `${DIFF_SURFACE_THEME_UNSAFE_CSS}
   border-bottom-color: transparent !important;
   align-items: center !important;
   font-family: var(--font-sans) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   line-height: 1 !important;
   min-height: 32px !important;
   padding-block: 6px !important;
-  padding-inline: 8px 12px !important;
+  /* 12px + the 20px chevron slot centres a 12px chevron at 16px, under the toolbar's first letter. */
+  padding-inline: 12px 12px !important;
 }
 
 [data-diffs-header]:hover {
@@ -216,7 +217,7 @@ const DIFF_VIEW_UNSAFE_CSS = `${DIFF_SURFACE_THEME_UNSAFE_CSS}
 [data-diffs-header] [data-additions-count],
 [data-diffs-header] [data-deletions-count] {
   font-family: var(--font-mono) !important;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-variant-numeric: tabular-nums;
   line-height: 1 !important;
 }

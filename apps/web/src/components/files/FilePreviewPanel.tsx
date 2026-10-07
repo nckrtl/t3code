@@ -1105,7 +1105,7 @@ export default function FilePreviewPanel({
             className="min-w-0 flex-1"
             data-file-breadcrumbs
           >
-            <div className="flex h-full w-max min-w-full items-center text-xs">
+            <div className="flex h-full w-max min-w-full items-center text-ui">
               <FileBreadcrumbs
                 cwd={cwd}
                 environmentId={environmentId}
@@ -1184,7 +1184,15 @@ export default function FilePreviewPanel({
           Preview limited to the first 1 MB of a {file.data.byteLength.toLocaleString()} byte file.
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 overflow-hidden",
+          // Inline, the breadcrumb row's own border is transparent; this line separates it from both columns and meets the explorer's divider, both in the shell divider color.
+          relativePath &&
+            attachment === undefined &&
+            "in-data-[preview-panel-mode=inline]:border-t in-data-[preview-panel-mode=inline]:border-(--shell-divider)!",
+        )}
+      >
         <div
           className={cn("min-w-0 flex-1 flex-col overflow-hidden", previewPath ? "flex" : "hidden")}
         >
@@ -1296,7 +1304,7 @@ export default function FilePreviewPanel({
             className={cn(
               "flex min-h-0 shrink-0 bg-background",
               previewPath
-                ? "w-[min(22rem,46%)] min-w-64 border-l border-border/60"
+                ? "w-[min(22rem,46%)] min-w-64 border-l border-(--shell-divider)!"
                 : "min-w-0 flex-1",
             )}
           >

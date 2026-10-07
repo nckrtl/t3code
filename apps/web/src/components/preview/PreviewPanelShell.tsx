@@ -22,7 +22,7 @@ const PREVIEW_PANEL_MIN_WIDTH = 360;
  * sibling column's space.
  */
 const PREVIEW_PANEL_MAX_WIDTH_FRACTION = 0.7;
-const PREVIEW_PANEL_DEFAULT_WIDTH = 540;
+const PREVIEW_PANEL_DEFAULT_WIDTH = 600;
 /**
  * Width reserved for the sibling column (chat, pull-request list) sharing the
  * panel's flex row. The viewport fraction alone is not enough: the app
@@ -200,7 +200,11 @@ function useClampedMaxWidth(hostRef: RefObject<HTMLDivElement | null>, enabled: 
   }, []);
   useLayoutEffect(() => {
     if (!enabled) return;
-    const parent = hostRef.current?.parentElement;
+    // The chat view wraps the panel in a shrink-wrapped inset element, whose
+    // width tracks the panel's own; measuring it would cap the panel at its
+    // current width. Measure the flex row that holds the sibling column.
+    const host = hostRef.current;
+    const parent = host?.closest("[data-right-panel-inset]")?.parentElement ?? host?.parentElement;
     if (!parent) return;
     // Measure before first paint: the persisted width must be clamped
     // against the row on the initial render, not one observer tick later

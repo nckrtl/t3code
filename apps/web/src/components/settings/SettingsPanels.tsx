@@ -3189,6 +3189,7 @@ export function GeneralSettingsPanel() {
                   instanceEntries={textGenerationModelInstanceEntries}
                   modelOptionsByInstance={textGenerationModelOptionsByInstance}
                   triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                  appearance="field"
                   {...(mixedTextGenerationModel ? { triggerLabel: "Mixed" } : {})}
                   getModelDisabledReason={textGenerationModelDisabledReason}
                   {...(environmentId
@@ -3239,6 +3240,7 @@ export function GeneralSettingsPanel() {
                     allowPromptInjectedEffort={false}
                     planModeEnabled={settings.planModeEnabled}
                     triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                    appearance="field"
                     onModelOptionsChange={(nextOptions) => {
                       updateSettings({
                         textGenerationModelSelection: resolveAppModelSelectionState(

@@ -37,7 +37,6 @@ import { useTheme } from "../hooks/useTheme";
 import {
   buildFileDiffContentVersion,
   buildFileDiffIdentityKey,
-  getDiffCollapseIconClassName,
   getDiffLineStat,
   getRenderablePatch,
   resolveDiffThemeName,
@@ -841,7 +840,7 @@ export default function DiffPanel({
           <DiffStatLabel
             additions={diffLineStat.additions}
             deletions={diffLineStat.deletions}
-            className="mr-1 text-2xs"
+            className="mr-1 text-sm sm:text-ui"
             layout="inline"
           />
         ) : null}
@@ -1023,7 +1022,7 @@ export default function DiffPanel({
                 </div>
               )
             ) : lazySource || renderablePatch?.kind === "files" ? (
-              <div className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="flex min-h-0 flex-1 overflow-hidden in-data-[preview-panel-mode=inline]:border-t in-data-[preview-panel-mode=inline]:border-(--shell-divider)!">
                 <div
                   className="min-h-0 min-w-0 flex-1"
                   onClickCapture={(event) => {
@@ -1125,7 +1124,6 @@ export default function DiffPanel({
                               <Button
                                 size="icon-micro"
                                 variant="ghost"
-                                className="-ms-0.5"
                                 aria-label={
                                   collapsed ? `Expand ${filePath}` : `Collapse ${filePath}`
                                 }
@@ -1139,13 +1137,9 @@ export default function DiffPanel({
                             }
                           >
                             {collapsed ? (
-                              <ChevronRightIcon
-                                className={cn("size-4", getDiffCollapseIconClassName(fileDiff))}
-                              />
+                              <ChevronRightIcon className="size-3 text-muted-foreground" />
                             ) : (
-                              <ChevronDownIcon
-                                className={cn("size-4", getDiffCollapseIconClassName(fileDiff))}
-                              />
+                              <ChevronDownIcon className="size-3 text-muted-foreground" />
                             )}
                           </TooltipTrigger>
                           <TooltipPopup side="top">
@@ -1167,7 +1161,7 @@ export default function DiffPanel({
                   />
                 </div>
                 {fileTreeOpen ? (
-                  <aside className="flex w-[min(16rem,40%)] min-w-40 shrink-0 border-l border-border/60">
+                  <aside className="flex w-[min(16rem,40%)] min-w-40 shrink-0 border-l border-(--shell-divider)!">
                     <DiffFileTree
                       ariaLabel={`${reviewSectionTitle} files`}
                       entries={fileTreeEntries}

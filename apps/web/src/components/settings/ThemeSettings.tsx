@@ -154,7 +154,7 @@ function ThemeLibraryCard({
         render={
           <div
             className={cn(
-              "cursor-pointer overflow-hidden rounded-xl border border-border/70 bg-card/60 transition-colors hover:bg-accent/10",
+              "cursor-pointer overflow-hidden rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) transition-colors hover:bg-accent/10",
               isActive && "bg-accent/30",
             )}
             data-theme-library-card={theme.id}
@@ -726,10 +726,10 @@ export function ThemeLibrary({
             aria-label={mode === "system" ? "Follow the system appearance" : `Use ${mode} mode`}
             aria-pressed={isActive}
             className={cn(
-              "flex cursor-pointer flex-col items-stretch gap-1.5 rounded-xl border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+              "flex cursor-pointer flex-col items-stretch gap-1.5 rounded-lg border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
               isActive
                 ? "border-transparent bg-accent/30"
-                : "border-border/70 bg-card/60 hover:bg-accent/10",
+                : "border-(--shell-divider-header)! bg-(--shell-highlight) hover:bg-accent/10",
             )}
             key={mode}
             style={isActive ? { boxShadow: "inset 0 0 0 1px var(--ring)" } : undefined}

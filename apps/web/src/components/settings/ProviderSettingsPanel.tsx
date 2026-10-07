@@ -1068,7 +1068,7 @@ export function EnvironmentProviderSettings({
           <div className="flex min-w-0 items-center gap-2">
             <ProviderUpdatesAction />
             {readOnly ? (
-              <span className="min-w-0 truncate text-xs text-muted-foreground">
+              <span className="min-w-0 truncate text-ui text-muted-foreground">
                 <ProviderLastChecked lastCheckedAt={lastCheckedAt} />
               </span>
             ) : (
@@ -1078,7 +1078,7 @@ export function EnvironmentProviderSettings({
                     render={
                       <Button
                         size="xs"
-                        variant="ghost-muted"
+                        variant="outline"
                         disabled={isRefreshingProviders}
                         aria-busy={isRefreshingProviders}
                         onClick={() => void refreshProviders()}
@@ -1102,7 +1102,7 @@ export function EnvironmentProviderSettings({
                     render={
                       <Button
                         size="icon-xs"
-                        variant="ghost-muted"
+                        variant="outline"
                         onClick={() => setIsAddInstanceDialogOpen(true)}
                         aria-label="Add provider"
                       >
@@ -1135,7 +1135,7 @@ export function EnvironmentProviderSettings({
             "overflow-hidden @min-[48rem]/providers:grid @min-[48rem]/providers:grid-cols-[17rem_minmax(0,1fr)]",
           )}
         >
-          <div className="border-b border-border/60 bg-muted/10 @min-[48rem]/providers:flex @min-[48rem]/providers:min-h-0 @min-[48rem]/providers:flex-col @min-[48rem]/providers:border-r @min-[48rem]/providers:border-b-0">
+          <div className="border-b border-(--shell-divider)! @min-[48rem]/providers:flex @min-[48rem]/providers:min-h-0 @min-[48rem]/providers:flex-col @min-[48rem]/providers:border-r @min-[48rem]/providers:border-b-0">
             <ScrollArea
               scrollFade
               chainVerticalScroll

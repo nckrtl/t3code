@@ -5125,9 +5125,9 @@ export default function Sidebar() {
                                   className={cn(
                                     workingThreads.length + snoozedThreads.length === 0 &&
                                       "mt-auto",
-                                    // Collapsed, it is the panel's last row: drop 6px into the bottom
-                                    // padding so the label's bottom gap equals its 18px left inset.
-                                    !settledShelfExpanded && "-mb-1.5",
+                                    // Collapsed, it is the panel's last row: drop 10px into the bottom
+                                    // padding so the label's baseline gap equals its 18px left inset.
+                                    !settledShelfExpanded && "-mb-2.5",
                                   )}
                                   label={
                                     settledShelfExpanded
