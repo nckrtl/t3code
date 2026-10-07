@@ -181,7 +181,7 @@ export function PreviewChromeRow({
 
         {leadingActions}
 
-        <InputGroup variant="pill" className="group/address h-7 min-w-0 flex-1">
+        <InputGroup variant="soft" className="group/address h-8 min-w-0 flex-1">
           <Tooltip>
             <TooltipTrigger
               render={
