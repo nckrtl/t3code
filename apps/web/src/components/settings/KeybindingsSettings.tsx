@@ -1314,12 +1314,14 @@ function KeybindingsList(props: KeybindingsListProps) {
 /** Shown in the browser build only; the desktop app receives every shortcut. */
 function BrowserKeybindingNotice() {
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 text-ui leading-normal text-muted-foreground sm:px-4">
-      <TriangleAlertIcon className="size-3.5 shrink-0 text-warning" aria-hidden />
-      <span>
-        Some shortcuts may be claimed by the browser before T3 Code sees them. Use the desktop app
-        for better keybinding support.
-      </span>
+    <div className="p-1">
+      <div className="flex items-center gap-2 rounded-md bg-warning/10 px-2.5 py-2 text-ui leading-normal text-warning sm:px-3">
+        <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
+        <span>
+          Some shortcuts may be claimed by the browser before T3 Code sees them. Use the desktop app
+          for better keybinding support.
+        </span>
+      </div>
     </div>
   );
 }
