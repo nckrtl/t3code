@@ -266,7 +266,7 @@ export function OrbitPanel() {
                 onClick={() => void run(down, "start")}
               >
                 <Play />
-                Start all
+                <span className="ml-0.5">Start all</span>
               </Button>
               <Button
                 variant="outline-muted"
@@ -276,7 +276,7 @@ export function OrbitPanel() {
                 onClick={() => void run(running, "restart")}
               >
                 <RotateCw />
-                Restart all
+                <span className="ml-0.5">Restart all</span>
               </Button>
             </div>
           ) : null}
