@@ -32,7 +32,7 @@ export function DependenciesPanel() {
           setLoaded({
             source,
             instanceId,
-            error: error instanceof Error ? error.message : "Could not load packages.",
+            error: error instanceof Error ? error.message : "Could not load dependencies.",
           });
       },
     );
@@ -64,7 +64,7 @@ export function DependenciesPanel() {
         onChange={setTab}
       />
       <div className="flex shrink-0 items-center justify-between border-b px-3 py-2 text-xs text-muted-foreground">
-        <span>{packages ? `${packages.length} packages` : "Package inventory"}</span>
+        <span>{packages ? `${packages.length} dependencies` : "Dependency inventory"}</span>
         {manager ? <span>{manager}</span> : null}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
@@ -74,7 +74,7 @@ export function DependenciesPanel() {
               dependencies?.errors?.[tab] ??
               (dependencies
                 ? "No saved inventory. Run an Orbit dependency scan for this instance."
-                : "Loading packages…")}
+                : "Loading dependencies…")}
           </EmptyRow>
         ) : packages.length === 0 ? (
           <EmptyRow>No {tab === "composer" ? "Composer" : "JavaScript"} dependencies</EmptyRow>
