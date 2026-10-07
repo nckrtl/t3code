@@ -401,8 +401,9 @@ export function DatabasePanel() {
                             </TooltipTrigger>
                             <TooltipPopup>Database time spent on earlier queries</TooltipPopup>
                           </Tooltip>
-                          {/* Position within cumulative recorded query time, excluding time between queries. */}
-                          <div className="absolute inset-x-3 bottom-0 h-px">
+                          {/* Position within cumulative recorded query time, excluding time between queries.
+                              Drawn on the row divider. */}
+                          <div className="absolute inset-x-3 -bottom-px h-px">
                             <div
                               className="absolute inset-y-0 bg-primary/60"
                               style={{
