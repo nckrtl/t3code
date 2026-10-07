@@ -2296,6 +2296,11 @@ code {
      secondary text step lighter to keep the same contrast against the lighter fill. */
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
   --muted-foreground-raised: color-mix(in oklab, var(--muted-foreground) 80%, var(--foreground));
+  /* Opaque tiles (empty-state icons) that sit on a raised card and read a step lighter. */
+  --shell-tile: var(--card);
+  /* The tile's border is the raised card's own color made opaque, so stacked tiles
+     separate with a cut of the card instead of a drawn line. */
+  --shell-tile-border: color-mix(in srgb, var(--sidebar) 94%, var(--foreground));
   --shell-header-height: 44px;
   /* The checked track of every switch (the Switch primitive and the menu's switch items). */
   --switch-on: color-mix(in oklab, var(--primary) 70%, var(--foreground));
@@ -2328,6 +2333,8 @@ code {
   /* The header runs on the lighter frame, so its stretch of divider is lighter. */
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 78%, var(--foreground));
+  --shell-tile: color-mix(in oklab, var(--sidebar) 85%, var(--foreground));
+  --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 
 /* Full-height shell dividers: one color through the glass header, another
