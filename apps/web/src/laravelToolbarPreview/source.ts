@@ -5,6 +5,7 @@ import type { ToolbarData } from "~/laravelToolbar/types";
 
 import {
   previewCookies,
+  previewDependencies,
   previewLogs,
   previewModels,
   previewPageProps,
@@ -90,6 +91,7 @@ const details: Readonly<Record<string, ToolbarData>> = Object.fromEntries(
       const queries = previewQueries.slice(0, queryCount);
       const total = queries.reduce((sum, query) => sum + query.duration, 0);
       const data: ToolbarData = {
+        dependencies: previewDependencies,
         request_id: row.id,
         history_row: row,
         profiler: {

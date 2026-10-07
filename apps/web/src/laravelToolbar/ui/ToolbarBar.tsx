@@ -1,4 +1,4 @@
-import { Box, Database, ListIcon, MemoryStick, Timer, X } from "lucide-react";
+import { Box, Database, ListIcon, MemoryStick, Package, Timer, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 import { useOrbitTool, useToolbarTab } from "../context";
 import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
 import { LaravelIcon, PhpIcon } from "./brandIcons";
+import { DependenciesPanel } from "./dependencies";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
 import { OrbitIcon, OrbitPanel } from "./orbit";
 import { ToolbarPanelResizeContext, useToolbarPanelResize } from "./panelResize";
@@ -22,6 +23,7 @@ export const PANEL_IDS = [
   "models",
   "orbit",
   "environment",
+  "dependencies",
 ] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
@@ -34,6 +36,7 @@ const PANELS: Record<PanelId, () => ReactNode> = {
   models: () => <ModelsPanel />,
   orbit: () => <OrbitPanel />,
   environment: () => <EnvironmentPanel />,
+  dependencies: () => <DependenciesPanel />,
 };
 
 const OPEN_DELAY_MS = 75;
@@ -236,6 +239,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
             : null}
           {selected ? (
             <div className="hidden items-center @2xl:flex">
+              {item("dependencies", "Dependencies", <Package />)}
               {item(
                 "environment",
                 "Laravel and PHP",

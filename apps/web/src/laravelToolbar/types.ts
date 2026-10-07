@@ -83,6 +83,13 @@ export interface ToolbarModel {
   readonly deleted?: number;
 }
 
+export interface ToolbarDependency {
+  readonly name: string;
+  readonly version?: string | null;
+  readonly constraint?: string | null;
+  readonly development?: boolean;
+}
+
 export interface ToolbarData {
   readonly request_id?: string;
   readonly selected_request_id?: string;
@@ -126,6 +133,12 @@ export interface ToolbarData {
     readonly queries?: readonly ToolbarQuery[];
   };
   readonly models?: readonly ToolbarModel[] | null;
+  /** Optional dependency collector payload; absent in current package releases. */
+  readonly dependencies?: {
+    readonly composer?: readonly ToolbarDependency[] | null;
+    readonly javascript?: readonly ToolbarDependency[] | null;
+    readonly package_manager?: string | null;
+  } | null;
   readonly laravel?: {
     readonly version?: string;
     readonly environment?: string;

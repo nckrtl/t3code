@@ -1,4 +1,5 @@
-// Design fixtures only. Payload shapes match the production toolbar's data source.
+// Design fixtures. Dependency fields are proposed for the future package collector;
+// other payload shapes match the production toolbar's data source.
 import type {
   ToolbarData,
   ToolbarQuery,
@@ -6,6 +7,33 @@ import type {
   ToolbarHistoryRow,
 } from "~/laravelToolbar/types";
 import type { OrbitProcess } from "~/laravelToolbar/orbit";
+
+export const previewDependencies: NonNullable<ToolbarData["dependencies"]> = {
+  composer: [
+    { name: "inertiajs/inertia-laravel", version: "3.6.1", constraint: "^3.6" },
+    { name: "laravel/framework", version: "13.31.0", constraint: "^13.0" },
+    { name: "laravel/tinker", version: "2.10.1", constraint: "^2.10" },
+    { name: "nckrtl/laravel-toolbar", version: "0.3.8", constraint: "^0.3" },
+    { name: "laravel/pint", version: "1.25.1", constraint: "^1.24", development: true },
+    { name: "pestphp/pest", version: "4.3.0", constraint: "^4.0", development: true },
+    {
+      name: "pestphp/pest-plugin-laravel",
+      version: "4.0.0",
+      constraint: "^4.0",
+      development: true,
+    },
+  ],
+  javascript: [
+    { name: "@inertiajs/vue3", version: "3.6.1", constraint: "^3.6" },
+    { name: "vue", version: "3.5.22", constraint: "^3.5" },
+    { name: "@tailwindcss/vite", version: "4.1.14", constraint: "^4.1", development: true },
+    { name: "laravel-vite-plugin", version: "2.0.1", constraint: "^2.0", development: true },
+    { name: "tailwindcss", version: "4.1.14", constraint: "^4.1", development: true },
+    { name: "typescript", version: "5.9.3", constraint: "^5.9", development: true },
+    { name: "vite", version: "7.1.12", constraint: "^7.1", development: true },
+  ],
+  package_manager: "pnpm",
+};
 
 export const previewQueries: readonly ToolbarQuery[] = [
   {
