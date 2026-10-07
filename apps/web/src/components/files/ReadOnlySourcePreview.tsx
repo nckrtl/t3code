@@ -25,7 +25,7 @@ export default function ReadOnlySourcePreview(props: {
     <DiffWorkerPoolProvider>
       <Virtualizer
         key={`${props.name}:${resolvedTheme}:${props.text.length}`}
-        className="file-preview-virtualizer scrollbar-inset min-h-0 flex-1 overflow-auto"
+        className="file-preview-virtualizer scrollbar-inset min-h-0 flex-1 overflow-auto pt-1.5"
         config={{ overscrollSize: 600, intersectionObserverMargin: 1200 }}
       >
         <File

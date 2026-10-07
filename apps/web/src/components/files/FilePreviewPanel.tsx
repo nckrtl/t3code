@@ -780,7 +780,7 @@ function EditableFileSurface({
     <EditProvider editor={editor}>
       <div ref={surfaceRef} className="flex min-h-0 flex-1">
         <Virtualizer
-          className="file-preview-virtualizer scrollbar-inset min-h-0 flex-1 overflow-auto"
+          className="file-preview-virtualizer scrollbar-inset min-h-0 flex-1 overflow-auto pt-1.5"
           config={{
             overscrollSize: 600,
             intersectionObserverMargin: 1200,
