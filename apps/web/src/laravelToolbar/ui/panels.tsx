@@ -517,7 +517,7 @@ function LaravelTab({ selected }: { selected: ToolbarData }) {
   return (
     <>
       <StatStrip>
-        <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} hint="Framework" />
+        <Stat icon={Layers} label="Laravel" value={laravel?.version ?? "–"} />
         <Stat icon={Globe} label="Environment" value={laravel?.environment ?? "–"} hint="APP_ENV" />
         <Stat
           icon={Bug}
