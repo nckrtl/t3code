@@ -19,7 +19,7 @@ const inputGroupVariants = cva(
         ghost:
           "border-transparent bg-transparent shadow-none hover:bg-muted/40 has-[input:focus-visible,textarea:focus-visible]:bg-background",
         // A fully rounded outlined field, like a browser address bar.
-        pill: "rounded-full border-border bg-transparent shadow-none hover:bg-muted/40 has-[input:focus-visible,textarea:focus-visible]:bg-background [&_input]:ps-3",
+        pill: "rounded-full border-border bg-(--shell-highlight) shadow-none hover:bg-foreground/10 has-[input:focus-visible,textarea:focus-visible]:bg-background [&_input]:ps-3",
         soft: "rounded-lg border-border text-ui sm:text-ui bg-muted/40 shadow-none hover:bg-muted/60 has-[input:focus-visible,textarea:focus-visible]:bg-background [&_input]:pe-3.5 [&_input]:ps-[11px] [&_[data-slot=input-group-addon]]:ps-[9px]",
       },
     },
