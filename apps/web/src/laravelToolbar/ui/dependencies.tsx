@@ -4,7 +4,7 @@ import { cn } from "~/lib/utils";
 
 import { useOrbitTool } from "../context";
 import type { OrbitDependencies } from "../orbit";
-import { cellClass, EmptyRow, headRowClass, rowClass, tableClass, UnderlineTabs } from "./parts";
+import { cellClass, EmptyRow, headRowClass, rowClass, tableClass } from "./parts";
 
 import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
 
@@ -51,23 +51,38 @@ export function DependenciesPanel() {
     if (column === "constraint") return dependency.constraint;
     return dependency.development ? "Dev" : "Production";
   });
-  const manager = tab === "javascript" ? dependencies?.package_manager : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <UnderlineTabs
-        value={tab}
-        tabs={[
-          ["composer", "Composer"],
-          ["javascript", "JavaScript"],
-        ]}
-        onChange={setTab}
-      />
-      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2 text-xs text-muted-foreground">
-        <span>{packages ? `${packages.length} dependencies` : "Dependency inventory"}</span>
-        {manager ? <span>{manager}</span> : null}
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+    <div className="flex min-h-0 flex-1">
+      <nav aria-label="Dependency ecosystems" className="w-44 shrink-0 border-r">
+        {(["composer", "javascript"] as const).map((ecosystem) => (
+          <button
+            key={ecosystem}
+            type="button"
+            aria-pressed={tab === ecosystem}
+            onClick={() => setTab(ecosystem)}
+            className={cn(
+              "flex w-full cursor-pointer items-center justify-between gap-2 border-b px-3 py-3 text-left text-xs outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
+              tab === ecosystem
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+            )}
+          >
+            <span>
+              <span className="block">{ecosystem === "composer" ? "Composer" : "JavaScript"}</span>
+              {ecosystem === "javascript" && dependencies?.package_manager ? (
+                <span className="mt-1 block text-2xs leading-4 text-muted-foreground">
+                  {dependencies.package_manager}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {dependencies?.[ecosystem]?.length ?? "–"}
+            </span>
+          </button>
+        ))}
+      </nav>
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         {packages == null ? (
           <EmptyRow>
             {result?.error ??
