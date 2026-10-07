@@ -2280,6 +2280,6 @@ code {
   );
   --shell-highlight: color-mix(in srgb, var(--foreground) 8%, transparent);
   /* Opaque, so the frame showing through the 1px gap cannot brighten it: a
-     hairline one small step from the panels, as in ChatGPT. */
-  --shell-divider: color-mix(in oklab, var(--sidebar) 96%, var(--foreground));
+     hairline just above the frame (92%), so it reads in the header and the cards. */
+  --shell-divider: color-mix(in oklab, var(--sidebar) 89%, var(--foreground));
 }
