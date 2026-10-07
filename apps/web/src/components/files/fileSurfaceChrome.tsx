@@ -80,8 +80,8 @@ export function FileSurfaceAction(props: {
     <Tooltip>
       <TooltipTrigger
         render={
-          // A pressed toggle shows a primary icon, not a fill, like the browser bar's
-          // active tools (aria-pressed still reports it).
+          // A pressed toggle brightens its icon to the foreground colour instead of
+          // taking a fill (aria-pressed still reports it).
           <Button
             type="button"
             className="shrink-0"
@@ -92,7 +92,7 @@ export function FileSurfaceAction(props: {
             variant="ghost"
             size="icon-xs"
           >
-            <span className={cn("contents", pressed && "[&_svg]:text-primary!")}>
+            <span className={cn("contents", pressed && "[&_svg]:text-foreground!")}>
               {props.children}
             </span>
           </Button>

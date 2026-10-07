@@ -18,6 +18,7 @@ import { useEnvironment } from "../../state/environments";
 import { ChevronDownIcon, FolderClosedIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Group, GroupSeparator } from "../ui/group";
+import { ToolbarGroup } from "../ToolbarGroup";
 import {
   Menu,
   MenuItem,
@@ -346,6 +347,36 @@ export const OpenInPicker = memo(function OpenInPicker({
           <MenuSubPopup>{editorItems}</MenuSubPopup>
         </MenuSub>
       </>
+    );
+  }
+
+  if (compact) {
+    // Panel toolbars: the same bordered group and ghost icon buttons as the other actions.
+    return (
+      <ToolbarGroup className="shrink-0" role="group" aria-label="Open in editor">
+        <Button
+          aria-label="Open file in preferred editor"
+          size="icon-xs"
+          variant="ghost"
+          disabled={!preferredEditor || !openInCwd || remote.mode === "remote-unavailable"}
+          onClick={() => openInEditor(preferredEditor)}
+        >
+          {primaryOption?.Icon && (
+            <primaryOption.Icon
+              aria-hidden="true"
+              className={cn("size-3.5", getOpenInIconClass(primaryOption.kind))}
+            />
+          )}
+        </Button>
+        <Menu>
+          <MenuTrigger
+            render={<Button aria-label="Choose editor" size="icon-xs" variant="ghost" />}
+          >
+            <ChevronDownIcon aria-hidden="true" className="size-4" />
+          </MenuTrigger>
+          <MenuPopup align="end">{editorItems}</MenuPopup>
+        </Menu>
+      </ToolbarGroup>
     );
   }
 
