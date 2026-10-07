@@ -35,7 +35,7 @@ export function PanelShell({
       <div
         className={cn(
           "relative flex h-11 shrink-0 touch-none cursor-row-resize select-none items-center gap-3 px-3",
-          !hasTabs && "border-b border-(--shell-divider-header)!",
+          !hasTabs && "border-b",
         )}
         {...resize?.handlers}
       >
