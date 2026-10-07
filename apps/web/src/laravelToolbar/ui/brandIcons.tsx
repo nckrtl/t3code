@@ -3,10 +3,10 @@
 export function LaravelIcon() {
   return (
     <svg
-      viewBox="-0.25 -0.25 24.5 24.5"
+      viewBox="-0.375 -0.375 24.75 24.75"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth="0.5"
+      strokeWidth="0.75"
       strokeLinejoin="round"
       aria-hidden="true"
     >
@@ -19,7 +19,7 @@ export function PhpIcon() {
   return (
     <svg
       viewBox="3.5 7.25 17.5 8.5"
-      className="size-4 w-8 sm:size-3.5 sm:w-7"
+      className="size-3.5 w-7 sm:size-3 sm:w-6"
       fill="currentColor"
       fillRule="evenodd"
       aria-hidden="true"
