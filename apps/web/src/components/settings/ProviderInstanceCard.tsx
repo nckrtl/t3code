@@ -638,7 +638,8 @@ export function ProviderInstanceCard({
         data-slot="settings-row"
         className={cn(
           "group flex min-h-18 items-start gap-3 px-3 py-3 transition-colors sm:px-4",
-          selected ? "bg-muted/45" : "hover:bg-muted/25",
+          // Selected reads lighter than its siblings on the card fill, like a selected row elsewhere.
+          selected ? "bg-(--shell-highlight)" : "hover:bg-foreground/4",
         )}
       >
         <div
@@ -659,9 +660,9 @@ export function ProviderInstanceCard({
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-ui font-medium text-foreground">{displayName}</span>
               {versionLabel ? (
-                <code className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
+                <span className="max-w-24 shrink-0 truncate text-ui text-muted-foreground">
                   {versionLabel}
-                </code>
+                </span>
               ) : null}
               {versionAdvisory ? (
                 hasCompatibilityWarning ? (
@@ -707,7 +708,7 @@ export function ProviderInstanceCard({
                 )
               ) : null}
             </span>
-            <span className="mt-0.5 flex items-start gap-1.5 text-xs leading-normal text-muted-foreground/80">
+            <span className="mt-0.5 flex items-start gap-1.5 text-ui text-muted-foreground/80">
               {statusDotNode ? (
                 <span className="flex h-[1.45em] shrink-0 items-center">{statusDotNode}</span>
               ) : null}

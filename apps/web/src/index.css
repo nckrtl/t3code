@@ -2292,9 +2292,17 @@ code {
   --shell-highlight: color-mix(in srgb, var(--foreground) 6%, transparent);
   --shell-divider: color-mix(in oklab, var(--sidebar) 90%, var(--foreground));
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 84%, var(--foreground));
+  /* Raised cards (settings groups) sit on --shell-highlight, so their row dividers and
+     secondary text step lighter to keep the same contrast against the lighter fill. */
+  --shell-divider-raised: color-mix(in oklab, var(--sidebar) 76%, var(--foreground));
+  --muted-foreground-raised: color-mix(in oklab, var(--muted-foreground) 80%, var(--foreground));
   --shell-header-height: 44px;
   /* The checked track of every switch (the Switch primitive and the menu's switch items). */
   --switch-on: color-mix(in oklab, var(--primary) 70%, var(--foreground));
+  /* Switch shape. 9999px gives the classic pill; a small radius gives a rounded square.
+     The knob stays concentric with the track across its 2px inset. */
+  --switch-radius: 6px;
+  --switch-thumb-radius: max(calc(var(--switch-radius) - 2px), 1px);
 }
 
 :root.dark {
@@ -2319,6 +2327,7 @@ code {
   --shell-divider: color-mix(in oklab, var(--sidebar) 89%, var(--foreground));
   /* The header runs on the lighter frame, so its stretch of divider is lighter. */
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
+  --shell-divider-raised: color-mix(in oklab, var(--sidebar) 74%, var(--foreground));
 }
 
 /* Full-height shell dividers: one color through the glass header, another

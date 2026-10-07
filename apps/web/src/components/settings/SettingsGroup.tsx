@@ -18,11 +18,11 @@ export function SettingsGroup({
       className={cn(
         "relative overflow-visible text-foreground",
         variant === "grouped"
-          ? "rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight)"
+          ? "rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) [--muted-foreground:var(--muted-foreground-raised)]"
           : "space-y-1",
         variant === "grouped" &&
           divided &&
-          "[&>*+*]:border-t [&>*+*]:border-(--shell-divider-header)! [&>[data-slot=settings-row]]:rounded-none",
+          "[&>*+*]:border-t [&>*+*]:border-(--shell-divider-raised)! [&>[data-slot=settings-row]]:rounded-none",
         className,
       )}
     />
