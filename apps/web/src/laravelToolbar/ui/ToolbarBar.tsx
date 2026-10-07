@@ -1,5 +1,13 @@
 import { Box, Database, ListIcon, MemoryStick, Timer } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 
 import { RenderErrorBoundary } from "~/components/RenderErrorBoundary";
 import { cn } from "~/lib/utils";
@@ -80,11 +88,39 @@ function usePanels(initialPinned: PanelId | null) {
   };
 }
 
+/**
+ * The bar's viewport rect while a flyout is open. The flyout is portaled to the body: the
+ * browser page is a fixed layer above the app shell, and the shell's backdrop blur traps any
+ * z-index set inside it, so an in-place flyout would sit under the page.
+ */
+function useHostRect(hostRef: RefObject<HTMLDivElement | null>, open: boolean) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!open || !host) {
+      setRect(null);
+      return;
+    }
+    const measure = () => setRect(host.getBoundingClientRect());
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    if (host.parentElement) observer.observe(host.parentElement);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hostRef, open]);
+  return rect;
+}
+
 /** The bar under the browser page, with its flyout panels. */
 export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | null }) {
   const panels = usePanels(initialPanel);
   const hostRef = useRef<HTMLDivElement>(null);
   const resize = useToolbarPanelResize(hostRef, panels.pin);
+  const hostRect = useHostRect(hostRef, panels.active !== null);
   const { tab, selectedId, selected } = useToolbarTab();
   const orbit = useOrbitTool();
   const row = tab.history.find((entry) => entry.row.id === selectedId);
@@ -112,30 +148,38 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   return (
     <div ref={hostRef} className="relative shrink-0">
       {/* The flyout spans the browser edge to edge and sits directly on the bar, on the
-          theme's canvas like the bar (popover is the small-menu surface). */}
-      {panels.active ? (
-        <div
-          className="absolute inset-x-0 bottom-full z-40 border-t bg-background text-foreground shadow-lg"
-          style={{ height: resize.height }}
-          onMouseEnter={panels.stay}
-          onMouseLeave={() => {
-            if (panels.pinned === null) panels.leave();
-          }}
-        >
-          <RenderErrorBoundary
-            fallback={
-              <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
-                This panel cannot show this request's data.
-              </div>
-            }
-            resetKeys={[panels.active, selected]}
-          >
-            <ToolbarPanelResizeContext value={resize}>
-              {PANELS[panels.active]()}
-            </ToolbarPanelResizeContext>
-          </RenderErrorBoundary>
-        </div>
-      ) : null}
+          card colour like the bar (popover is the small-menu surface). */}
+      {panels.active && hostRect
+        ? createPortal(
+            <div
+              className="fixed z-40 border-t border-(--shell-divider)! bg-(--shell-card) text-foreground shadow-lg [--background:var(--shell-card)]"
+              style={{
+                left: hostRect.left,
+                width: hostRect.width,
+                top: hostRect.top - resize.height,
+                height: resize.height,
+              }}
+              onMouseEnter={panels.stay}
+              onMouseLeave={() => {
+                if (panels.pinned === null) panels.leave();
+              }}
+            >
+              <RenderErrorBoundary
+                fallback={
+                  <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+                    This panel cannot show this request's data.
+                  </div>
+                }
+                resetKeys={[panels.active, selected]}
+              >
+                <ToolbarPanelResizeContext value={resize}>
+                  {PANELS[panels.active]()}
+                </ToolbarPanelResizeContext>
+              </RenderErrorBoundary>
+            </div>,
+            document.body,
+          )
+        : null}
       {/* Narrow browsers drop the versions; the route name truncates. */}
       <div className="@container flex items-center gap-2 overflow-hidden border-t border-(--shell-divider)! bg-background px-2 py-toolbar">
         <ToolbarGroup className="min-w-0 shrink">
