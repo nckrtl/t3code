@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
@@ -84,7 +85,7 @@ export function RequestsPanel() {
       icon={ListIcon}
       title="Requests"
       actions={
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {searchOpen ? (
             <div className="w-40 sm:w-64">
               <Input
@@ -105,24 +106,26 @@ export function RequestsPanel() {
               />
             </div>
           ) : null}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  ref={searchButtonRef}
-                  variant="ghost"
-                  size="icon-xs"
-                  type="button"
-                  aria-label={searchOpen ? "Close search" : "Search requests"}
-                  aria-expanded={searchOpen}
-                  onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-                >
-                  {searchOpen ? <X /> : <Search />}
-                </Button>
-              }
-            />
-            <TooltipPopup>{searchOpen ? "Close search" : "Search requests"}</TooltipPopup>
-          </Tooltip>
+          <ToolbarGroup>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    ref={searchButtonRef}
+                    variant="ghost"
+                    size="icon-xs"
+                    type="button"
+                    aria-label={searchOpen ? "Close search" : "Search requests"}
+                    aria-expanded={searchOpen}
+                    onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+                  >
+                    {searchOpen ? <X /> : <Search />}
+                  </Button>
+                }
+              />
+              <TooltipPopup>{searchOpen ? "Close search" : "Search requests"}</TooltipPopup>
+            </Tooltip>
+          </ToolbarGroup>
         </div>
       }
     >

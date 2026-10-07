@@ -4,6 +4,7 @@ import { ArrowDownToLine, Copy, Play, RotateCw, Square } from "lucide-react";
 import { type ReactNode, type SVGProps, useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
@@ -329,11 +330,11 @@ export function OrbitPanel() {
       flush
       actions={
         tab === "processes" ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {processes.length > 0 ? (
-              <div className="flex items-center gap-1">
+              <ToolbarGroup>
                 <Button
-                  variant="outline-muted"
+                  variant="ghost"
                   size="xs"
                   type="button"
                   disabled={down.length === 0}
@@ -343,7 +344,7 @@ export function OrbitPanel() {
                   <span className="ml-0.5">Start all</span>
                 </Button>
                 <Button
-                  variant="outline-muted"
+                  variant="ghost"
                   size="xs"
                   type="button"
                   disabled={running.length === 0}
@@ -352,7 +353,7 @@ export function OrbitPanel() {
                   <RotateCw />
                   <span className="ml-0.5">Restart all</span>
                 </Button>
-              </div>
+              </ToolbarGroup>
             ) : null}
           </div>
         ) : undefined
