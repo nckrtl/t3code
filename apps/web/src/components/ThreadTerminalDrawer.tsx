@@ -1535,7 +1535,7 @@ export default function ThreadTerminalDrawer({
                         }
                       }}
                     >
-                      <div className="h-full px-2 pt-toolbar pb-2">
+                      <div className="h-full ps-4 pe-2 pt-4 pb-2">
                         <TerminalViewport
                           advancedTypography={advancedTypography}
                           threadRef={threadRef}
@@ -1564,7 +1564,7 @@ export default function ThreadTerminalDrawer({
                 })}
               </div>
             ) : (
-              <div className="h-full px-2 pt-toolbar pb-2">
+              <div className="h-full ps-4 pe-2 pt-4 pb-2">
                 <TerminalViewport
                   advancedTypography={advancedTypography}
                   key={resolvedActiveTerminalId}
