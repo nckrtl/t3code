@@ -61,6 +61,8 @@ export function PreviewPanelShell(props: {
   widthStorageKey?: string;
   /** Overrides the initial width (px) before the user has resized the panel. */
   defaultWidth?: number;
+  /** Leaves the shell transparent so a glass header can sit above a card body. */
+  splitHeader?: boolean;
   children: ReactNode;
 }) {
   const isInline = props.mode === "inline";
@@ -119,11 +121,18 @@ export function PreviewPanelShell(props: {
     <div
       ref={hostRef}
       className={cn(
-        "relative flex h-full min-h-0 min-w-0 max-w-full flex-col self-stretch bg-background",
+        "relative flex h-full min-h-0 min-w-0 max-w-full flex-col self-stretch",
+        // A split header leaves the shell transparent; the caller paints the body card.
+        !props.splitHeader && "bg-background",
         isInline
-          ? maximized
-            ? "flex-1 border-l border-border"
-            : "shrink-0 border-l border-border"
+          ? cn(
+              maximized ? "flex-1" : "shrink-0",
+              // The split divider runs the full height, through the header, and matches the
+              // sidebar's divider.
+              props.splitHeader
+                ? "border-l border-zinc-200 dark:border-white/5"
+                : "rounded-tr-lg rounded-br-lg border-l border-border",
+            )
           : "w-full",
         collapsible &&
           "[[data-panel-animations=true]_&]:transition-[width] [[data-panel-animations=true]_&]:duration-(--panel-animation-duration) [[data-panel-animations=true]_&]:ease-out",
@@ -142,7 +151,13 @@ export function PreviewPanelShell(props: {
       data-preview-panel-maximized={maximized ? "true" : "false"}
     >
       {isInline && !maximized ? <RightPanelResizeHandle handlers={handlers} /> : null}
-      <div className={cn("h-full min-h-0 w-full", collapsible && "overflow-clip")}>
+      <div
+        className={cn(
+          "h-full min-h-0 w-full",
+          collapsible && "overflow-clip",
+          isInline && !props.splitHeader && "rounded-tr-lg rounded-br-lg",
+        )}
+      >
         <div
           className="flex h-full min-h-0 min-w-0 flex-col"
           style={collapsible && !maximized ? { width: `calc(${width}px - 1px)` } : undefined}

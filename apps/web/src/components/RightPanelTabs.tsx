@@ -1105,10 +1105,15 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       {...(props.open !== undefined ? { open: props.open } : {})}
       {...(props.widthStorageKey !== undefined ? { widthStorageKey: props.widthStorageKey } : {})}
       {...(props.defaultWidth !== undefined ? { defaultWidth: props.defaultWidth } : {})}
+      splitHeader={props.mode === "inline"}
     >
       <div
         className={cn(
-          "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center gap-1 pl-2",
+          "flex shrink-0 items-center gap-1 pl-2",
+          // Inline, the tab bar is glass at the chat header's height; the sheet keeps the titlebar's.
+          props.mode === "inline"
+            ? "h-[44px] min-h-[44px]"
+            : "h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)]",
           // The sheet overlays from the viewport top, so its tab bar keeps
           // the titlebar's height: a compact row re-centers the layout
           // controls a few pixels higher and the cluster jumps on open.
@@ -1403,7 +1408,15 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           />
         ) : null}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col" data-right-panel-surface-content>
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          // Same card as the chat and thread panel: tinted glass, right corners match the thread panel.
+          props.mode === "inline" &&
+            "overflow-hidden rounded-tr-lg rounded-br-lg bg-black/[0.05] dark:bg-black/25",
+        )}
+        data-right-panel-surface-content
+      >
         {props.activeSurfaceId === null ? (
           <RightPanelEmptyState
             onAddBrowser={props.onAddBrowser}

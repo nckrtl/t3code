@@ -206,12 +206,40 @@ function RootRouteView() {
     );
   }
 
-  const appShell = (
+  const appInner = (
     <CommandPalette>
       <AppSidebarLayout>
         <Outlet />
       </AppSidebarLayout>
     </CommandPalette>
+  );
+
+  const appShell = !isElectron ? (
+    <div
+      className="relative flex h-screen w-screen items-center justify-center p-4 md:p-8 overflow-hidden select-none"
+      style={{
+        backgroundImage: `
+          radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.25) 0px, transparent 50%),
+          radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.25) 0px, transparent 50%),
+          radial-gradient(at 50% 100%, rgba(236, 72, 153, 0.2) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+          radial-gradient(circle at 50% 50%, #1e1b4b 0%, #09090b 100%)
+        `,
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="relative flex h-full w-full max-w-[1720px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/5 [transform:translateZ(0)] select-text">
+        {/* Native-style macOS window controls seated at the top-left of the sidebar */}
+        <div className="pointer-events-none absolute left-4 top-4 z-50 flex gap-2">
+          <span className="size-3 rounded-full bg-[#ff5f57] border border-[#e0443e]/50" />
+          <span className="size-3 rounded-full bg-[#febc2e] border border-[#d89e24]/50" />
+          <span className="size-3 rounded-full bg-[#28c840] border border-[#1aab29]/50" />
+        </div>
+        {appInner}
+      </div>
+    </div>
+  ) : (
+    appInner
   );
 
   // FirstRunGate holds back everything below it — including EventRouter,

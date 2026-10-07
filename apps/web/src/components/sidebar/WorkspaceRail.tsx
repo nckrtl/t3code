@@ -128,8 +128,8 @@ function RailButton({
                 : undefined
             }
             className={cn(
-              // Tighter than the rail panel (rounded-lg); the badge inside is concentric (rounded, 4px in).
-              "relative flex size-9.5 shrink-0 items-center justify-center rounded-md text-muted-foreground",
+              // Follows the window corner. The badge inside stays rounded, 4px in.
+              "relative flex size-9.5 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
               "outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring",
               active && "bg-sidebar-row-active text-sidebar-foreground hover:bg-sidebar-row-active",
               sortable && "touch-none",
@@ -165,8 +165,7 @@ function SortableWorkspaceButton({
 /**
  * The workspace rail beside the thread sidebar: "All projects", one button per
  * workspace, and "New workspace". Selecting a workspace scopes the sidebar.
- * No divider: the rail is a slightly darker panel that starts below the title
- * bar, so the macOS window buttons sit on the plain sidebar.
+ * The rail has no fill of its own, so it joins the top bar as one surface.
  */
 export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
   useWorkspaceThreadNavigation();
@@ -244,22 +243,26 @@ export function WorkspaceRail({ isElectron }: { isElectron: boolean }) {
           isElectron && "drag-region",
         )}
       />
-      <div className="flex min-h-0 w-full flex-1 flex-col rounded-tr-lg bg-black/[0.05] dark:bg-black/25">
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto pt-2 pb-2">
-          <RailButton
-            label="All projects"
-            active={activeWorkspaceId === null}
-            onClick={() => selectWorkspace(null)}
-            {...(openWindow ? { onOpenWindow: openWindow(null) } : {})}
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <RailButton
+          // 38px button centered on the 32px search row (panel top 44px, 8px inset).
+          // Outside the scroller: a negative margin inside overflow-y-auto clips the icon.
+          className="mt-[calc(44px-var(--workspace-topbar-height)+var(--sidebar-content-inset)-var(--spacing)*0.75)] self-center"
+          label="All projects"
+          active={activeWorkspaceId === null}
+          onClick={() => selectWorkspace(null)}
+          {...(openWindow ? { onOpenWindow: openWindow(null) } : {})}
+        >
+          {/* Its own square, like a workspace badge, so the selected highlight rings it the same way. */}
+          <span
+            aria-hidden="true"
+            // Concentric with the button: its 10px radius minus the 4px inset.
+            className="flex size-7.5 items-center justify-center rounded-[6px] bg-sidebar-foreground/10"
           >
-            {/* Its own square, like a workspace badge, so the selected highlight rings it the same way. */}
-            <span
-              aria-hidden="true"
-              className="flex size-7.5 items-center justify-center rounded bg-sidebar-foreground/10"
-            >
-              <LayersIcon className="size-4" />
-            </span>
-          </RailButton>
+            <LayersIcon className="size-4" />
+          </span>
+        </RailButton>
+        <div className="mt-2 flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto pb-2">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -361,8 +364,7 @@ function RailActions() {
   };
 
   return (
-    // 13px below Settings levels it with the thread sidebar's Settled row above the footer.
-    <div className="flex w-full shrink-0 flex-col items-center gap-2 pb-3.25">
+    <div className="flex w-full shrink-0 flex-col items-center gap-2 pb-2">
       <RailProviderUpdate />
       <SidebarUpdatePill variant="rail" />
       <RailButton

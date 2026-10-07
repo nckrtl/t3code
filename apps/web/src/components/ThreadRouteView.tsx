@@ -207,8 +207,6 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
   }
 
   return (
-    <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
-      {view}
-    </SidebarInset>
+    <SidebarInset className="h-full min-h-0 overflow-hidden overscroll-y-none">{view}</SidebarInset>
   );
 }
