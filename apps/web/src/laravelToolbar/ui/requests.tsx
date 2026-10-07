@@ -376,7 +376,7 @@ export function RequestPanel() {
           />
           <Stat label="Response" value={responseKind} hint={summary?.size ?? undefined} />
         </StatStrip>
-        <Section title="Route">
+        <Section>
           <KeyValueRows
             rows={[
               ["Name", summary?.routeName ?? "–", "mono"],
