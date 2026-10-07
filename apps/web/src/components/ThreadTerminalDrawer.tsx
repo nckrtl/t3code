@@ -41,6 +41,7 @@ import {
 } from "react";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Button } from "~/components/ui/button";
+import { ToolbarGroup } from "~/components/ToolbarGroup";
 import { PanelTabCloseButton } from "~/components/ui/panel-tab-close-button";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { readTextFromClipboard, writeTextToClipboard } from "~/hooks/useCopyToClipboard";
@@ -1020,17 +1021,39 @@ interface ThreadTerminalDrawerProps {
 
 interface TerminalActionButtonProps {
   label: string;
-  className: string;
+  /** Omit for the standard toolbar icon button; the sidebar strip passes its own compact look. */
+  className?: string;
+  /** Shows the button as unavailable while keeping it clickable, so the click can explain why. */
+  unavailable?: boolean;
   onClick: () => void;
   children: ReactNode;
 }
 
-function TerminalActionButton({ label, className, onClick, children }: TerminalActionButtonProps) {
+function TerminalActionButton({
+  label,
+  className,
+  unavailable = false,
+  onClick,
+  children,
+}: TerminalActionButtonProps) {
   return (
     <Popover>
       <PopoverTrigger
         openOnHover
-        render={<button type="button" className={className} onClick={onClick} aria-label={label} />}
+        render={
+          className === undefined ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={onClick}
+              aria-label={label}
+              aria-disabled={unavailable || undefined}
+            />
+          ) : (
+            <button type="button" className={className} onClick={onClick} aria-label={label} />
+          )
+        }
       >
         {children}
       </PopoverTrigger>
@@ -1443,47 +1466,31 @@ export default function ThreadTerminalDrawer({
 
       {!hasTerminalSidebar && (
         <div className="pointer-events-none absolute right-2 top-2 z-20">
-          <div className="pointer-events-auto inline-flex items-center overflow-hidden rounded-md border border-border/80 bg-background shadow-xs">
+          <ToolbarGroup className="pointer-events-auto">
             <TerminalActionButton
-              className={`p-1 text-foreground/90 transition-colors ${
-                hasReachedSplitLimit
-                  ? "cursor-not-allowed opacity-64 hover:bg-transparent"
-                  : "hover:bg-accent"
-              }`}
+              unavailable={hasReachedSplitLimit}
               onClick={onSplitTerminalAction}
               label={splitTerminalActionLabel}
             >
-              <SquareSplitHorizontal className="size-3.25" />
+              <SquareSplitHorizontal />
             </TerminalActionButton>
-            <div className="h-4 w-px bg-border/80" />
             <TerminalActionButton
-              className={`p-1 text-foreground/90 transition-colors ${
-                hasReachedSplitLimit
-                  ? "cursor-not-allowed opacity-64 hover:bg-transparent"
-                  : "hover:bg-accent"
-              }`}
+              unavailable={hasReachedSplitLimit}
               onClick={onSplitTerminalVerticalAction}
               label={splitTerminalVerticalActionLabel}
             >
-              <SquareSplitVertical className="size-3.25" />
+              <SquareSplitVertical />
             </TerminalActionButton>
-            <div className="h-4 w-px bg-border/80" />
-            <TerminalActionButton
-              className="p-1 text-foreground/90 transition-colors hover:bg-accent"
-              onClick={onNewTerminalAction}
-              label={newTerminalActionLabel}
-            >
-              <Plus className="size-3.25" />
+            <TerminalActionButton onClick={onNewTerminalAction} label={newTerminalActionLabel}>
+              <Plus />
             </TerminalActionButton>
-            <div className="h-4 w-px bg-border/80" />
             <TerminalActionButton
-              className="p-1 text-foreground/90 transition-colors hover:bg-accent"
               onClick={() => confirmCloseTerminal(resolvedActiveTerminalId)}
               label={closeTerminalActionLabel}
             >
-              <Trash2 className="size-3.25" />
+              <Trash2 />
             </TerminalActionButton>
-          </div>
+          </ToolbarGroup>
         </div>
       )}
 
