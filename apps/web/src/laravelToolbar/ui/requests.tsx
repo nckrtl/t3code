@@ -1,10 +1,11 @@
-import { ChevronRight, CornerDownRight, Globe, ListIcon, Search } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronRight, CornerDownRight, Globe, ListIcon, Search, X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
+import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { useToolbarTab } from "../context";
@@ -43,8 +44,19 @@ const WIDE = {
 } as const;
 
 export function RequestsPanel() {
-  const { tab, selectedId, select, clearHistory } = useToolbarTab();
+  const { tab, selectedId, select } = useToolbarTab();
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+  const closeSearch = () => {
+    setQuery("");
+    setSearchOpen(false);
+    searchButtonRef.current?.focus();
+  };
   const needle = query.trim().toLowerCase();
   const rows = tab.history
     .map((entry) => ({ entry, summary: summarize(entry.row, tab.details[entry.row.id]) }))
@@ -60,21 +72,45 @@ export function RequestsPanel() {
       icon={ListIcon}
       title="Requests"
       actions={
-        <div className="flex items-center gap-2">
-          <InputGroup className="w-64">
-            <InputGroupAddon>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              placeholder="Search URL or component"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+        <div className="flex items-center gap-1">
+          {searchOpen ? (
+            <div className="w-40 sm:w-64">
+              <Input
+                ref={inputRef}
+                unstyled
+                size="compact"
+                aria-label="Search requests"
+                placeholder="Search URL or component"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSearch();
+                  }
+                }}
+              />
+            </div>
+          ) : null}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  ref={searchButtonRef}
+                  variant="ghost"
+                  size="icon-xs"
+                  type="button"
+                  aria-label={searchOpen ? "Close search" : "Search requests"}
+                  aria-expanded={searchOpen}
+                  onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+                >
+                  {searchOpen ? <X /> : <Search />}
+                </Button>
+              }
             />
-          </InputGroup>
-          {/* sm matches the search field: same height and text size. */}
-          <Button variant="outline" size="sm" type="button" onClick={clearHistory}>
-            Clear
-          </Button>
+            <TooltipPopup>{searchOpen ? "Close search" : "Search requests"}</TooltipPopup>
+          </Tooltip>
         </div>
       }
     >
