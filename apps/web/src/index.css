@@ -2300,6 +2300,9 @@ code {
   --shell-tile: var(--card);
   /* The window frame's color made opaque, for controls that should read like the header strip. */
   --shell-frame: var(--sidebar);
+  /* Soft input fields (search, address) and the bordered button groups beside them. */
+  --shell-field: color-mix(in srgb, var(--muted) 40%, transparent);
+  --shell-control: var(--sidebar);
   /* The tile's border is the raised card's own color made opaque, so stacked tiles
      separate with a cut of the card instead of a drawn line. */
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 94%, var(--foreground));
@@ -2337,6 +2340,8 @@ code {
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 78%, var(--foreground));
   --shell-tile: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
   --shell-frame: color-mix(in oklab, var(--sidebar) 92%, var(--foreground));
+  --shell-field: color-mix(in oklab, var(--sidebar) 94%, var(--foreground));
+  --shell-control: color-mix(in oklab, var(--sidebar) 89%, var(--foreground));
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 

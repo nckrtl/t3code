@@ -70,7 +70,7 @@ const NOOP = () => {};
 
 /** Bordered button group in the chrome row, shaped like the address field beside it. */
 const CHROME_GROUP_CLASS_NAME =
-  "flex h-8 items-center gap-0.5 rounded-lg border border-(--shell-divider-header)! bg-(--shell-frame) px-0.75 [--control-radius:6px]";
+  "flex h-8 items-center gap-0.5 rounded-lg border border-(--shell-divider-header)! bg-(--shell-control) px-0.75 [--control-radius:6px]";
 
 export function PreviewChromeRow({
   url,
