@@ -214,7 +214,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
           )
         : null}
       {/* Narrow browsers drop the versions; the route name truncates. */}
-      <div className="@container flex items-center gap-2 overflow-hidden border-t border-(--shell-divider)! bg-background px-2 py-toolbar">
+      <div className="@container flex items-center gap-2 overflow-hidden border-t border-(--shell-divider)! bg-background px-1.5 py-toolbar">
         <ToolbarGroup className="min-w-0 shrink">
           {item(
             "requests",
