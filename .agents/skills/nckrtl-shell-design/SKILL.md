@@ -73,6 +73,10 @@ table is in [references/tokens.md](references/tokens.md).
   any overlay that must sit above the page (flyouts, sheets) portals to `body`
   with `fixed` positioning. A `z-*` inside the shell cannot rise above it (#122:
   the Laravel toolbar flyout went hidden).
+- To lighten every default border inside one surface, re-root
+  `[--contrast-border:<token>]` on it. `border-border` reads `--contrast-border`,
+  which is computed at `:root` from `--border`, so re-rooting `--border` does
+  nothing (#133).
 - Floating surfaces (menus, selects, popovers, tooltips, toasts, annotation
   panels) use `dropdown-glass` with `rounded-xl` and `rounded-lg` rows. The
   user wants mostly opaque fills with heavy blur, so content behind stays calm.
