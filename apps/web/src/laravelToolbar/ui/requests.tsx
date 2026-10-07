@@ -466,6 +466,7 @@ export function RequestPanel() {
     <PanelShell
       icon={Globe}
       title="Request"
+      hasTabs
       flush
       meta={
         summary ? (

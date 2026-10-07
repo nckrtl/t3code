@@ -689,6 +689,7 @@ export function EnvironmentPanel() {
     <PanelShell
       icon={Server}
       title="Laravel & PHP"
+      hasTabs
       flush
       actions={
         selected?.laravel?.host ? (

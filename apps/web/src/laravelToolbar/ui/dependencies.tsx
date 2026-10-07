@@ -28,6 +28,7 @@ export function DependenciesPanel() {
     <PanelShell
       icon={Package}
       title="Dependencies"
+      hasTabs
       flush
       meta={
         packages ? (

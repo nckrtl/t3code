@@ -17,6 +17,7 @@ export function PanelShell({
   meta,
   actions,
   flush = false,
+  hasTabs = false,
   children,
 }: {
   icon: LucideIcon | ComponentType<{ className?: string }>;
@@ -25,13 +26,17 @@ export function PanelShell({
   actions?: ReactNode;
   /** The body lays itself out (split panes, pinned tabs) instead of scrolling as one. */
   flush?: boolean;
+  hasTabs?: boolean;
   children: ReactNode;
 }) {
   const resize = useContext(ToolbarPanelResizeContext);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div
-        className="relative flex h-11 shrink-0 touch-none cursor-row-resize select-none items-center gap-3 border-b px-3"
+        className={cn(
+          "relative flex h-11 shrink-0 touch-none cursor-row-resize select-none items-center gap-3 px-3",
+          !hasTabs && "border-b",
+        )}
         {...resize?.handlers}
       >
         {resize ? (
