@@ -2337,8 +2337,8 @@ code {
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 78%, var(--foreground));
   --shell-tile: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
-  --shell-field: color-mix(in oklab, var(--sidebar) 94%, var(--foreground));
-  --shell-control: color-mix(in oklab, var(--sidebar) 89%, var(--foreground));
+  --shell-field: color-mix(in oklab, var(--sidebar) 92%, var(--foreground));
+  --shell-control: color-mix(in oklab, var(--sidebar) 91%, var(--foreground));
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 
