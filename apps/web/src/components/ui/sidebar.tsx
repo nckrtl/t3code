@@ -570,7 +570,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
 function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex flex-col gap-2 px-[var(--sidebar-content-inset)] py-1", className)}
+      className={cn("flex flex-col gap-2 px-[var(--sidebar-content-inset)] pt-1 pb-1.5", className)}
       data-sidebar="footer"
       data-slot="sidebar-footer"
       {...props}
