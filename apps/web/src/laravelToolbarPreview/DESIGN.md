@@ -14,12 +14,12 @@ context, store, T3 components and CSS from this checkout. There is no second too
   `ToolbarProvider` used in the desktop browser. No T3 server or live database is needed.
 - Requests have different recorded timings, memory, queries, models and responses.
   The PHP/PHP-FPM details, dependencies and Orbit processes are illustrative. The
-  dependency collector still needs to be added to the Laravel package; live requests
-  without it show an empty state. Start, stop and
+  Packages live inside Orbit and load the saved instance inventory from the Gateway.
+  An instance needs an Orbit dependency scan before live package data appears. Start, stop and
   restart only change this preview's in-memory process data. Reload resets the fixtures.
   Source paths are examples; this preview has no editor connection.
 - `panel=` opens and pins requests, request, timings, memory, database, models, orbit
-  environment or dependencies. `theme=light` and `theme=dark` select stock themes; no theme argument
+  or environment. Packages are the third tab inside Orbit. `theme=light` and `theme=dark` select stock themes; no theme argument
   uses Nick's Dark Ocean theme. Check Dark Ocean and light after color changes.
 - Nick can open the URL in T3's browser and annotate it. Use screenshots to verify changes.
   Keep temporary verification screenshots outside the repo.

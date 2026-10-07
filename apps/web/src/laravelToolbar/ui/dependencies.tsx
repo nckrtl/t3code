@@ -1,27 +1,48 @@
-import { Package } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "~/lib/utils";
 
-import { useToolbarTab } from "../context";
-import {
-  cellClass,
-  EmptyRow,
-  headRowClass,
-  PanelShell,
-  rowClass,
-  tableClass,
-  UnderlineTabs,
-} from "./parts";
+import { useOrbitTool } from "../context";
+import type { OrbitDependencies } from "../orbit";
+import { cellClass, EmptyRow, headRowClass, rowClass, tableClass, UnderlineTabs } from "./parts";
 
 import { SortHeader, sortTableRows, useTableSort } from "./tableSort";
 
 type DependencyTab = "composer" | "javascript";
 
 export function DependenciesPanel() {
-  const { selected } = useToolbarTab();
+  const { state, source } = useOrbitTool();
   const [tab, setTab] = useState<DependencyTab>("composer");
-  const dependencies = selected?.dependencies;
+  const instanceId = state.status === "ready" ? state.page.instanceId : null;
+  const [loaded, setLoaded] = useState<{
+    source: typeof source;
+    instanceId: number;
+    data?: OrbitDependencies;
+    error?: string;
+  }>();
+  useEffect(() => {
+    if (!source || instanceId === null) return;
+    let cancelled = false;
+    void source.dependencies(instanceId).then(
+      (data) => {
+        if (!cancelled) setLoaded({ source, instanceId, data });
+      },
+      (error: unknown) => {
+        if (!cancelled)
+          setLoaded({
+            source,
+            instanceId,
+            error: error instanceof Error ? error.message : "Could not load packages.",
+          });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [source, instanceId]);
+  const result =
+    loaded?.source === source && loaded?.instanceId === instanceId ? loaded : undefined;
+  const dependencies = result?.data;
   const sorting = useTableSort();
   const packages = dependencies?.[tab];
   const sortedPackages = sortTableRows(packages ?? [], sorting.sort, (dependency, column) => {
@@ -33,22 +54,7 @@ export function DependenciesPanel() {
   const manager = tab === "javascript" ? dependencies?.package_manager : null;
 
   return (
-    <PanelShell
-      icon={Package}
-      title="Dependencies"
-      hasTabs
-      flush
-      meta={
-        packages ? (
-          <span className="tabular-nums">
-            {packages.length} {packages.length === 1 ? "package" : "packages"}
-          </span>
-        ) : undefined
-      }
-      actions={
-        manager ? <span className="text-muted-foreground text-xs">{manager}</span> : undefined
-      }
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <UnderlineTabs
         value={tab}
         tabs={[
@@ -57,9 +63,19 @@ export function DependenciesPanel() {
         ]}
         onChange={setTab}
       />
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2 text-xs text-muted-foreground">
+        <span>{packages ? `${packages.length} packages` : "Package inventory"}</span>
+        {manager ? <span>{manager}</span> : null}
+      </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {packages == null ? (
-          <EmptyRow>Dependency data is not available for this request.</EmptyRow>
+          <EmptyRow>
+            {result?.error ??
+              dependencies?.errors?.[tab] ??
+              (dependencies
+                ? "No saved inventory. Run an Orbit dependency scan for this instance."
+                : "Loading packages…")}
+          </EmptyRow>
         ) : packages.length === 0 ? (
           <EmptyRow>No {tab === "composer" ? "Composer" : "JavaScript"} dependencies</EmptyRow>
         ) : (
@@ -80,7 +96,10 @@ export function DependenciesPanel() {
             </thead>
             <tbody>
               {sortedPackages.map((dependency) => (
-                <tr key={dependency.name} className={rowClass}>
+                <tr
+                  key={dependency.id ?? `${dependency.name}:${dependency.version}`}
+                  className={rowClass}
+                >
                   <td className={cellClass}>
                     <span className="block truncate font-mono">{dependency.name}</span>
                   </td>
@@ -103,6 +122,6 @@ export function DependenciesPanel() {
           </table>
         )}
       </div>
-    </PanelShell>
+    </div>
   );
 }

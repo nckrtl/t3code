@@ -1,3 +1,4 @@
+import type { OrbitDependencies } from "~/laravelToolbar/orbit";
 // Design fixtures. Dependency fields are proposed for the future package collector;
 // other payload shapes match the production toolbar's data source.
 import type {
@@ -8,7 +9,7 @@ import type {
 } from "~/laravelToolbar/types";
 import type { OrbitProcess } from "~/laravelToolbar/orbit";
 
-export const previewDependencies: NonNullable<ToolbarData["dependencies"]> = {
+export const previewDependencies: OrbitDependencies = {
   composer: [
     { name: "inertiajs/inertia-laravel", version: "3.6.1", constraint: "^3.6" },
     { name: "laravel/framework", version: "13.31.0", constraint: "^13.0" },

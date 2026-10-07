@@ -1,6 +1,7 @@
 // The Orbit tool: the processes of the Orbit Instance that serves the page, and their logs.
 // Calls go through the Gateway like T3's other Orbit features (see ~/orbit/orbitTransport.ts).
 import { callOrbit, listOrbitNodes, OrbitApiError } from "~/orbit/orbitApi";
+import type { ToolbarDependency } from "./types";
 import type { OrbitTransport } from "~/orbit/orbitTransport";
 
 export type ProcessStatus = "running" | "starting" | "crashed" | "stopped";
@@ -22,6 +23,13 @@ export interface OrbitPage {
   readonly nodeName: string | null;
 }
 
+export interface OrbitDependencies {
+  readonly composer: readonly ToolbarDependency[] | null;
+  readonly javascript: readonly ToolbarDependency[] | null;
+  readonly package_manager: string | null;
+  readonly errors?: Partial<Record<"composer" | "javascript", string>>;
+}
+
 export interface LogLine {
   /** Position in the tail. */
   readonly id: number;
@@ -34,6 +42,7 @@ export interface LogLine {
 export interface OrbitSource {
   readonly page: () => Promise<OrbitPage | null>;
   readonly processes: (instanceId: number) => Promise<OrbitProcess[]>;
+  readonly dependencies: (instanceId: number) => Promise<OrbitDependencies>;
   readonly logs: (processId: number, lines: number) => Promise<string>;
   readonly act: (processId: number, action: ProcessAction) => Promise<void>;
 }
@@ -117,6 +126,62 @@ export function splitLogLevels(
     .filter((piece) => piece.text !== "");
 }
 
+/** Decode saved lockfile inventory; root constraints are absent for transitive packages. */
+export function parseDependencies(value: unknown): OrbitDependencies {
+  const data = record(value);
+  const errors: Partial<Record<"composer" | "javascript", string>> = {};
+  const read = (ecosystem: "composer" | "javascript"): readonly ToolbarDependency[] | null => {
+    const inventory = record(data?.[ecosystem]);
+    if (typeof inventory?.error_code === "string") errors[ecosystem] = inventory.error_code;
+    const graph = record(record(inventory?.snapshot)?.graph);
+    if (!Array.isArray(graph?.resolutions)) return null;
+    const requirements = Array.isArray(graph?.requirements) ? graph.requirements : [];
+    const roots = new Map(
+      requirements.flatMap((value) => {
+        const requirement = record(value);
+        return requirement?.from === null &&
+          typeof requirement.to === "string" &&
+          requirement.kind === "dependency"
+          ? [[requirement.to, requirement] as const]
+          : [];
+      }),
+    );
+    return graph.resolutions.flatMap((value) => {
+      const resolution = record(value);
+      if (typeof resolution?.name !== "string" || typeof resolution.version !== "string") return [];
+      const root = typeof resolution.id === "string" ? roots.get(resolution.id) : undefined;
+      return [
+        {
+          id:
+            typeof resolution.id === "string"
+              ? resolution.id
+              : `${resolution.name}@${resolution.version}`,
+          name: resolution.name,
+          version: resolution.version,
+          constraint: typeof root?.constraint === "string" ? root.constraint : null,
+          development: resolution.development === true && resolution.regular !== true,
+        },
+      ];
+    });
+  };
+  const hashes = record(record(record(record(data?.javascript)?.snapshot)?.source)?.file_hashes);
+  const manager = hashes?.["pnpm-lock.yaml"]
+    ? "pnpm"
+    : hashes?.["bun.lock"] || hashes?.["bun.lockb"]
+      ? "bun"
+      : hashes?.["yarn.lock"]
+        ? "yarn"
+        : hashes?.["package-lock.json"] || hashes?.["npm-shrinkwrap.json"]
+          ? "npm"
+          : null;
+  return {
+    composer: read("composer"),
+    javascript: read("javascript"),
+    package_manager: manager,
+    errors,
+  };
+}
+
 let nodeNames: Promise<Map<number, string>> | null = null;
 
 /** Orbit for the page on `domain`, through `transport` (which runs on an Orbit Node). */
@@ -172,6 +237,13 @@ export function gatewayOrbitSource(transport: OrbitTransport, domain: string): O
           })
         : [];
     },
+    dependencies: async (instanceId) =>
+      parseDependencies(
+        await callOrbit(transport, {
+          method: "GET",
+          path: `/api/v1/instances/${instanceId}/dependencies`,
+        }),
+      ),
     logs: async (processId, lines) => {
       const data = record(
         await callOrbit(transport, {

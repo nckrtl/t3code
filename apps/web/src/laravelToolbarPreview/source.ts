@@ -91,7 +91,6 @@ const details: Readonly<Record<string, ToolbarData>> = Object.fromEntries(
       const queries = previewQueries.slice(0, queryCount);
       const total = queries.reduce((sum, query) => sum + query.duration, 0);
       const data: ToolbarData = {
-        dependencies: previewDependencies,
         request_id: row.id,
         history_row: row,
         profiler: {
@@ -192,6 +191,7 @@ export function createPreviewSource(): ToolbarSource {
   );
   const orbit: OrbitSource = {
     page: async () => ({ domain: "main.drift-website.test", instanceId: 271, nodeName: "beast" }),
+    dependencies: async () => previewDependencies,
     processes: async () => processes.map((process) => ({ ...process })),
     logs: async (id, lines) => (logs.get(id) ?? []).slice(-lines).join("\n"),
     act: async (id, action) => {

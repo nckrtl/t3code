@@ -4,6 +4,7 @@ import type { OrbitHttpRequest, OrbitHttpResponse } from "~/orbit/orbitTransport
 
 import {
   gatewayOrbitSource,
+  parseDependencies,
   parseLogLines,
   parseProcess,
   processStatus,
@@ -85,5 +86,48 @@ describe("laravel toolbar orbit", () => {
     expect(requests.filter((request) => request.path.endsWith("/resolve"))).toHaveLength(1);
 
     expect(await gatewayOrbitSource(transport, "example.com").page()).toBeNull();
+  });
+});
+
+describe("Orbit dependency inventory", () => {
+  it("keeps missing scans distinct from an empty inventory", () => {
+    expect(
+      parseDependencies({
+        composer: { state: "unknown" },
+        javascript: { error_code: "dependencies.read_failed" },
+      }),
+    ).toEqual({
+      composer: null,
+      javascript: null,
+      package_manager: null,
+      errors: { javascript: "dependencies.read_failed" },
+    });
+    expect(
+      parseDependencies({ composer: { snapshot: { graph: { resolutions: [] } } } }).composer,
+    ).toEqual([]);
+  });
+  it("matches root requirements by resolution ID and preserves multiple versions", () => {
+    const data = parseDependencies({
+      javascript: {
+        snapshot: {
+          source: { file_hashes: { "bun.lock": "hash", "package-lock.json": null } },
+          graph: {
+            resolutions: [
+              { id: "vue", name: "vue", version: "3.5.22", regular: true, development: true },
+              { id: "vue@3.4", name: "vue", version: "3.4.0", regular: false, development: true },
+            ],
+            requirements: [
+              { from: null, to: "vue", constraint: "^3.5", kind: "dependency" },
+              { from: "other", to: "vue@3.4", constraint: "^3.4", kind: "dependency" },
+            ],
+          },
+        },
+      },
+    });
+    expect(data.package_manager).toBe("bun");
+    expect(data.javascript).toEqual([
+      { id: "vue", name: "vue", version: "3.5.22", constraint: "^3.5", development: false },
+      { id: "vue@3.4", name: "vue", version: "3.4.0", constraint: null, development: true },
+    ]);
   });
 });
