@@ -2298,6 +2298,8 @@ code {
   --muted-foreground-raised: color-mix(in oklab, var(--muted-foreground) 80%, var(--foreground));
   /* Opaque tiles (empty-state icons) that sit on a raised card and read a step lighter. */
   --shell-tile: var(--card);
+  /* The window frame's color made opaque, for controls that should read like the header strip. */
+  --shell-frame: var(--sidebar);
   /* The tile's border is the raised card's own color made opaque, so stacked tiles
      separate with a cut of the card instead of a drawn line. */
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 94%, var(--foreground));
@@ -2334,6 +2336,7 @@ code {
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 82%, var(--foreground));
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 78%, var(--foreground));
   --shell-tile: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
+  --shell-frame: color-mix(in oklab, var(--sidebar) 92%, var(--foreground));
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 
