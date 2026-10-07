@@ -241,7 +241,7 @@ function MenuGroupLabel({
 function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
-      className={cn("mx-2 my-1 h-px bg-border", className)}
+      className={cn("mx-2 my-1 h-px bg-(--glass-divider)", className)}
       data-slot="menu-separator"
       {...props}
     />
