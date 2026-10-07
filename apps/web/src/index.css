@@ -2304,6 +2304,12 @@ code {
   /* Soft input fields (search, address) and the bordered button groups beside them. */
   --shell-field: color-mix(in srgb, var(--muted) 40%, transparent);
   --shell-control: var(--sidebar);
+  /* One step up, for controls on a surface that already uses --shell-control. */
+  --shell-control-raised: var(--card);
+  --shell-control-raised-border: var(--shell-divider-header);
+  /* What ToolbarGroup paints; a surface re-roots these to raise its groups. */
+  --toolbar-group-fill: var(--shell-control);
+  --toolbar-group-border: var(--shell-divider-header);
   /* The tile's border is the raised card's own color made opaque, so stacked tiles
      separate with a cut of the card instead of a drawn line. */
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 94%, var(--foreground));
@@ -2342,6 +2348,10 @@ code {
   --shell-tile: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
   --shell-field: color-mix(in oklab, var(--sidebar) 92%, var(--foreground));
   --shell-control: color-mix(in oklab, var(--sidebar) 91%, var(--foreground));
+  --shell-control-raised: color-mix(in oklab, var(--sidebar) 86%, var(--foreground));
+  --shell-control-raised-border: color-mix(in oklab, var(--sidebar) 74%, var(--foreground));
+  --toolbar-group-fill: var(--shell-control);
+  --toolbar-group-border: var(--shell-divider-header);
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 

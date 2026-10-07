@@ -187,7 +187,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
                 }}
               />
               <div
-                className="pointer-events-auto absolute overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-control) text-foreground shadow-lg [--background:var(--shell-control)] [--contrast-border:var(--shell-divider-raised)]"
+                className="pointer-events-auto absolute overflow-hidden rounded-xl border border-(--shell-divider-header)! bg-(--shell-control) text-foreground shadow-lg [--background:var(--shell-control)] [--contrast-border:var(--shell-divider-raised)] [--toolbar-group-border:var(--shell-control-raised-border)] [--toolbar-group-fill:var(--shell-control-raised)]"
                 style={{
                   inset: TOOLBAR_SHEET_INSET,
                 }}

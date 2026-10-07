@@ -10,7 +10,7 @@ export function ToolbarGroup({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex h-8 items-center gap-0.5 rounded-lg empty:hidden border border-(--shell-divider-header)! bg-(--shell-control) px-0.75 [--control-radius:6px]",
+        "flex h-8 items-center gap-0.5 rounded-lg empty:hidden border border-(--toolbar-group-border)! bg-(--toolbar-group-fill) px-0.75 [--control-radius:6px]",
         className,
       )}
       {...props}
