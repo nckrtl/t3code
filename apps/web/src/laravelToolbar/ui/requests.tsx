@@ -332,9 +332,14 @@ export function RequestPanel() {
                   : "success"
             }
             hint={
-              selected.response?.redirect_to
-                ? `Redirect to ${selected.response.redirect_to}`
-                : undefined
+              <>
+                <span className="font-mono">
+                  {summary?.method ?? selected.request?.method ?? "–"}
+                </span>
+                {selected.response?.redirect_to
+                  ? ` · Redirect to ${selected.response.redirect_to}`
+                  : null}
+              </>
             }
           />
           <Stat icon={Timer} label="Duration" value={summary?.duration ?? "–"} hint="Wall time" />
