@@ -366,14 +366,8 @@ export function OrbitPanel() {
           ["instance", "Instance"],
           ["processes", "Processes"],
           ["logs", "Logs"],
-          [
-            "composer",
-            `Composer${dependencies?.composer ? ` ${dependencies.composer.length}` : ""}`,
-          ],
-          [
-            "javascript",
-            `${dependencies?.package_manager ?? "JavaScript"}${dependencies?.javascript ? ` ${dependencies.javascript.length}` : ""}`,
-          ],
+          ["composer", "Composer"],
+          ["javascript", dependencies?.package_manager ?? "JavaScript"],
         ]}
       />
       {tab === "instance" ? (
