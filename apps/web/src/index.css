@@ -2242,8 +2242,13 @@ code {
    sidebar for the thread panel, overlay for floating surfaces. Mixes run in
    oklab toward the theme's foreground so each theme keeps its hue. */
 :root {
+  /* macOS 26+ window corner radius (measured on a real window; macOS exposes no
+     API for it). The web build draws its mock window with it, and the cards'
+     outer bottom corners stay concentric with it across the inset and border. */
+  --window-radius: 16px;
   /* Gap between the inset cards and the window edge. */
   --shell-inset: 2px;
+  --shell-corner: calc(var(--window-radius) - var(--shell-inset) - 1px);
   --shell-blur: 40px;
   --shell-saturate: 1.6;
   --shell-fill: color-mix(in srgb, var(--sidebar) 88%, transparent);

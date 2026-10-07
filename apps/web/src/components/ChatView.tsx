@@ -9884,7 +9884,7 @@ export default function ChatView(props: ChatViewProps) {
             "relative z-0 mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-(--shell-card)",
             rightPanelPresent && !shouldUseRightPanelSheet
               ? null
-              : "mr-(--shell-inset) rounded-tr-lg rounded-br-lg",
+              : "mr-(--shell-inset) rounded-tr-lg rounded-br-(--shell-corner)",
           )}
         >
           {/* Chat column */}

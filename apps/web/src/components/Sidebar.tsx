@@ -4623,7 +4623,7 @@ export default function Sidebar() {
   return (
     <>
       <SidebarChromeHeader isElectron={isElectron} />
-      <div className="relative z-10 -mt-[calc(var(--workspace-topbar-height)-44px)] mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-lg rounded-bl-lg bg-(--shell-panel)">
+      <div className="relative z-10 -mt-[calc(var(--workspace-topbar-height)-44px)] mb-(--shell-inset) flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-lg rounded-bl-(--shell-corner) bg-(--shell-panel)">
         <SidebarContent
           className="min-h-full"
           fixedHeader={
