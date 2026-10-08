@@ -6,6 +6,8 @@ import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime"
 import {
   FILL_PREVIEW_VIEWPORT,
   PREVIEW_AUTOMATION_OPERATIONS,
+  type CredentialApprovalRequest,
+  type DesktopPreviewAutomationFillCredentialInput,
   type EnvironmentId,
   type PreviewAutomationNavigateInput,
   type PreviewAutomationOpenInput,
@@ -57,6 +59,8 @@ import {
 } from "~/browser/browserDefaults";
 import { runBrowserViewportMutation } from "~/browser/browserViewportActions";
 import { previewRuntimeTabId } from "~/browser/previewRuntimeTabId";
+import { CredentialApprovalHost } from "~/credentials/CredentialApprovalHost";
+import { originOf, requestCredentialApproval } from "~/credentials/credentialApproval";
 import { isElectron } from "~/env";
 import { useEnvironments } from "~/state/environments";
 import { previewEnvironment } from "~/state/preview";
@@ -94,6 +98,8 @@ import { isPreviewViewportReady } from "./previewViewportReadiness";
 import { shouldRollbackPreviewViewport } from "./previewViewportRollback";
 
 const PREVIEW_PRESENTATION_SETTLE_TIMEOUT_MS = 500;
+/** Time left after an unanswered approval prompt to deliver the denial. */
+const CREDENTIAL_APPROVAL_RESPONSE_MARGIN_MS = 10_000;
 
 const waitForPreviewPresentation = async (runtimeTabId: string): Promise<void> => {
   const deadline = Date.now() + PREVIEW_PRESENTATION_SETTLE_TIMEOUT_MS;
@@ -278,6 +284,7 @@ export function PreviewAutomationHosts() {
   if (!isElectron || !previewBridge?.automation) return null;
   return (
     <>
+      <CredentialApprovalHost />
       {/*
        * Host lifetime follows the desktop runtime's environment connections,
        * not the routed thread. This keeps background threads automatable and
@@ -724,6 +731,25 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
             return await ready.bridge.automation.waitFor(
               ready.runtimeTabId,
               request.input as Parameters<typeof ready.bridge.automation.waitFor>[1],
+            );
+          }
+          case "credentialApproval": {
+            const input = request.input as CredentialApprovalRequest;
+            const ready = await requireReadyTab();
+            // Ask only about the page the user can see right now.
+            const page = await ready.bridge.automation.status(ready.runtimeTabId);
+            if (originOf(page.url) !== input.origin) return { approved: false };
+            const approved = await requestCredentialApproval(
+              input,
+              hostDeadlineMs - CREDENTIAL_APPROVAL_RESPONSE_MARGIN_MS,
+            );
+            return { approved };
+          }
+          case "credentialFill": {
+            const ready = await requireReadyTab();
+            return await ready.bridge.automation.fillCredential(
+              ready.runtimeTabId,
+              request.input as DesktopPreviewAutomationFillCredentialInput["input"],
             );
           }
           case "recordingStart": {

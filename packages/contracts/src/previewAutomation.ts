@@ -43,6 +43,10 @@ export const PREVIEW_AUTOMATION_OPERATIONS = [
   ...PREVIEW_AUTOMATION_V1_OPERATIONS,
   "resize",
   "setColorScheme",
+  /** Shows the user a password-manager fill prompt; returns CredentialApprovalDecision. */
+  "credentialApproval",
+  /** Fills an approved credential value; returns DesktopCredentialFillResult. */
+  "credentialFill",
 ] as const;
 
 export const PreviewAutomationOperation = Schema.Literals(PREVIEW_AUTOMATION_OPERATIONS);
