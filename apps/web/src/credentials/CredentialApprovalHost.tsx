@@ -54,11 +54,13 @@ function SiteRow({ origin }: { origin: string }) {
   );
 }
 
+const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
 /** The field the agent asked for, with the page's own name when it differs. */
 function fieldDescription(approval: PendingCredentialApproval): string {
   const ours = CREDENTIAL_FIELD_LABELS[approval.field];
   const page = approval.pageFieldLabel;
-  return page && page.toLowerCase() !== ours.toLowerCase() ? `“${page}”` : ours;
+  return page && page.toLowerCase() !== ours.toLowerCase() ? `“${page}”` : capitalize(ours);
 }
 
 function ApprovalBody({ approval }: { approval: PendingCredentialApproval }) {
@@ -97,10 +99,7 @@ function ApprovalBody({ approval }: { approval: PendingCredentialApproval }) {
       </AlertDialogHeader>
 
       <div className="mx-6 mb-5 divide-y rounded-lg border bg-muted/40 text-sm">
-        <DetailRow
-          label="Login"
-          aside={<Badge variant="secondary">{approval.providerLabel}</Badge>}
-        >
+        <DetailRow label="Login" aside={<Badge variant="outline">{approval.providerLabel}</Badge>}>
           <span className="truncate font-medium">{approval.itemTitle}</span>
         </DetailRow>
         <SiteRow origin={approval.origin} />
@@ -114,7 +113,7 @@ function ApprovalBody({ approval }: { approval: PendingCredentialApproval }) {
                   disabled={required}
                   onCheckedChange={(checked) => toggle(field, checked === true)}
                 />
-                <span className="flex-1">{CREDENTIAL_FIELD_LABELS[field]}</span>
+                <span className="flex-1">{capitalize(CREDENTIAL_FIELD_LABELS[field])}</span>
                 {required ? (
                   <span className="text-muted-foreground text-xs">
                     {approval.highlighted ? "Now, highlighted in the page" : "Now"}

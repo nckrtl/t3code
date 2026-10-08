@@ -73,7 +73,8 @@ function PasswordManagerSection() {
           </span>
         }
         description={
-          <span className="flex items-center gap-1.5">
+          // Indented past the provider tile, so the status sits under the name.
+          <span className="flex items-center gap-1.5 pl-12">
             <StatusDot state={state} />
             {description}
           </span>
@@ -98,7 +99,7 @@ function PasswordManagerSection() {
             Bitwarden
           </span>
         }
-        description="Not available yet"
+        description={<span className="pl-12">Not available yet</span>}
       />
     </SettingsSection>
   );
