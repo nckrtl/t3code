@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import {
+  type CredentialAutofillSettings,
   EnvironmentId,
   PreviewAutomationExecutionError,
   ProviderInstanceId,
@@ -13,6 +14,7 @@ import { McpSchema, McpServer } from "effect/unstable/ai";
 import * as CredentialAutofill from "../credentials/CredentialAutofill.ts";
 import * as CredentialProvider from "../credentials/CredentialProvider.ts";
 import * as ProcessRunner from "../processRunner.ts";
+import * as ServerSettings from "../serverSettings.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
@@ -65,7 +67,10 @@ const itemList = toJson([
 interface Scenario {
   readonly tabUrl?: string | null;
   readonly approved?: boolean;
+  /** Fields a sign-in prompt answers with. */
+  readonly approvedFields?: ReadonlyArray<string>;
   readonly fillFails?: boolean;
+  readonly settings?: Partial<CredentialAutofillSettings>;
 }
 
 const makeHarness = (scenario: Scenario = {}) => {
@@ -107,7 +112,10 @@ const makeHarness = (scenario: Scenario = {}) => {
           } as A);
         }
         case "credentialApproval":
-          return Effect.succeed({ approved: scenario.approved ?? true } as A);
+          return Effect.succeed({
+            approved: scenario.approved ?? true,
+            ...(scenario.approvedFields ? { fields: scenario.approvedFields } : {}),
+          } as A);
         case "credentialFill":
           return scenario.fillFails
             ? Effect.fail(
@@ -134,10 +142,11 @@ const makeHarness = (scenario: Scenario = {}) => {
   });
   const layer = McpHttpServer.CredentialsToolkitRegistrationLive.pipe(
     Layer.provideMerge(McpServer.McpServer.layer),
-    Layer.provide(CredentialAutofill.layer),
+    Layer.provideMerge(CredentialAutofill.layer),
     Layer.provide(CredentialProvider.layerOnePassword),
     Layer.provide(runner),
     Layer.provide(broker),
+    Layer.provide(ServerSettings.layerTest({ credentialAutofill: scenario.settings ?? {} })),
   );
   const call = (name: string, args: Record<string, unknown>, capabilities = ["preview"] as const) =>
     Effect.gen(function* () {
@@ -152,7 +161,8 @@ const makeHarness = (scenario: Scenario = {}) => {
           Effect.provideService(McpSchema.McpServerClient, client),
         );
     });
-  return { opCalls, brokerCalls, layer, call };
+  const scope = invocation(["preview"]);
+  return { opCalls, brokerCalls, layer, call, scope };
 };
 
 const secretReads = (opCalls: ReadonlyArray<ReadonlyArray<string>>) =>
@@ -199,12 +209,14 @@ describe("credentials MCP tools", () => {
       ]);
       const [, approval, fill] = harness.brokerCalls;
       // The prompt names the item and origin, and holds no secret.
-      expect(approval!.input).toEqual({
+      expect(approval!.input).toMatchObject({
         itemTitle: "GitHub",
         providerLabel: "1Password",
         origin: "https://github.com",
         field: "password",
+        timeoutSeconds: 90,
       });
+      expect(toJson(approval!.input)).not.toContain(SECRET);
       expect(approval!.tabId).toBe("tab-1");
       // The secret only travels in the fill request, pinned to the checked tab and origin.
       expect(fill!.tabId).toBe("tab-1");
@@ -291,5 +303,93 @@ describe("credentials MCP tools", () => {
       expect(denied.isError).toBe(true);
       expect(secretReads(harness.opCalls)).toEqual([]);
     }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("one sign-in approval covers the login's other fields", () => {
+    const harness = makeHarness({
+      settings: { oneApprovalPerSignIn: true },
+      approvedFields: ["username", "password"],
+    });
+    return Effect.gen(function* () {
+      const first = yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "username" });
+      expect(first.structuredContent).toMatchObject({ status: "filled" });
+      const approvals = () =>
+        harness.brokerCalls.filter((entry) => entry.operation === "credentialApproval");
+      expect(approvals()[0]!.input).toMatchObject({
+        field: "username",
+        signInFields: ["username", "password", "otp"],
+        timeoutSeconds: 90,
+      });
+      const second = yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "password" });
+      expect(second.structuredContent).toMatchObject({ status: "filled" });
+      expect(approvals()).toHaveLength(1);
+      // The user left the code unticked, so it asks again.
+      yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "otp" });
+      expect(approvals()).toHaveLength(2);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("asks on every fill when sign-in approvals are off", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "username" });
+      yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "username" });
+      const approvals = harness.brokerCalls.filter(
+        (entry) => entry.operation === "credentialApproval",
+      );
+      expect(approvals).toHaveLength(2);
+      expect(approvals[0]!.input).not.toHaveProperty("signInFields");
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("fills a subdomain only when the setting allows it", () => {
+    const strict = makeHarness({ tabUrl: "https://login.github.com/session" });
+    const loose = makeHarness({
+      tabUrl: "https://login.github.com/session",
+      settings: { allowSubdomains: true },
+    });
+    return Effect.gen(function* () {
+      const refused = yield* strict
+        .call("fill_credential", { itemId: ITEM_ID, field: "password" })
+        .pipe(Effect.provide(strict.layer));
+      expect(refused.structuredContent).toMatchObject({ status: "origin_mismatch" });
+      const filled = yield* loose
+        .call("fill_credential", { itemId: ITEM_ID, field: "password" })
+        .pipe(Effect.provide(loose.layer));
+      expect(filled.structuredContent).toMatchObject({ status: "filled" });
+    }).pipe(Effect.scoped);
+  });
+
+  it.effect("blocks agent scripts in the tab until its page changes", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      // Nothing filled yet: scripts run without even asking the tab.
+      yield* autofill.guardScript(harness.scope, undefined);
+      expect(harness.brokerCalls).toEqual([]);
+      yield* harness.call("fill_credential", { itemId: ITEM_ID, field: "password" });
+      const blocked = yield* autofill.guardScript(harness.scope, undefined).pipe(Effect.result);
+      expect(blocked._tag).toBe("Failure");
+      if (blocked._tag === "Failure") {
+        expect(blocked.failure._tag).toBe("PreviewAutomationCredentialLockError");
+      }
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("does not block scripts after a username fill or with the setting off", () => {
+    const username = makeHarness();
+    const off = makeHarness({ settings: { blockScriptsAfterFill: false } });
+    return Effect.gen(function* () {
+      yield* Effect.gen(function* () {
+        const autofill = yield* CredentialAutofill.CredentialAutofill;
+        yield* username.call("fill_credential", { itemId: ITEM_ID, field: "username" });
+        yield* autofill.guardScript(username.scope, undefined);
+      }).pipe(Effect.provide(username.layer));
+      yield* Effect.gen(function* () {
+        const autofill = yield* CredentialAutofill.CredentialAutofill;
+        yield* off.call("fill_credential", { itemId: ITEM_ID, field: "password" });
+        yield* autofill.guardScript(off.scope, undefined);
+      }).pipe(Effect.provide(off.layer));
+    }).pipe(Effect.scoped);
   });
 });

@@ -222,6 +222,7 @@ import {
   DeviceSession,
   DeviceShutdownInput,
 } from "./device.ts";
+import { CredentialProviderStatus } from "./credentials.ts";
 import {
   PreviewAutomationError,
   PreviewAutomationHost,
@@ -367,6 +368,7 @@ export const WS_METHODS = {
   previewAutomationConnect: "previewAutomation.connect",
   previewAutomationRespond: "previewAutomation.respond",
   previewAutomationFocusHost: "previewAutomation.focusHost",
+  credentialsStatus: "credentials.status",
 
   // Device methods
   deviceConfigure: "device.configure",
@@ -1261,6 +1263,12 @@ const WsPreviewAutomationFocusHostRpc = Rpc.make(WS_METHODS.previewAutomationFoc
   error: EnvironmentAuthorizationError,
 });
 
+const WsCredentialsStatusRpc = Rpc.make(WS_METHODS.credentialsStatus, {
+  payload: Schema.Struct({}),
+  success: CredentialProviderStatus,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsSubscribePreviewEventsRpc = Rpc.make(WS_METHODS.subscribePreviewEvents, {
   payload: Schema.Struct({}),
   success: PreviewEvent,
@@ -1576,6 +1584,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsPreviewAutomationConnectRpc,
   WsPreviewAutomationRespondRpc,
   WsPreviewAutomationFocusHostRpc,
+  WsCredentialsStatusRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
   WsDeviceConfigureRpc,

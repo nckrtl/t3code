@@ -1,4 +1,4 @@
-import { ArrowUpIcon, ClockIcon } from "lucide-react";
+import { ArrowUpIcon, ClockIcon, KeyRoundIcon } from "lucide-react";
 import { ReadOnlySourcePreview } from "../files/AttachmentFilePreview";
 import { useRightPanelStore } from "~/rightPanelStore";
 import {
@@ -4154,6 +4154,7 @@ type WorkEntryIconName =
   | "square-pen"
   | "terminal"
   | "pull-request"
+  | "credential"
   | "t3-code"
   | "wrench"
   | "x"
@@ -4348,6 +4349,8 @@ function WorkEntryIcon({ name, className }: { name: WorkEntryIconName; className
       return <SmartphoneIcon className={className} aria-hidden />;
     case "t3-code":
       return <T3Wordmark className={className} aria-hidden />;
+    case "credential":
+      return <KeyRoundIcon className={className} aria-hidden />;
     case "check":
       return <CheckIcon className={className} aria-hidden />;
     case "circle-alert":

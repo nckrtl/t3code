@@ -63,6 +63,23 @@ describe("matchingOrigin", () => {
   });
 });
 
+describe("matchingOrigin with subdomains allowed", () => {
+  const allow = { allowSubdomains: true };
+
+  it("fills a subdomain of the saved host", () => {
+    expect(matchingOrigin(["https://example.com"], "https://login.example.com/", allow)).toBe(
+      "https://login.example.com",
+    );
+  });
+
+  it("still refuses look-alikes, parents and other schemes", () => {
+    expect(matchingOrigin(["https://example.com"], "https://evilexample.com/", allow)).toBeNull();
+    expect(matchingOrigin(["https://login.example.com"], "https://example.com/", allow)).toBeNull();
+    expect(matchingOrigin(["https://example.com"], "http://login.example.com/", allow)).toBeNull();
+    expect(matchingOrigin(["localhost:3000"], "http://a.localhost:3000/", allow)).toBeNull();
+  });
+});
+
 describe("request host matching", () => {
   it("accepts a host or a full URL", () => {
     expect(requestedHost("github.com")).toBe("github.com");

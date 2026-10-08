@@ -5,7 +5,8 @@
  * same port, and https unless the saved URL itself says http. A saved URL
  * without a scheme means https, except for loopback and `.localhost`/`.test`
  * development hosts, which may also use http. Subdomains do not match; save
- * the exact sign-in host in the password manager instead.
+ * the exact sign-in host in the password manager instead, or turn on
+ * `allowSubdomains`, which lets a saved host also fill hosts below it.
  */
 
 const DEVELOPMENT_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])$|\.(localhost|test)$/i;
@@ -47,14 +48,25 @@ export function parseSavedUrl(saved: string): SavedTarget | null {
  * The tab's origin when one of the saved URLs matches it, otherwise null.
  * The returned origin is what the desktop re-checks right before filling.
  */
-export function matchingOrigin(savedUrls: ReadonlyArray<string>, tabUrl: string): string | null {
+export function matchingOrigin(
+  savedUrls: ReadonlyArray<string>,
+  tabUrl: string,
+  options: { readonly allowSubdomains?: boolean } = {},
+): string | null {
   const tab = parseUrl(tabUrl);
   if (!tab || (tab.protocol !== "https:" && tab.protocol !== "http:")) return null;
   const tabHost = stripWww(tab.hostname.toLowerCase());
   const tabPort = tab.port || defaultPort(tab.protocol);
   for (const saved of savedUrls) {
     const target = parseSavedUrl(saved);
-    if (!target || target.host !== tabHost || !target.schemes.has(tab.protocol)) continue;
+    if (!target || !target.schemes.has(tab.protocol)) continue;
+    const sameHost =
+      target.host === tabHost ||
+      // A dotless saved host (localhost) has no subdomains worth trusting.
+      (options.allowSubdomains === true &&
+        target.host.includes(".") &&
+        tabHost.endsWith(`.${target.host}`));
+    if (!sameHost) continue;
     // An unstated saved port means the scheme default for the tab's scheme.
     if ((target.port || defaultPort(tab.protocol)) !== tabPort) continue;
     return tab.origin;

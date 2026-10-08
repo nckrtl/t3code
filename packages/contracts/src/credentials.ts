@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 
 import { PreviewTabId } from "./preview.ts";
 
@@ -93,12 +93,26 @@ export const CredentialApprovalRequest = Schema.Struct({
   itemTitle: Schema.String,
   providerLabel: Schema.String,
   origin: Schema.String,
+  /** The field the agent asked to fill. */
   field: CredentialField,
+  /**
+   * Set when one approval may cover a whole sign-in: the fields the user can
+   * allow at once, the requested one included.
+   */
+  signInFields: Schema.optional(Schema.Array(CredentialField)),
+  /** How long a granted sign-in lasts, for the prompt's copy. */
+  signInSeconds: Schema.optional(Schema.Int),
+  /** The prompt denies by itself after this many seconds. */
+  timeoutSeconds: Schema.optional(Schema.Int),
+  /** Evaluates in the page to the input that will be filled, to highlight it. */
+  fieldExpression: Schema.optional(Schema.String),
 });
 export type CredentialApprovalRequest = typeof CredentialApprovalRequest.Type;
 
 export const CredentialApprovalDecision = Schema.Struct({
   approved: Schema.Boolean,
+  /** For a sign-in prompt: the fields the user allowed. */
+  fields: Schema.optional(Schema.Array(CredentialField)),
 });
 export type CredentialApprovalDecision = typeof CredentialApprovalDecision.Type;
 
@@ -116,3 +130,35 @@ export const DesktopCredentialFillResult = Schema.Struct({
   status: DesktopCredentialFillStatus,
 });
 export type DesktopCredentialFillResult = typeof DesktopCredentialFillResult.Type;
+
+/** Whether the server can reach the password manager. Never touches a vault. */
+export const CredentialProviderStatus = Schema.Struct({
+  provider: Schema.Literal("1password"),
+  label: Schema.String,
+  state: Schema.Literals(["ready", "not_installed", "no_account", "unavailable"]),
+  version: Schema.NullOr(Schema.String),
+});
+export type CredentialProviderStatus = typeof CredentialProviderStatus.Type;
+
+export const CREDENTIAL_APPROVAL_TIMEOUT_SECONDS = [30, 90, 180] as const;
+
+export const CredentialAutofillSettings = Schema.Struct({
+  /** One prompt covers every field of one login on one site and tab, briefly. */
+  oneApprovalPerSignIn: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  /** An unanswered prompt counts as denied after this many seconds. */
+  approvalTimeoutSeconds: Schema.Literals(CREDENTIAL_APPROVAL_TIMEOUT_SECONDS).pipe(
+    Schema.withDecodingDefault(Effect.succeed(90 as const)),
+  ),
+  /** After a password or code fill, refuse agent JavaScript in that tab until it navigates. */
+  blockScriptsAfterFill: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  /** A login saved for example.com also fills its subdomains. */
+  allowSubdomains: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+});
+export type CredentialAutofillSettings = typeof CredentialAutofillSettings.Type;
+
+export const CredentialAutofillSettingsPatch = Schema.Struct({
+  oneApprovalPerSignIn: Schema.optionalKey(Schema.Boolean),
+  approvalTimeoutSeconds: Schema.optionalKey(Schema.Literals(CREDENTIAL_APPROVAL_TIMEOUT_SECONDS)),
+  blockScriptsAfterFill: Schema.optionalKey(Schema.Boolean),
+  allowSubdomains: Schema.optionalKey(Schema.Boolean),
+});

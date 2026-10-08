@@ -1,13 +1,28 @@
-import type { CredentialApprovalRequest, CredentialField } from "@t3tools/contracts";
+import type {
+  CredentialApprovalRequest,
+  CredentialField,
+  ScopedThreadRef,
+} from "@t3tools/contracts";
 
 /** One agent request to fill a saved login, waiting for the user. */
 export interface PendingCredentialApproval extends CredentialApprovalRequest {
   readonly id: number;
+  readonly threadRef: ScopedThreadRef;
+  /** The page's own name for the input, once the highlight found it. */
+  readonly pageFieldLabel: string | null;
+  readonly highlighted: boolean;
+}
+
+export interface CredentialApprovalAnswer {
+  readonly approved: boolean;
+  /** For a sign-in prompt: the fields the user allowed. */
+  readonly fields?: ReadonlyArray<CredentialField>;
+  readonly reason: "user" | "timeout";
 }
 
 interface QueuedApproval {
   readonly approval: PendingCredentialApproval;
-  readonly resolve: (approved: boolean) => void;
+  readonly resolve: (answer: CredentialApprovalAnswer) => void;
   readonly timer: ReturnType<typeof setTimeout>;
 }
 
@@ -25,26 +40,55 @@ const emit = () => {
  */
 export function requestCredentialApproval(
   request: CredentialApprovalRequest,
+  threadRef: ScopedThreadRef,
   deadlineMs: number,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const approval = { ...request, id: nextId++ };
+): { readonly id: number; readonly answer: Promise<CredentialApprovalAnswer> } {
+  const id = nextId++;
+  const answer = new Promise<CredentialApprovalAnswer>((resolve) => {
+    const approval: PendingCredentialApproval = {
+      ...request,
+      id,
+      threadRef,
+      pageFieldLabel: null,
+      highlighted: false,
+    };
     const timer = setTimeout(
-      () => respondToCredentialApproval(approval.id, false),
+      () => settle(id, { approved: false, reason: "timeout" }),
       Math.max(0, deadlineMs - Date.now()),
     );
     queue = [...queue, { approval, resolve, timer }];
     emit();
   });
+  return { id, answer };
 }
 
-export function respondToCredentialApproval(id: number, approved: boolean): void {
+/** Adds what the page highlight learned to a waiting prompt. */
+export function updateCredentialApproval(
+  id: number,
+  patch: Pick<PendingCredentialApproval, "pageFieldLabel" | "highlighted">,
+): void {
+  if (!queue.some((entry) => entry.approval.id === id)) return;
+  queue = queue.map((entry) =>
+    entry.approval.id === id ? { ...entry, approval: { ...entry.approval, ...patch } } : entry,
+  );
+  emit();
+}
+
+function settle(id: number, answer: CredentialApprovalAnswer): void {
   const entry = queue.find((candidate) => candidate.approval.id === id);
   if (!entry) return;
   clearTimeout(entry.timer);
   queue = queue.filter((candidate) => candidate !== entry);
-  entry.resolve(approved);
+  entry.resolve(answer);
   emit();
+}
+
+export function respondToCredentialApproval(
+  id: number,
+  approved: boolean,
+  fields?: ReadonlyArray<CredentialField>,
+): void {
+  settle(id, { approved, reason: "user", ...(fields ? { fields } : {}) });
 }
 
 export function subscribeCredentialApprovals(listener: () => void): () => void {
@@ -71,4 +115,9 @@ export function originOf(url: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** The host shown in toasts and rows: the origin without its scheme. */
+export function hostOf(origin: string): string {
+  return origin.replace(/^https?:\/\//, "");
 }

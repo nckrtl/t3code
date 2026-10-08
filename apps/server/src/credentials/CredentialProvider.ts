@@ -1,4 +1,4 @@
-import type { CredentialField } from "@t3tools/contracts";
+import type { CredentialField, CredentialProviderStatus } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -52,6 +52,8 @@ export class CredentialProvider extends Context.Service<
   CredentialProvider,
   {
     readonly label: string;
+    /** Whether the CLI is installed and has an account. Never unlocks a vault. */
+    readonly status: Effect.Effect<CredentialProviderStatus>;
     readonly listLogins: Effect.Effect<
       ReadonlyArray<CredentialLogin>,
       CredentialProviderUnavailableError
@@ -75,6 +77,10 @@ const OnePasswordItem = Schema.Struct({
 });
 const decodeOnePasswordItems = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Array(OnePasswordItem)),
+);
+
+const decodeAccountList = Schema.decodeUnknownOption(
+  Schema.fromJsonString(Schema.Array(Schema.Unknown)),
 );
 
 const OP_ID = /^[a-z0-9]+$/i;
@@ -156,7 +162,33 @@ const makeOnePassword = Effect.gen(function* () {
       return value.length === 0 ? Option.none() : Option.some(Redacted.make(value));
     }).pipe(Effect.withSpan("CredentialProvider.onePassword.readSecret"));
 
-  return CredentialProvider.of({ label: "1Password", listLogins, readSecret });
+  const status = Effect.gen(function* () {
+    const result = (
+      state: CredentialProviderStatus["state"],
+      version: string | null = null,
+    ): CredentialProviderStatus => ({ provider: "1password", label: "1Password", state, version });
+    const versionRun = yield* runner
+      .run({ command: "op", args: ["--version"], timeout: "10 seconds" })
+      .pipe(Effect.result);
+    if (versionRun._tag === "Failure") {
+      return result(
+        versionRun.failure._tag === "ProcessSpawnError" ? "not_installed" : "unavailable",
+      );
+    }
+    const version = versionRun.success.stdout.trim() || null;
+    if (versionRun.success.code !== 0) return result("unavailable", version);
+    // Reads the CLI's account config only; it does not unlock anything.
+    const accounts = yield* runner
+      .run({ command: "op", args: ["account", "list", "--format", "json"], timeout: "10 seconds" })
+      .pipe(Effect.option);
+    if (Option.isNone(accounts) || accounts.value.code !== 0) return result("unavailable", version);
+    const list = decodeAccountList(accounts.value.stdout.trim() || "[]");
+    return Option.isSome(list) && list.value.length > 0
+      ? result("ready", version)
+      : result("no_account", version);
+  }).pipe(Effect.withSpan("CredentialProvider.onePassword.status"));
+
+  return CredentialProvider.of({ label: "1Password", status, listLogins, readSecret });
 });
 
 /** 1Password through its `op` CLI, using the user's desktop-app sign-in. */

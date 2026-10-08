@@ -19,6 +19,7 @@ export type SettingsPath =
   | "/settings/snap-shot"
   | "/settings/providers"
   | "/settings/integrations"
+  | "/settings/passwords"
   | "/settings/source-control"
   | "/settings/storage"
   | "/settings/connections"
@@ -90,6 +91,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
   "/settings/integrations": "Integrations",
+  "/settings/passwords": "Passwords",
   "/settings/source-control": "Source Control",
   "/settings/storage": "Storage",
   "/settings/connections": "Connections",
@@ -583,6 +585,43 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["allow disable enable open drive preview tools sessions project override"],
   },
   {
+    id: "password-manager",
+    title: "Password manager",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: [
+      "1password op cli bitwarden credentials logins sign in autofill connection status",
+    ],
+  },
+  {
+    id: "credential-sign-in-approval",
+    title: "One approval per sign-in",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: ["password autofill prompt approve username one-time code otp group minute"],
+  },
+  {
+    id: "credential-approval-timeout",
+    title: "Deny unanswered prompts after",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: ["password autofill prompt timeout seconds auto deny"],
+  },
+  {
+    id: "credential-block-scripts",
+    title: "Block agent scripts after a fill",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: ["password autofill javascript evaluate redact protect leak"],
+  },
+  {
+    id: "credential-subdomains",
+    title: "Fill on subdomains of a saved site",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: ["password autofill origin domain host login match"],
+  },
+  {
     id: "device-hosts",
     title: "Device hosts",
     to: "/settings/integrations",
@@ -873,6 +912,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/keybindings": null,
   "/settings/providers": null,
   "/settings/integrations": null,
+  "/settings/passwords": "environment-defaults",
   "/settings/source-control": "environment-defaults",
   "/settings/storage": "project-defaults",
   "/settings/connections": "connections",

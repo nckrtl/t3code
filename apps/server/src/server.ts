@@ -613,20 +613,18 @@ export const makeRoutesLayer = Layer.mergeAll(
     staticAndDevRouteLayer,
     websocketRpcRouteLayer,
   ),
-  McpHttpServer.layer.pipe(
-    Layer.provide(McpSessionRegistry.layer),
-    Layer.provide(
-      CredentialAutofill.layer.pipe(
-        Layer.provide(CredentialProvider.layerOnePassword.pipe(Layer.provide(ProcessRunner.layer))),
-      ),
-    ),
-  ),
+  McpHttpServer.layer.pipe(Layer.provide(McpSessionRegistry.layer)),
   // Last, so no route layer can replace the server's one TracerDisabledWhen.
   untracedRequestsLayer,
 ).pipe(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
+  Layer.provide(
+    CredentialAutofill.layer.pipe(
+      Layer.provide(CredentialProvider.layerOnePassword.pipe(Layer.provide(ProcessRunner.layer))),
+    ),
+  ),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(DesktopAppUpdateLayerLive))),
   Layer.provide(commandReadinessLayer),

@@ -926,7 +926,21 @@ export class PreviewAutomationRecordingDeadlineExpiredError extends Schema.Tagge
   }
 }
 
+/**
+ * `preview_evaluate` refused because a password or code was filled in this
+ * tab and the page has not moved on since. Keeps scripts from reading it back.
+ */
+export class PreviewAutomationCredentialLockError extends Schema.TaggedError<PreviewAutomationCredentialLockError>()(
+  "PreviewAutomationCredentialLockError",
+  { threadId: ThreadId, tabId: PreviewTabId },
+) {
+  override get message(): string {
+    return "JavaScript is blocked in this tab because a saved password was filled into it. It unblocks when the page's address changes. Use preview_snapshot, preview_click and preview_press instead.";
+  }
+}
+
 export const PreviewAutomationError = Schema.Union([
+  PreviewAutomationCredentialLockError,
   PreviewAutomationRecordingTransferError,
   PreviewAutomationRecordingDesktopUpdateRequiredError,
   PreviewAutomationRecordingTooLargeError,

@@ -27,6 +27,7 @@ import {
 } from "../../../attachmentStore.ts";
 import { resolveAttachmentRelativePath } from "../../../attachmentPaths.ts";
 import * as ServerConfig from "../../../config.ts";
+import * as CredentialAutofill from "../../../credentials/CredentialAutofill.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
 import { PreviewSnapshotToolkit, PreviewStandardToolkit, PreviewToolkit } from "./tools.ts";
@@ -207,12 +208,13 @@ const handlers = {
   preview_press: (input) => invokeTargeted<object>("press", input),
   preview_scroll: (input) => invokeTargeted<object>("scroll", input),
   preview_evaluate: ({ tabId, ...input }) =>
-    invoke<unknown>("evaluate", input, undefined, tabId).pipe(
-      Effect.map(({ result, toolIcon }) => ({
-        value: result ?? null,
-        ...(toolIcon ? { toolIcon } : {}),
-      })),
-    ),
+    Effect.gen(function* () {
+      const scope = yield* McpInvocationContext.requireMcpCapability("preview");
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      yield* autofill.guardScript(scope, tabId);
+      const { result, toolIcon } = yield* invoke<unknown>("evaluate", input, undefined, tabId);
+      return { value: result ?? null, ...(toolIcon ? { toolIcon } : {}) };
+    }),
   preview_wait_for: (input) => invokeTargeted<object>("waitFor", input, input.timeoutMs),
   preview_recording_start: (input) =>
     invokeTargeted<PreviewAutomationRecordingStatus>("recordingStart", input ?? {}),

@@ -60,7 +60,18 @@ import {
 import { runBrowserViewportMutation } from "~/browser/browserViewportActions";
 import { previewRuntimeTabId } from "~/browser/previewRuntimeTabId";
 import { CredentialApprovalHost } from "~/credentials/CredentialApprovalHost";
-import { originOf, requestCredentialApproval } from "~/credentials/credentialApproval";
+import {
+  CREDENTIAL_FIELD_LABELS,
+  hostOf,
+  originOf,
+  requestCredentialApproval,
+  updateCredentialApproval,
+} from "~/credentials/credentialApproval";
+import {
+  clearCredentialFieldHighlight,
+  highlightCredentialField,
+} from "~/credentials/credentialFieldHighlight";
+import { toastManager } from "~/components/ui/toast";
 import { isElectron } from "~/env";
 import { useEnvironments } from "~/state/environments";
 import { previewEnvironment } from "~/state/preview";
@@ -99,7 +110,16 @@ import { shouldRollbackPreviewViewport } from "./previewViewportRollback";
 
 const PREVIEW_PRESENTATION_SETTLE_TIMEOUT_MS = 500;
 /** Time left after an unanswered approval prompt to deliver the denial. */
-const CREDENTIAL_APPROVAL_RESPONSE_MARGIN_MS = 10_000;
+const CREDENTIAL_APPROVAL_RESPONSE_MARGIN_MS = 2_000;
+
+const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
+const toastSiteChanged = (origin: string) =>
+  toastManager.add({
+    type: "warning",
+    title: "Fill cancelled: the page changed site",
+    description: `The tab left ${hostOf(origin)} before the value went in.`,
+  });
 
 const waitForPreviewPresentation = async (runtimeTabId: string): Promise<void> => {
   const deadline = Date.now() + PREVIEW_PRESENTATION_SETTLE_TIMEOUT_MS;
@@ -738,19 +758,52 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
             const ready = await requireReadyTab();
             // Ask only about the page the user can see right now.
             const page = await ready.bridge.automation.status(ready.runtimeTabId);
-            if (originOf(page.url) !== input.origin) return { approved: false };
-            const approved = await requestCredentialApproval(
-              input,
+            if (originOf(page.url) !== input.origin) {
+              toastSiteChanged(input.origin);
+              return { approved: false };
+            }
+            const deadlineMs = Math.min(
               hostDeadlineMs - CREDENTIAL_APPROVAL_RESPONSE_MARGIN_MS,
+              Date.now() + (input.timeoutSeconds ?? 90) * 1000,
             );
-            return { approved };
+            const prompt = requestCredentialApproval(input, threadRef, deadlineMs);
+            const webview = findPreviewWebview(ready.runtimeTabId);
+            if (webview && input.fieldExpression) {
+              void highlightCredentialField(webview, input.fieldExpression).then((field) =>
+                updateCredentialApproval(prompt.id, {
+                  highlighted: field.found,
+                  pageFieldLabel: field.label,
+                }),
+              );
+            }
+            const answer = await prompt.answer;
+            if (webview) void clearCredentialFieldHighlight(webview);
+            if (answer.reason === "timeout") {
+              toastManager.add({
+                type: "info",
+                title: "Fill denied: no answer",
+                description: `The prompt waited ${input.timeoutSeconds ?? 90} s. The agent was told it was denied.`,
+              });
+            }
+            return {
+              approved: answer.approved,
+              ...(answer.fields ? { fields: answer.fields } : {}),
+            };
           }
           case "credentialFill": {
+            const input = request.input as DesktopPreviewAutomationFillCredentialInput["input"];
             const ready = await requireReadyTab();
-            return await ready.bridge.automation.fillCredential(
-              ready.runtimeTabId,
-              request.input as DesktopPreviewAutomationFillCredentialInput["input"],
-            );
+            const filled = await ready.bridge.automation.fillCredential(ready.runtimeTabId, input);
+            if (filled.status === "filled") {
+              toastManager.add({
+                type: "success",
+                title: `${capitalize(CREDENTIAL_FIELD_LABELS[input.field])} filled`,
+                description: hostOf(input.expectedOrigin),
+              });
+            } else if (filled.status === "origin_mismatch") {
+              toastSiteChanged(input.expectedOrigin);
+            }
+            return filled;
           }
           case "recordingStart": {
             const ready = await requireReadyTab();
