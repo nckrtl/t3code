@@ -35,11 +35,18 @@ applies to everything else.
 
 ## Keep the customizations through an upstream merge
 
-1. Merge the stable tag into the sync branch. Conflicts are expected in the
-   files listed above, most often `index.css`, `components/ui/*`,
-   `ChatView.tsx`, `RightPanelTabs.tsx`, settings components and the sidebar.
-   Keep the fork's side for styling and fork features, and re-apply upstream's
-   logic changes around it. Never drop a fork feature to make a merge clean.
+1. Merge the stable tag into the sync branch and resolve every conflict;
+   do not stop on conflicts. Make the best possible attempt to keep all of the
+   fork's work and take in as much of upstream as you can. Conflicts are
+   expected in the files listed above, most often `index.css`,
+   `components/ui/*`, `ChatView.tsx`, `RightPanelTabs.tsx`, settings components
+   and the sidebar. Keep the fork's side for styling and fork features, and
+   re-apply upstream's logic and new features around it. Never drop a fork
+   feature or an upstream fix to make a merge clean. Use the
+   [nckrtl-shell-design skill](.agents/skills/nckrtl-shell-design/SKILL.md) as
+   the rules for every UI conflict. Commit the resolution with a message that
+   lists each conflicted file, how it was resolved, and which resolutions are
+   uncertain.
 2. Run the regression scan in the skill's "Upstream sync procedure" on
    upstream's diff. New upstream UI must follow the fork's shell rules (glass
    popovers, `ToolbarGroup`, `text-ui`, shell dividers, `scrollbar-inset`).
@@ -52,7 +59,13 @@ applies to everything else.
    `grep -rl "__annotator/inject" apps/web/dist apps/server/dist` prints
    nothing.
 5. Build, sign, install and smoke as described in `build.md`. Merge the sync
-   branch into `nckrtl` only after a good build and smoke.
+   branch into `nckrtl` only after a good build and smoke. Before that merge,
+   tag the current `nckrtl` tip as `nckrtl-pre-<tag>` and push the tag.
+
+Rollback is cheap: `nckrtl` changes only after a good build and smoke,
+`nckrtl-pre-<tag>` marks the previous tip, and the install keeps a backup of
+the previous app. If an automatic merge damaged fork work, reset to the tag and
+redo the sync by hand.
 
 When something in this table changes (a new fork feature, a removed one, a
 moved file), update this file in the same commit.
