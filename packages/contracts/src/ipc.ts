@@ -1121,6 +1121,36 @@ export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
+export interface DesktopApiHeader {
+  readonly name: string;
+  readonly value: string;
+}
+
+export interface DesktopApiRequest {
+  readonly method: string;
+  readonly url: string;
+  readonly headers: readonly DesktopApiHeader[];
+  readonly body: string | null;
+  readonly timeoutMs?: number;
+}
+
+export interface DesktopApiResponse {
+  /** Set when no response arrived (bad URL, DNS, TLS, timeout); the other fields are empty. */
+  readonly error: string | null;
+  readonly status: number;
+  readonly statusText: string;
+  /** The final URL, after redirects. */
+  readonly url: string;
+  readonly headers: readonly DesktopApiHeader[];
+  /** Text for text-like content types, otherwise base64. */
+  readonly body: string;
+  readonly bodyEncoding: "text" | "base64";
+  /** Bytes the server sent; `truncated` when the body kept fewer. */
+  readonly size: number;
+  readonly truncated: boolean;
+  readonly durationMs: number;
+}
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   /** Absolute path of a dropped or picked file; absent on desktop builds predating it. */
@@ -1228,6 +1258,11 @@ export interface DesktopBridge {
    * builds lack it; callers fall back to VS Code only.
    */
   probeRemoteEditors?: () => Promise<readonly EditorId[]>;
+  /**
+   * nckrtl fork: sends one API panel request from the main process (no CORS, all headers,
+   * the integrated browser's certificate trust). Optional: other desktop builds lack it.
+   */
+  apiSend?: (request: DesktopApiRequest) => Promise<DesktopApiResponse>;
   /** Present when the desktop shell can perform an ordered plain-text paste. */
   pasteAsText?: () => Promise<void>;
   /** Opens an extra desktop window showing a workspace (id or name; null = all projects). */

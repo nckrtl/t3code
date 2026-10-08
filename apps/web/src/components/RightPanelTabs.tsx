@@ -16,6 +16,7 @@ import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import {
   Bot,
   Smartphone,
+  Webhook,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -123,6 +124,9 @@ interface RightPanelTabsProps {
   onAddPullRequests: () => void;
   onAddAgents: () => void;
   onAddDevice: () => void;
+  /** nckrtl fork: the API request panel; absent where it is not offered. */
+  onAddApi?: (() => void) | undefined;
+  apiAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -162,6 +166,7 @@ const SURFACE_DISABLED_REASONS = {
   pullRequests: "No linked pull requests are available for this thread.",
   agents: "Agents are only available from a thread.",
   device: "Devices are only available from a thread.",
+  api: "API requests are only available in the T3 Code desktop app, from a project thread.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -186,6 +191,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   pullRequests: "No linked pull requests available.",
   agents: "Available from a thread.",
   device: "Available from a thread.",
+  api: "Available in the desktop app.",
 } as const;
 
 type TabContextMenuAction =
@@ -326,6 +332,9 @@ function RightPanelEmptyState(props: {
   onAddPullRequests: () => void;
   onAddAgents: () => void;
   onAddDevice: () => void;
+  /** nckrtl fork: the API request panel; absent where it is not offered. */
+  onAddApi?: (() => void) | undefined;
+  apiAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -347,6 +356,16 @@ function RightPanelEmptyState(props: {
       available: props.browserAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.browser,
       onClick: props.onAddBrowser,
+      badgeCount: 0,
+    },
+    {
+      label: "API",
+      description: "Send API requests and see the Laravel Toolbar for each.",
+      icon: Webhook,
+      shortcut: "R",
+      available: props.apiAvailable === true,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.api,
+      onClick: props.onAddApi ?? (() => undefined),
       badgeCount: 0,
     },
     {
@@ -630,6 +649,8 @@ function surfaceTitle(
       return "Pull requests";
     case "agents":
       return "Agents";
+    case "api":
+      return "API";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
@@ -715,6 +736,8 @@ function SurfaceIcon({
       return <PullRequestGlyph.link className="size-4 shrink-0" />;
     case "agents":
       return <Bot className="size-4 shrink-0" />;
+    case "api":
+      return <Webhook className="size-4 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-4 shrink-0" />
@@ -876,6 +899,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.browserAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.browser,
       onClick: props.onAddBrowser,
+    },
+    {
+      label: "API",
+      icon: Webhook,
+      shortcut: "R",
+      available: props.apiAvailable === true,
+      disabledReason: SURFACE_DISABLED_REASONS.api,
+      onClick: props.onAddApi ?? (() => undefined),
     },
     {
       label: "Terminal",
@@ -1430,6 +1461,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequests={props.onAddPullRequests}
             onAddAgents={props.onAddAgents}
             onAddDevice={props.onAddDevice}
+            onAddApi={props.onAddApi}
+            apiAvailable={props.apiAvailable}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}

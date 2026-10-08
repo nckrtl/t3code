@@ -53,4 +53,12 @@ describe("laravel toolbar store", () => {
     expect(state().currentId).toBe("r3");
     expect(state().history.map((entry) => entry.row.id)).toEqual(["r1", "r3"]);
   });
+  it("makes a request sent from the API panel current and keeps the earlier ones", () => {
+    const store = useLaravelToolbarStore.getState();
+    store.receiveRequest(TAB, { id: "a", method: "GET", uri: "/api/users" }, { request_id: "a" });
+    store.receiveRequest(TAB, { id: "b", method: "POST", uri: "/api/users" }, null);
+    expect(state().currentId).toBe("b");
+    expect(state().history.map((entry) => entry.row.id)).toEqual(["a", "b"]);
+    expect(Object.keys(state().details)).toEqual(["a"]);
+  });
 });
