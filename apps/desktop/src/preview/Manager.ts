@@ -11,6 +11,9 @@ import {
   DESKTOP_PREVIEW_RECORDING_CAPTURE_TRIGGER,
 } from "@t3tools/contracts";
 import type {
+  DesktopCredentialFillResult,
+  DesktopCredentialFillStatus,
+  CredentialField,
   DesktopPreviewAnnotationTheme,
   DesktopPreviewAutomationStatus,
   DesktopPreviewColorScheme,
@@ -35,6 +38,12 @@ import type {
   PreviewAutomationTypeInput,
   PreviewAutomationWaitForInput,
 } from "@t3tools/contracts";
+import {
+  CREDENTIAL_FINISH_FUNCTION,
+  CREDENTIAL_PREPARE_FUNCTION,
+  SENSITIVE_INPUT_VALUES_EXPRESSION,
+  redactSensitiveValues,
+} from "@t3tools/shared/credentialFill";
 import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { normalizePreviewUrl } from "@t3tools/shared/preview";
 import {
@@ -58,6 +67,7 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Redacted from "effect/Redacted";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
@@ -255,12 +265,32 @@ interface CdpEvaluationResult {
   readonly result?: {
     readonly value?: unknown;
     readonly description?: string;
+    readonly subtype?: string;
+    readonly objectId?: string;
   };
   readonly exceptionDetails?: {
     readonly text?: string;
     readonly exception?: { readonly description?: string };
   };
 }
+
+export interface AutomationFillCredentialInput {
+  readonly field: CredentialField;
+  readonly expectedOrigin: string;
+  readonly fieldExpression: string;
+  readonly value: Redacted.Redacted<string>;
+}
+
+const CREDENTIAL_OBJECT_GROUP = "t3code-credential-fill";
+const PREPARE_STATUSES = new Set<string>(["not_editable"]);
+
+const originOf = (url: string): string | null => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
 
 export const PreviewAutomationSelectorKind = Schema.Literals([
   "focused-element",
@@ -1619,6 +1649,20 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
           }),
         );
       }),
+    );
+
+  /**
+   * Values of masked inputs and inputs filled with a credential. Agent-visible
+   * results are redacted against them; a failure fails the read, so an
+   * unredacted result never goes out.
+   */
+  const collectSensitiveValues = (tabId: string, send: SendCommand) =>
+    evaluateWithDebugger<unknown>(tabId, send, SENSITIVE_INPUT_VALUES_EXPRESSION, true).pipe(
+      Effect.map((values) =>
+        Array.isArray(values)
+          ? values.filter((value): value is string => typeof value === "string")
+          : [],
+      ),
     );
 
   const automationLocator = (input: {
@@ -3794,12 +3838,19 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
           : sourceImage;
       const size = image.getSize();
       const browserDiagnostics = diagnostics.get(wc.id);
+      const sensitiveValues = yield* collectSensitiveValues(tabId, send);
+      const observed = redactSensitiveValues(
+        {
+          ...page,
+          accessibilityTree: accessibility,
+          consoleEntries: [...(browserDiagnostics?.consoleEntries ?? [])],
+          networkEntries: [...(browserDiagnostics?.networkEntries ?? [])],
+          actionTimeline: [...(timelines.get(tabId) ?? [])],
+        },
+        sensitiveValues,
+      );
       return {
-        ...page,
-        accessibilityTree: accessibility,
-        consoleEntries: [...(browserDiagnostics?.consoleEntries ?? [])],
-        networkEntries: [...(browserDiagnostics?.networkEntries ?? [])],
-        actionTimeline: [...(timelines.get(tabId) ?? [])],
+        ...observed,
         screenshot: {
           mimeType: "image/png" as const,
           data: image.toPNG().toString("base64"),
@@ -4491,13 +4542,14 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
   const performAutomationEvaluate = Effect.fn("PreviewManager.performAutomationEvaluate")(
     function* (tabId: string, input: PreviewAutomationEvaluateInput, send: SendCommand) {
       yield* send("Runtime.enable");
-      const value = yield* evaluateWithDebugger(
+      const rawValue = yield* evaluateWithDebugger(
         tabId,
         send,
         input.expression,
         input.returnByValue ?? true,
         input.awaitPromise ?? true,
       );
+      const value = redactSensitiveValues(rawValue, yield* collectSensitiveValues(tabId, send));
       const serialized = yield* encodeJson(
         { operation: "automationEvaluate.encodeResult", tabId },
         value,
@@ -4521,6 +4573,82 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
     const wc = yield* requireWebContents(tabId);
     return yield* withControlSession(tabId, wc, "evaluate", (send) =>
       performAutomationEvaluate(tabId, input, send),
+    );
+  });
+
+  /**
+   * Inserts an approved credential value. The value only goes to CDP: it is
+   * never part of an expression, a result, an error or the action timeline.
+   */
+  const performAutomationFillCredential = Effect.fn(
+    "PreviewManager.performAutomationFillCredential",
+  )(function* (
+    wc: Electron.WebContents,
+    input: AutomationFillCredentialInput,
+    send: SendCommand,
+    sendCleanup: SendCommand,
+  ) {
+    const result = (status: DesktopCredentialFillStatus): DesktopCredentialFillResult => ({
+      status,
+    });
+    if (originOf(wc.getURL()) !== input.expectedOrigin) return result("origin_mismatch");
+    yield* send("Runtime.enable");
+    const callOnField = (objectId: string, functionDeclaration: string, args: unknown[]) =>
+      send("Runtime.callFunctionOn", {
+        objectId,
+        functionDeclaration,
+        arguments: args.map((value) => ({ value })),
+        returnByValue: true,
+        userGesture: true,
+      }).pipe(
+        Effect.map((response) => {
+          const evaluation = response as CdpEvaluationResult;
+          return evaluation.exceptionDetails ? null : evaluation.result?.value;
+        }),
+      );
+    return yield* Effect.gen(function* () {
+      const found = (yield* send("Runtime.evaluate", {
+        expression: input.fieldExpression,
+        returnByValue: false,
+        objectGroup: CREDENTIAL_OBJECT_GROUP,
+      })) as CdpEvaluationResult;
+      const objectId =
+        !found.exceptionDetails && found.result?.subtype === "node"
+          ? found.result.objectId
+          : undefined;
+      if (!objectId) return result("field_not_found");
+      const prepared = yield* callOnField(objectId, CREDENTIAL_PREPARE_FUNCTION, [input.field]);
+      if (prepared !== "ready") {
+        return result(
+          typeof prepared === "string" && PREPARE_STATUSES.has(prepared)
+            ? (prepared as DesktopCredentialFillStatus)
+            : "insert_failed",
+        );
+      }
+      // The page may have navigated while the field was found.
+      if (originOf(wc.getURL()) !== input.expectedOrigin) return result("origin_mismatch");
+      yield* send("Input.insertText", { text: Redacted.value(input.value) });
+      const finished = yield* callOnField(objectId, CREDENTIAL_FINISH_FUNCTION, [
+        input.field,
+        Redacted.value(input.value),
+      ]);
+      return result(finished === "filled" ? "filled" : "insert_failed");
+    }).pipe(
+      Effect.ensuring(
+        sendCleanup("Runtime.releaseObjectGroup", { objectGroup: CREDENTIAL_OBJECT_GROUP }).pipe(
+          Effect.ignore,
+        ),
+      ),
+    );
+  });
+
+  const automationFillCredential = Effect.fn("PreviewManager.automationFillCredential")(function* (
+    tabId: string,
+    input: AutomationFillCredentialInput,
+  ) {
+    const wc = yield* requireWebContents(tabId);
+    return yield* withControlSession(tabId, wc, "fillCredential", (send, sendCleanup) =>
+      performAutomationFillCredential(wc, input, send, sendCleanup),
     );
   });
 
@@ -4660,6 +4788,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
   return {
     automationClick,
     automationEvaluate,
+    automationFillCredential,
     automationPress,
     automationScroll,
     automationSnapshot,
@@ -5100,6 +5229,10 @@ export class PreviewManager extends Context.Service<
       tabId: string,
       input: PreviewAutomationWaitForInput,
     ) => Effect.Effect<void, PreviewManagerError>;
+    readonly automationFillCredential: (
+      tabId: string,
+      input: AutomationFillCredentialInput,
+    ) => Effect.Effect<DesktopCredentialFillResult, PreviewManagerError>;
     readonly subscribeStateChanges: (listener: Listener) => Effect.Effect<void, never, Scope.Scope>;
     readonly subscribePointerEvents: (
       listener: PointerEventListener,
@@ -5199,6 +5332,7 @@ export const make = Effect.gen(function* PreviewManagerMake() {
     automationScroll: operations.automationScroll,
     automationEvaluate: operations.automationEvaluate,
     automationWaitFor: operations.automationWaitFor,
+    automationFillCredential: operations.automationFillCredential,
     subscribeStateChanges: operations.subscribeStateChanges,
     subscribePointerEvents: operations.subscribePointerEvents,
     subscribeRecordingFrames: operations.subscribeRecordingFrames,

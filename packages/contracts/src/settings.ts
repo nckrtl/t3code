@@ -41,6 +41,7 @@ import {
   type ProviderDriverKind,
 } from "./providerInstance.ts";
 import { PullRequestMergeMethod } from "./pullRequest.ts";
+import { CredentialAutofillSettings, CredentialAutofillSettingsPatch } from "./credentials.ts";
 
 // ── Client Settings (local-only) ───────────────────────────────
 
@@ -1153,6 +1154,10 @@ export const ServerSettings = Schema.Struct({
   projectAgentBrowserAccessOverrides: Schema.Record(ProjectId, Schema.Boolean).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
+  /** How agents may fill saved logins into the browser. Server-authoritative. */
+  credentialAutofill: CredentialAutofillSettings.pipe(
+    Schema.withDecodingDefault(Effect.succeed(Schema.decodeSync(CredentialAutofillSettings)({}))),
+  ),
   defaultAutoPull: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   defaultProjectScripts: Schema.Array(ProjectScript).pipe(
     Schema.withDecodingDefault(Effect.succeed([])),
@@ -1514,6 +1519,7 @@ export const ServerSettingsPatch = Schema.Struct({
   enableProviderUpdateChecks: Schema.optionalKey(Schema.Boolean),
   continueThreadsAfterServerUpdate: Schema.optionalKey(Schema.Boolean),
   enableAgentBrowserAccess: Schema.optionalKey(Schema.Boolean),
+  credentialAutofill: Schema.optionalKey(CredentialAutofillSettingsPatch),
   projectAgentBrowserAccessOverrides: Schema.optionalKey(
     Schema.Record(ProjectId, Schema.NullOr(Schema.Boolean)),
   ),

@@ -10,6 +10,8 @@ import { classifyMarkdownImageSource } from "@t3tools/client-runtime/markdown-im
 import { resolveMediaSource } from "@t3tools/client-runtime/media-source";
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
 import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
+import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 
 /**
  * Activities the worktree setup card already represents. The settled record
@@ -123,7 +125,75 @@ const T3_MCP_TOOL_LABELS: Record<
     "the device",
   ],
   device_close: ["Close", "Closing", "Closed", "a device"],
+  request_credentials: ["Find", "Finding", "Found", "saved logins"],
+  fill_credential: ["Fill", "Filling", "Filled", "a saved login"],
 };
+
+const CREDENTIAL_FIELD_NAMES: Readonly<Record<string, string>> = {
+  username: "username",
+  password: "password",
+  otp: "one-time code",
+};
+
+const decodeFillStatusJson = Schema.decodeUnknownOption(
+  Schema.fromJsonString(Schema.Struct({ status: Schema.String })),
+);
+
+/** The `status` of a fill_credential result, wherever the provider put it. */
+function credentialFillStatus(data: unknown): string | null {
+  const payload = asRecord(data);
+  const item = asRecord(payload?.item);
+  for (const candidate of [payload?.result, item?.result, payload?.rawOutput, payload?.output]) {
+    const record = asRecord(candidate);
+    const structured = asRecord(record?.structuredContent);
+    if (typeof structured?.status === "string") return structured.status;
+    if (typeof record?.status === "string") return record.status;
+    const text = commandResultContent(candidate);
+    if (text?.trimStart().startsWith("{")) {
+      const parsed = decodeFillStatusJson(text.trim());
+      if (Option.isSome(parsed)) return parsed.value.status;
+    }
+  }
+  return null;
+}
+
+/** Row text for a credential tool, which names the field and the outcome. */
+function credentialToolDisplayName(
+  name: string,
+  status: string | undefined,
+  input: Record<string, unknown> | null,
+  data: unknown,
+): string | null {
+  if (name === "request_credentials") {
+    const domain = nonEmptyString(input?.domain);
+    if (!domain) return null;
+    const verb =
+      status === "inProgress" ? "Finding" : status === "failed" ? "Couldn't find" : "Found";
+    return `${verb} saved logins for ${domain}`;
+  }
+  if (name !== "fill_credential") return null;
+  const field = CREDENTIAL_FIELD_NAMES[nonEmptyString(input?.field) ?? ""] ?? "saved login";
+  if (status === "inProgress") return `Waiting to fill the ${field}`;
+  if (status !== "completed") return null;
+  switch (credentialFillStatus(data)) {
+    case "filled":
+      return `Filled the ${field}`;
+    case "denied":
+      return `Fill denied: ${field}`;
+    case "origin_mismatch":
+      return `Not filled: the site doesn't match the saved login`;
+    case "tab_unavailable":
+      return `Not filled: no page is open`;
+    case "field_not_found":
+      return `Not filled: no ${field} field on this page`;
+    case "provider_unavailable":
+      return `Not filled: the password manager is unavailable`;
+    case null:
+      return `Filled the ${field}`;
+    default:
+      return `Not filled: ${field}`;
+  }
+}
 
 const PR_TOOL_ACTIONS: Readonly<Record<string, ToolGroupAction>> = {
   link_pull_request: "link-pr",
@@ -161,6 +231,19 @@ function resolveT3McpToolPresentation(
   const payload = asRecord(data);
   const input =
     asRecord(payload?.arguments) ?? asRecord(payload?.input) ?? asRecord(payload?.rawInput);
+  if (name === "request_credentials" || name === "fill_credential") {
+    const credential: {
+      displayName: string;
+      icon: "credential";
+      action?: ToolGroupAction;
+    } = {
+      displayName:
+        credentialToolDisplayName(name, status, input, data) ??
+        `${verb} ${name === "fill_credential" ? "a saved login" : "saved logins"}`,
+      icon: "credential",
+    };
+    return credential;
+  }
   const urlTarget = typeof input?.url === "string" ? parseChangeRequestUrl(input.url) : null;
   const number = urlTarget?.number ?? input?.number;
   const target =

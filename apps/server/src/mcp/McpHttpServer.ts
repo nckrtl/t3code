@@ -30,6 +30,8 @@ import {
   PreviewSnapshotToolkit,
   PreviewStandardToolkit,
 } from "./toolkits/preview/tools.ts";
+import { CredentialsToolkitHandlersLive } from "./toolkits/credentials/handlers.ts";
+import { CredentialsToolkit } from "./toolkits/credentials/tools.ts";
 import { PullRequestsToolkitHandlersLive } from "./toolkits/pullRequests/handlers.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
 import {
@@ -643,6 +645,10 @@ export const PreviewToolkitRegistrationLive = Layer.mergeAll(
   PreviewSnapshotRegistrationLive,
 );
 
+export const CredentialsToolkitRegistrationLive = McpServer.toolkit(CredentialsToolkit).pipe(
+  Layer.provide(CredentialsToolkitHandlersLive),
+);
+
 export const PullRequestsToolkitRegistrationLive = McpServer.toolkit(PullRequestsToolkit).pipe(
   Layer.provide(PullRequestsToolkitHandlersLive),
 );
@@ -669,6 +675,7 @@ const McpTransportLive = McpServer.layerHttp({
 
 export const layer = Layer.mergeAll(
   PreviewToolkitRegistrationLive,
+  CredentialsToolkitRegistrationLive,
   PullRequestsToolkitRegistrationLive,
   DeviceToolkitRegistrationLive,
 ).pipe(Layer.provideMerge(McpTransportLive));

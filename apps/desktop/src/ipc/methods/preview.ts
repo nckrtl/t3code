@@ -2,7 +2,9 @@ import {
   DesktopPreviewAnnotationThemeInputSchema,
   DesktopPreviewArtifactInputSchema,
   DesktopPreviewAutomationClickInputSchema,
+  DesktopCredentialFillResult,
   DesktopPreviewAutomationEvaluateInputSchema,
+  DesktopPreviewAutomationFillCredentialInputSchema,
   DesktopPreviewAutomationPressInputSchema,
   DesktopPreviewAutomationScrollInputSchema,
   DesktopPreviewAutomationStatusSchema,
@@ -472,6 +474,16 @@ export const automationWaitFor = DesktopIpc.makeIpcMethod({
   }),
 });
 
+export const automationFillCredential = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREVIEW_AUTOMATION_FILL_CREDENTIAL_CHANNEL,
+  payload: DesktopPreviewAutomationFillCredentialInputSchema,
+  result: DesktopCredentialFillResult,
+  handler: Effect.fn("desktop.ipc.preview.automationFillCredential")(function* ({ tabId, input }) {
+    const manager = yield* PreviewManager.PreviewManager;
+    return yield* manager.automationFillCredential(tabId, input);
+  }),
+});
+
 export const saveRecording = DesktopIpc.makeIpcMethod({
   channel: IpcChannels.PREVIEW_RECORDING_SAVE_CHANNEL,
   payload: DesktopPreviewRecordingSaveInputSchema,
@@ -516,6 +528,7 @@ export const methods = [
   automationScroll,
   automationEvaluate,
   automationWaitFor,
+  automationFillCredential,
   startRecording,
   stopRecording,
   saveRecording,
