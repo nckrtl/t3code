@@ -148,7 +148,10 @@ export function CredentialKeyButton(props: {
           <MenuGroupLabel className="max-w-72">
             <span className="block truncate">1Password · {hostOf(origin)}</span>
           </MenuGroupLabel>
-          {sites.data?.unavailable ? (
+          {sites.error && !sites.data ? (
+            // An older T3 server answers with an unknown-request error.
+            <MenuItem disabled>This thread's server can't look up saved logins</MenuItem>
+          ) : sites.data?.unavailable ? (
             <MenuItem disabled>1Password is unavailable</MenuItem>
           ) : items.length === 0 ? (
             <MenuItem disabled>
