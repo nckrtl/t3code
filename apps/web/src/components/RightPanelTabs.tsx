@@ -128,7 +128,7 @@ interface RightPanelTabsProps {
   /** nckrtl fork: the API request panel; absent where it is not offered. */
   onAddApi?: (() => void) | undefined;
   apiAvailable?: boolean | undefined;
-  /** nckrtl fork: the Database panel (Orbit connections); absent where it is not offered. */
+  /** nckrtl fork: the Database panel; absent where it is not offered. */
   onAddDatabase?: (() => void) | undefined;
   databaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
@@ -171,7 +171,8 @@ const SURFACE_DISABLED_REASONS = {
   agents: "Agents are only available from a thread.",
   device: "Devices are only available from a thread.",
   api: "API requests are only available in the T3 Code desktop app, from a project thread.",
-  database: "Databases are only available from a project thread.",
+  database:
+    "The Database panel is only available in the T3 Code desktop app, from a project thread.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -197,7 +198,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   agents: "Available from a thread.",
   device: "Available from a thread.",
   api: "Available in the desktop app.",
-  database: "Available when a project is open.",
+  database: "Available in the desktop app.",
 } as const;
 
 type TabContextMenuAction =
@@ -341,7 +342,7 @@ function RightPanelEmptyState(props: {
   /** nckrtl fork: the API request panel; absent where it is not offered. */
   onAddApi?: (() => void) | undefined;
   apiAvailable?: boolean | undefined;
-  /** nckrtl fork: the Database panel (Orbit connections); absent where it is not offered. */
+  /** nckrtl fork: the Database panel; absent where it is not offered. */
   onAddDatabase?: (() => void) | undefined;
   databaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
@@ -379,7 +380,7 @@ function RightPanelEmptyState(props: {
     },
     {
       label: "Database",
-      description: "Browse tables and run read-only SQL on Orbit's databases.",
+      description: "Browse the project's database and run read-only SQL.",
       icon: Database,
       shortcut: "Q",
       available: props.databaseAvailable === true,

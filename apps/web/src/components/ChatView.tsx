@@ -4587,12 +4587,16 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadRef ? (state.byThreadKey[scopedThreadKey(activeThreadRef)]?.url ?? null) : null,
   );
   const apiBaseUrl = orbitInstanceUrl ?? configuredPreviewUrls[0] ?? null;
-  // nckrtl fork: the Database panel asks Orbit from the project's machine.
-  const databaseAvailable = activeThreadRef !== null && activeProject !== null;
+  // nckrtl fork: the Database panel connects from the desktop shell.
+  const databaseAvailable =
+    activeThreadRef !== null &&
+    activeProject !== null &&
+    typeof window !== "undefined" &&
+    window.desktopBridge?.databaseRun !== undefined;
   const addDatabaseSurface = useCallback(() => {
-    if (!activeThreadRef || !activeProject) return;
+    if (!activeThreadRef || !activeProject || !databaseAvailable) return;
     useRightPanelStore.getState().open(activeThreadRef, "database");
-  }, [activeProject, activeThreadRef]);
+  }, [activeProject, activeThreadRef, databaseAvailable]);
   const supportsThreadPullRequests =
     serverConfig?.environment.capabilities.threadPullRequests === true;
   const visiblePullRequests = visibleThreadPullRequests(

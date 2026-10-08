@@ -1151,6 +1151,43 @@ export interface DesktopApiResponse {
   readonly durationMs: number;
 }
 
+export interface DesktopDatabaseConnection {
+  readonly driver: "mysql" | "pgsql" | "sqlite";
+  readonly host: string;
+  readonly port: number | null;
+  /** The database name, or the SQLite file's absolute path. */
+  readonly database: string;
+  readonly username: string;
+  readonly password: string;
+}
+
+export interface DesktopDatabaseRequest {
+  readonly connection: DesktopDatabaseConnection;
+  readonly operation: "tables" | "describe" | "query";
+  readonly table?: string;
+  readonly sql?: string;
+}
+
+export interface DesktopDatabaseColumn {
+  readonly name: string;
+  readonly type: string;
+  readonly nullable: boolean;
+  readonly default: string | null;
+  readonly primary: boolean;
+}
+
+export interface DesktopDatabaseResponse {
+  readonly error: string | null;
+  readonly tables: readonly string[];
+  readonly columns: readonly DesktopDatabaseColumn[];
+  readonly resultColumns: readonly string[];
+  readonly rows: ReadonlyArray<Readonly<Record<string, string | number | boolean | null>>>;
+  /** Rows the query returned; `truncated` when the panel kept the first 500. */
+  readonly rowCount: number;
+  readonly truncated: boolean;
+  readonly durationMs: number;
+}
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   /** Absolute path of a dropped or picked file; absent on desktop builds predating it. */
@@ -1263,6 +1300,11 @@ export interface DesktopBridge {
    * the integrated browser's certificate trust). Optional: other desktop builds lack it.
    */
   apiSend?: (request: DesktopApiRequest) => Promise<DesktopApiResponse>;
+  /**
+   * nckrtl fork: one read-only Database panel call, run by the main process on a direct
+   * connection. Optional: other desktop builds lack it.
+   */
+  databaseRun?: (request: DesktopDatabaseRequest) => Promise<DesktopDatabaseResponse>;
   /** Present when the desktop shell can perform an ordered plain-text paste. */
   pasteAsText?: () => Promise<void>;
   /** Opens an extra desktop window showing a workspace (id or name; null = all projects). */

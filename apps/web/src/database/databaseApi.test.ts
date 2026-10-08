@@ -2,51 +2,52 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   browseTableSql,
+  connectionFromEnv,
+  type DatabaseConnection,
   defaultConnection,
-  parseColumns,
-  parseConnections,
-  parseQueryResult,
+  parseDotEnv,
 } from "./databaseApi";
 
-// Shapes as the Orbit Gateway sends them (`data` of each response).
-const CONNECTIONS = parseConnections([
-  { slug: "beast-valkey", driver: "redis", owner_instance_id: null },
-  { slug: "ohdear", driver: "mysql", database: "ohdear", owner_instance_id: 44 },
-  { slug: "shop", driver: "pgsql", database: "shop", owner_instance_id: 7 },
-]);
+describe("database connections", () => {
+  it("reads .env values with quotes, comments and export prefixes", () => {
+    expect(
+      parseDotEnv(
+        [
+          "# app",
+          'export DB_HOST="10.0.0.1"',
+          "DB_PASSWORD='p#ss word'",
+          "DB_PORT=3307 # dev",
+        ].join("\n"),
+      ),
+    ).toEqual({ DB_HOST: "10.0.0.1", DB_PASSWORD: "p#ss word", DB_PORT: "3307" });
+  });
 
-describe("database api", () => {
-  it("prefers the picked connection, then the thread's app, and never Redis", () => {
-    expect(defaultConnection(CONNECTIONS, 7, "ohdear")?.slug).toBe("ohdear");
-    expect(defaultConnection(CONNECTIONS, 7, null)?.slug).toBe("shop");
-    expect(defaultConnection(CONNECTIONS, null, "beast-valkey")?.slug).toBe("ohdear");
-    expect(defaultConnection(CONNECTIONS.slice(0, 1), null, null)).toBeNull();
+  it("builds the project's connection from Laravel's DB_ keys", () => {
+    expect(
+      connectionFromEnv(
+        "DB_CONNECTION=mariadb\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=shop\nDB_USERNAME=root\nDB_PASSWORD=",
+        "/srv/shop",
+      ),
+    ).toMatchObject({ driver: "mysql", port: 3306, database: "shop", username: "root" });
+    expect(connectionFromEnv("DB_CONNECTION=sqlite", "/srv/shop/")?.database).toBe(
+      "/srv/shop/database/database.sqlite",
+    );
+    expect(connectionFromEnv("APP_NAME=x", "/srv/shop")).toBeNull();
+  });
+
+  it("prefers the picked connection, then the project's .env one", () => {
+    const env = connectionFromEnv("DB_CONNECTION=pgsql\nDB_DATABASE=shop", "/srv")!;
+    const saved: DatabaseConnection = { ...env, id: "a1", name: "staging", source: "manual" };
+    expect(defaultConnection([env, saved], "a1")?.id).toBe("a1");
+    expect(defaultConnection([saved, env], null)?.id).toBe(env.id);
+    expect(defaultConnection([], null)).toBeNull();
   });
 
   it("quotes table names the way the driver expects", () => {
     expect(browseTableSql("mysql", "order`s")).toBe("select * from `order``s` limit 100");
-    expect(browseTableSql("pgsql", "users")).toBe('select * from "users" limit 100');
-  });
-
-  it("reads columns and query results", () => {
-    expect(
-      parseColumns({
-        columns: [{ name: "id", type: "bigint", nullable: false, default: null, primary: true }],
-      }),
-    ).toEqual([{ name: "id", type: "bigint", nullable: false, default: null, primary: true }]);
-    expect(
-      parseQueryResult({
-        columns: ["id", "name"],
-        rows: [{ id: 1, name: null }],
-        row_count: 1,
-        truncated: false,
-      }),
-    ).toEqual({
-      columns: ["id", "name"],
-      rows: [{ id: 1, name: null }],
-      rowCount: 1,
-      truncated: false,
-    });
-    expect(() => parseQueryResult({ columns: "id" })).toThrow();
+    expect(browseTableSql("pgsql", "audit.events")).toBe(
+      'select * from "audit"."events" limit 100',
+    );
+    expect(browseTableSql("sqlite", "users")).toBe('select * from "users" limit 100');
   });
 });
