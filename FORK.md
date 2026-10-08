@@ -1,0 +1,58 @@
+# nckrtl fork of T3 Code
+
+This is Nick's fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code)
+at [nckrtl/t3code](https://github.com/nckrtl/t3code). Read this file before you
+merge upstream, build, or change shared UI. Upstream's `AGENTS.md` still
+applies to everything else.
+
+## Branch and build
+
+- `nckrtl` is the only long-lived branch. It holds every customization. New
+  work lands on `nckrtl` directly. The old `rooms-patches-*` branches are
+  history; do not build from them or commit to them.
+- Upstream is taken in by merging a stable tag (`vX.Y.Z`) into a sync branch
+  off `nckrtl`, then merging that back after a good build. Never force-push
+  `nckrtl`.
+- Only the Mac desktop app is custom. Servers run official upstream T3.
+- Build, sign and install: [.agents/skills/nckrtl-shell-design/references/build.md](.agents/skills/nckrtl-shell-design/references/build.md).
+  Builds ship no update feed (`publish: null` in
+  `scripts/build-desktop-artifact.ts`), so the app never replaces itself with
+  an upstream release. macOS builds are re-signed with a local identity
+  (`scripts/sign-macos-local.ts`).
+
+## What the fork changes
+
+| Area                             | What it does                                                                                                                                                                                                                                                       | Where                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell design                     | ChatGPT-desktop window structure in the active theme's colors: inset cards, two-tone dividers, glass popovers, toolbar groups, soft fields, inset scrollbars, 44px header. Covers chat, sidebar, Settings, browser, Files, Diff, terminal, Agents and fork panels. | `apps/web/src/index.css` (shell tokens at the end), `components/ui/*` variants, `components/ToolbarGroup.tsx`, `settings/*`, `ChatView.tsx`, `RightPanelTabs.tsx`, `routes/__root.tsx`, `pierre-tree-theme.ts`, `apps/desktop/src/window/DesktopWindow.ts` (traffic lights). Full rules: the [nckrtl-shell-design skill](.agents/skills/nckrtl-shell-design/SKILL.md). |
+| Workspaces                       | Workspace rail beside the thread sidebar, workspace projects, extra workspace windows, workspace icons, new threads stay in the selected workspace.                                                                                                                | `apps/web/src/workspace*.ts`, `components/sidebar/WorkspaceRail.tsx`, `WorkspaceDialog.tsx`, `apps/desktop/src` window and IPC code.                                                                                                                                                                                                                                   |
+| Desktop control socket and links | `open-thread` and `select-workspace` requests on the desktop control socket, `t3code://workspace/...` links. Used by the Rooms tooling; the nightly smoke tests them.                                                                                              | `apps/desktop/src/ipc/*`, `packages/contracts/src/desktopAppActivation.ts`.                                                                                                                                                                                                                                                                                            |
+| Orbit                            | New Orbit instance option for new threads, project lookup by repository, Orbit registration.                                                                                                                                                                       | `apps/web/src/orbit/*`.                                                                                                                                                                                                                                                                                                                                                |
+| Laravel Toolbar                  | A Laravel debug bar under the browser page: requests, timings, queries, models, PHP, Orbit processes and logs, dependencies. Its flyout is a floating sheet portaled to `body`.                                                                                    | `apps/web/src/laravelToolbar/*`.                                                                                                                                                                                                                                                                                                                                       |
+| Browser and device annotations   | "Annotate preview" in the browser panel and annotation on the Device panel simulator, backed by an `@nckrtl/annotator` server, with Drift dictation and an annotation watch. This ships.                                                                           | `apps/web/src/annotations/*`, `components/device/*`, `packages/contracts/src/settings.ts`.                                                                                                                                                                                                                                                                             |
+| Dev-only annotator               | The `@nckrtl/annotator` toolbar on T3's own UI in `vite serve`, for design passes. It never ships.                                                                                                                                                                 | `apps/web/vite/annotator.ts` (`apply: "serve"`), dev dependency in `apps/web/package.json`. Workflow: [references/dev-workflow.md](.agents/skills/nckrtl-shell-design/references/dev-workflow.md).                                                                                                                                                                     |
+| Build                            | No update feed, local signing.                                                                                                                                                                                                                                     | `scripts/build-desktop-artifact.ts`, `scripts/sign-macos-local.ts`.                                                                                                                                                                                                                                                                                                    |
+
+## Keep the customizations through an upstream merge
+
+1. Merge the stable tag into the sync branch. Conflicts are expected in the
+   files listed above, most often `index.css`, `components/ui/*`,
+   `ChatView.tsx`, `RightPanelTabs.tsx`, settings components and the sidebar.
+   Keep the fork's side for styling and fork features, and re-apply upstream's
+   logic changes around it. Never drop a fork feature to make a merge clean.
+2. Run the regression scan in the skill's "Upstream sync procedure" on
+   upstream's diff. New upstream UI must follow the fork's shell rules (glass
+   popovers, `ToolbarGroup`, `text-ui`, shell dividers, `scrollbar-inset`).
+   Fix what the scan finds on the sync branch, before the build.
+3. Lint and typecheck only the touched scope (`vp lint <files>`,
+   `tsc --noEmit` in `apps/web`), and run the tests for the fork areas you
+   touched (`vp test run src/laravelToolbar`, `src/annotations`, the
+   workspace logic tests, `apps/desktop` `src/window`).
+4. Confirm the dev annotator is not in the build:
+   `grep -rl "__annotator/inject" apps/web/dist apps/server/dist` prints
+   nothing.
+5. Build, sign, install and smoke as described in `build.md`. Merge the sync
+   branch into `nckrtl` only after a good build and smoke.
+
+When something in this table changes (a new fork feature, a removed one, a
+moved file), update this file in the same commit.
