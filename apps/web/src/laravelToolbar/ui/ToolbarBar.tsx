@@ -14,8 +14,8 @@ import { cn } from "~/lib/utils";
 import { ToolbarGroup } from "~/components/ToolbarGroup";
 
 import { useOrbitTool, useToolbarTab } from "../context";
-import { formatMs, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
-import { LaravelIcon, PhpIcon } from "./brandIcons";
+import { formatMs, framework, hasQueryIssues, modelCount, summarize, wallTimeMs } from "../model";
+import { LaravelIcon, PhpIcon, SymfonyIcon } from "./brandIcons";
 import { DatabasePanel, EnvironmentPanel, MemoryPanel, ModelsPanel, TimingsPanel } from "./panels";
 import { OrbitIcon, OrbitPanel } from "./orbit";
 import {
@@ -130,6 +130,7 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
   const resize = useToolbarPanelResize(hostRef, panels.pin);
   const hostRect = useHostRect(hostRef, panels.active !== null);
   const { tab, selectedId, selected } = useToolbarTab();
+  const app = framework(selected);
   const orbit = useOrbitTool();
   const row = tab.history.find((entry) => entry.row.id === selectedId);
   const summary = row ? summarize(row.row, selected) : null;
@@ -306,11 +307,15 @@ export function ToolbarBar({ initialPanel = null }: { initialPanel?: PanelId | n
             <ToolbarGroup className="hidden @2xl:flex">
               {item(
                 "environment",
-                "Laravel and PHP",
+                `${app.name} and PHP`,
                 <>
-                  <LaravelIcon />
+                  {app.name === "Symfony" ? (
+                    <SymfonyIcon />
+                  ) : app.isLaravel ? (
+                    <LaravelIcon />
+                  ) : null}
                   <span className="text-muted-foreground">
-                    {selected.laravel?.version?.split(".").slice(0, 2).join(".") ?? "–"}
+                    {app.version?.split(".").slice(0, 2).join(".") ?? "–"}
                   </span>
                   <span className="text-muted-foreground" aria-hidden="true">
                     ·

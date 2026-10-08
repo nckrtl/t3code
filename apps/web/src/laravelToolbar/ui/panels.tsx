@@ -12,6 +12,8 @@ import {
   formatBytes,
   formatMs,
   formatUptime,
+  type Framework,
+  framework as toFramework,
   iniSwitch,
   phpLimit,
   queries as toQueries,
@@ -524,40 +526,45 @@ export function ModelsPanel() {
   );
 }
 
-// ─── Laravel & PHP ──────────────────────────────────────────────────────────
+// ─── Framework & PHP ────────────────────────────────────────────────────────
 
-function isDebug(value: ToolbarData["laravel"]): boolean {
-  const debug = value?.debug;
+function isDebug({ debug }: Framework): boolean {
   return debug === true || debug === "1" || debug === "true";
 }
 
-type EnvironmentTab = "laravel" | "php" | "fpm";
+type EnvironmentTab = "framework" | "php" | "fpm";
 
 /** Two titled columns of rows; the divider runs to the bottom of the panel. */
 function RowColumns({ children }: { children: ReactNode }) {
   return <div className="grid flex-1 grid-cols-2 divide-x">{children}</div>;
 }
 
-function LaravelTab({ selected }: { selected: ToolbarData }) {
-  const laravel = selected.laravel;
+function FrameworkTab({ selected }: { selected: ToolbarData }) {
+  const app = toFramework(selected);
   return (
     <>
       <StatStrip>
-        <Stat label="Laravel" value={laravel?.version ?? "–"} />
-        <Stat label="Environment" value={laravel?.environment ?? "–"} hint="APP_ENV" />
+        <Stat label={app.name} value={app.version ?? "–"} />
+        <Stat label="Environment" value={app.environment ?? "–"} hint="APP_ENV" />
         <Stat
           label="Debug"
-          value={isDebug(laravel) ? "On" : "Off"}
+          value={isDebug(app) ? "On" : "Off"}
           hint="APP_DEBUG"
-          tone={isDebug(laravel) ? "warning" : "default"}
+          tone={isDebug(app) ? "warning" : "default"}
         />
-        <Stat label="Inertia" value={selected.inertia?.version ?? "–"} hint="Client" />
+        {app.isLaravel ? (
+          <Stat label="Inertia" value={selected.inertia?.version ?? "–"} hint="Client" />
+        ) : null}
       </StatStrip>
       <KeyValueRows
         rows={[
-          ["Timezone", laravel?.timezone ?? "–"],
-          ["Locale", laravel?.locale ?? "–"],
-          ["Host", laravel?.host ?? "–", "mono"],
+          ...(app.isLaravel
+            ? ([
+                ["Timezone", app.timezone ?? "–"],
+                ["Locale", app.locale ?? "–"],
+              ] as const)
+            : []),
+          ["Host", app.host ?? "–", "mono"],
         ]}
       />
     </>
@@ -720,28 +727,25 @@ function FpmTab({ fpm }: { fpm: NonNullable<NonNullable<ToolbarData["php"]>["fpm
 
 export function EnvironmentPanel() {
   const { selected } = useToolbarTab();
-  const [tab, setTab] = useState<EnvironmentTab>("laravel");
+  const [tab, setTab] = useState<EnvironmentTab>("framework");
+  const app = toFramework(selected);
   const php = selected?.php;
   const fpm = php?.fpm ?? null;
   // The PHP-FPM tab exists only when the request ran under PHP-FPM.
-  const current = tab === "fpm" && !fpm ? "laravel" : tab;
+  const current = tab === "fpm" && !fpm ? "framework" : tab;
   return (
     <PanelShell
       icon={Server}
-      title="Laravel & PHP"
+      title={`${app.name} & PHP`}
       hasTabs
       flush
-      actions={
-        selected?.laravel?.host ? (
-          <span className="text-muted-foreground text-xs">{selected.laravel.host}</span>
-        ) : null
-      }
+      actions={app.host ? <span className="text-muted-foreground text-xs">{app.host}</span> : null}
     >
       <UnderlineTabs
         value={current}
         onChange={setTab}
         tabs={[
-          ["laravel", "Laravel"],
+          ["framework", app.name],
           ["php", "PHP"],
           ...(fpm ? ([["fpm", "PHP-FPM"]] as const) : []),
         ]}
@@ -750,8 +754,8 @@ export function EnvironmentPanel() {
         <div className="flex min-h-full flex-col">
           {!selected ? (
             <Loading />
-          ) : current === "laravel" ? (
-            <LaravelTab selected={selected} />
+          ) : current === "framework" ? (
+            <FrameworkTab selected={selected} />
           ) : current === "php" && php ? (
             <PhpTab php={php} />
           ) : current === "fpm" && fpm ? (
