@@ -41,6 +41,45 @@ export interface Query {
 
 const FALLBACK_STAGE_COLOR = "#8D76FF";
 
+export interface Framework {
+  readonly name: string;
+  readonly isLaravel: boolean;
+  readonly version: string | null;
+  readonly environment: string | null;
+  readonly debug: string | boolean | null;
+  readonly host: string | null;
+  readonly timezone: string | null;
+  readonly locale: string | null;
+}
+
+/** The app's framework: the bridge's `framework` section, else the package's `laravel` one. */
+export function framework(data?: ToolbarData | null): Framework {
+  const other = data?.framework;
+  if (other?.name && other.name !== "Laravel") {
+    return {
+      name: other.name,
+      isLaravel: false,
+      version: other.version ?? null,
+      environment: other.environment ?? null,
+      debug: other.debug ?? null,
+      host: other.host ?? null,
+      timezone: null,
+      locale: null,
+    };
+  }
+  const laravel = data?.laravel;
+  return {
+    name: "Laravel",
+    isLaravel: true,
+    version: laravel?.version ?? other?.version ?? null,
+    environment: laravel?.environment ?? other?.environment ?? null,
+    debug: laravel?.debug ?? other?.debug ?? null,
+    host: laravel?.host ?? other?.host ?? null,
+    timezone: laravel?.timezone ?? null,
+    locale: laravel?.locale ?? null,
+  };
+}
+
 export function requestKind(row: Pick<ToolbarHistoryRow, "is_xhr" | "response_type">): RequestKind {
   if (!row.is_xhr) return "page";
   return row.response_type === "Inertia" ? "inertia" : "xhr";

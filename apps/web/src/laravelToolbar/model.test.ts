@@ -5,6 +5,7 @@ import {
   errorReportingLabel,
   formatBytes,
   formatUptime,
+  framework,
   iniSwitch,
   phpLimit,
   propRows,
@@ -107,6 +108,19 @@ describe("laravel toolbar model", () => {
 
   it("formats freed memory with a sign", () => {
     expect(formatBytes(-14162)).toBe("-13.83 KB");
+  });
+
+  it("names the framework from the bridge's section, else from the package's", () => {
+    expect(framework({ ...page, laravel: { version: "13.4.0", timezone: "UTC" } })).toMatchObject({
+      name: "Laravel",
+      isLaravel: true,
+      version: "13.4.0",
+      timezone: "UTC",
+    });
+    expect(
+      framework({ ...page, framework: { name: "Symfony", version: "8.1.2", debug: true } }),
+    ).toMatchObject({ name: "Symfony", isLaravel: false, version: "8.1.2", timezone: null });
+    expect(framework(page)).toMatchObject({ name: "Laravel", version: null });
   });
 });
 

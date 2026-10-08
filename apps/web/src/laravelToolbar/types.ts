@@ -142,6 +142,14 @@ export interface ToolbarData {
     readonly debug?: string | boolean;
     readonly host?: string;
   };
+  /** php-data-bridge for apps without the package, such as Symfony. */
+  readonly framework?: {
+    readonly name?: string;
+    readonly version?: string | null;
+    readonly environment?: string | null;
+    readonly debug?: string | boolean | null;
+    readonly host?: string | null;
+  };
   readonly php?: {
     readonly version?: string;
     readonly memory_limit?: string;
