@@ -12,6 +12,12 @@ export const CredentialsToolkitHandlersLive = CredentialsToolkit.toLayer({
       const autofill = yield* CredentialAutofill.CredentialAutofill;
       return yield* autofill.request(input);
     }),
+  save_test_login: (input) =>
+    Effect.gen(function* () {
+      yield* McpInvocationContext.requireMcpCapability("preview");
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      return yield* autofill.saveTestLogin(input);
+    }),
   fill_credential: (input) =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.requireMcpCapability("preview");

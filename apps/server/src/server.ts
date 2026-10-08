@@ -82,6 +82,7 @@ import * as PortScanner from "./preview/PortScanner.ts";
 import * as ProcessRunner from "./processRunner.ts";
 import * as CredentialAutofill from "./credentials/CredentialAutofill.ts";
 import * as CredentialProvider from "./credentials/CredentialProvider.ts";
+import * as TestLoginStore from "./credentials/TestLoginStore.ts";
 import * as GitManager from "./git/GitManager.ts";
 import * as EnvironmentTheme from "./environmentTheme.ts";
 import * as Keybindings from "./keybindings.ts";
@@ -623,6 +624,7 @@ export const makeRoutesLayer = Layer.mergeAll(
   Layer.provide(
     CredentialAutofill.layer.pipe(
       Layer.provide(CredentialProvider.layerOnePassword.pipe(Layer.provide(ProcessRunner.layer))),
+      Layer.provideMerge(TestLoginStore.layer.pipe(Layer.provide(ServerSecretStore.layer))),
     ),
   ),
   Layer.provide(PreviewAutomationBroker.layer),

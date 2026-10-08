@@ -23,10 +23,20 @@ export const CredentialItemId = Schema.String.check(
 ).annotate({ description: "Item id from request_credentials." });
 export type CredentialItemId = typeof CredentialItemId.Type;
 
+/**
+ * Where a saved login lives. `test` logins are T3 Code's own store for test
+ * users of sites you develop: they fill without a prompt and agents may save them.
+ */
+export const CredentialSource = Schema.Literals(["1password", "test"]);
+export type CredentialSource = typeof CredentialSource.Type;
+
 export const CredentialItemSummary = Schema.Struct({
   id: CredentialItemId,
   title: Schema.String,
   urls: Schema.Array(Schema.String),
+  source: Schema.optional(CredentialSource),
+  /** Only for test logins; 1Password usernames are not shown to agents. */
+  username: Schema.optional(Schema.String),
 });
 export type CredentialItemSummary = typeof CredentialItemSummary.Type;
 
@@ -170,6 +180,7 @@ export const SiteCredentialOption = Schema.Struct({
   title: Schema.String,
   /** The username hint 1Password lists. Never sent to agents. */
   username: Schema.NullOr(Schema.String),
+  source: CredentialSource,
 });
 export type SiteCredentialOption = typeof SiteCredentialOption.Type;
 
@@ -206,3 +217,77 @@ export const FillSiteCredentialResult = Schema.Struct({
   results: Schema.Array(Schema.Struct({ field: CredentialField, status: CredentialFillStatus })),
 });
 export type FillSiteCredentialResult = typeof FillSiteCredentialResult.Type;
+
+const TestLoginText = Schema.String.check(Schema.isMaxLength(1024));
+
+/** A test login as lists show it: no password or one-time code secret. */
+export const TestLoginSummary = Schema.Struct({
+  id: CredentialItemId,
+  label: Schema.String,
+  url: Schema.String,
+  username: Schema.String,
+  hasOtp: Schema.Boolean,
+  createdAt: Schema.String,
+  createdBy: Schema.Literals(["user", "agent"]),
+});
+export type TestLoginSummary = typeof TestLoginSummary.Type;
+
+export const SaveTestLoginInput = Schema.Struct({
+  url: TestLoginText.check(Schema.isNonEmpty()).annotate({
+    description: "Sign-in page or site of the test user, for example http://myapp.test/login.",
+  }),
+  username: TestLoginText.check(Schema.isNonEmpty()),
+  password: TestLoginText,
+  label: Schema.optional(
+    TestLoginText.annotate({ description: "Short name such as admin or customer." }),
+  ),
+  otpSecret: Schema.optional(
+    TestLoginText.annotate({
+      description:
+        "Base32 TOTP secret or otpauth:// URI, when the test user has two-factor sign-in.",
+    }),
+  ),
+});
+export type SaveTestLoginInput = typeof SaveTestLoginInput.Type;
+
+export const UpdateTestLoginInput = Schema.Struct({
+  id: CredentialItemId,
+  url: Schema.optional(TestLoginText.check(Schema.isNonEmpty())),
+  username: Schema.optional(TestLoginText.check(Schema.isNonEmpty())),
+  password: Schema.optional(TestLoginText),
+  label: Schema.optional(TestLoginText),
+  /** null removes the one-time code secret. */
+  otpSecret: Schema.optional(Schema.NullOr(TestLoginText)),
+});
+export type UpdateTestLoginInput = typeof UpdateTestLoginInput.Type;
+
+export const TestLoginIdInput = Schema.Struct({ id: CredentialItemId });
+export type TestLoginIdInput = typeof TestLoginIdInput.Type;
+
+/** The stored secrets of one test login, for the user's own edit form. */
+export const TestLoginSecrets = Schema.Struct({
+  password: Schema.String,
+  otpSecret: Schema.NullOr(Schema.String),
+});
+export type TestLoginSecrets = typeof TestLoginSecrets.Type;
+
+export const TestLoginList = Schema.Struct({ items: Schema.Array(TestLoginSummary) });
+export type TestLoginList = typeof TestLoginList.Type;
+
+export class TestLoginNotFoundError extends Schema.TaggedError<TestLoginNotFoundError>()(
+  "TestLoginNotFoundError",
+  { id: Schema.String },
+) {
+  override get message(): string {
+    return "No test login with this id.";
+  }
+}
+
+export class TestLoginStoreError extends Schema.TaggedError<TestLoginStoreError>()(
+  "TestLoginStoreError",
+  { cause: Schema.optional(Schema.Defect()) },
+) {
+  override get message(): string {
+    return "T3 Code could not read or save its test logins.";
+  }
+}

@@ -19,6 +19,9 @@ import {
   type PreviewTabId,
   type RequestCredentialsInput,
   type RequestCredentialsResult,
+  type SaveTestLoginInput,
+  type TestLoginStoreError,
+  type TestLoginSummary,
 } from "@t3tools/contracts";
 import { credentialFieldExpression } from "@t3tools/shared/credentialFill";
 import * as Clock from "effect/Clock";
@@ -34,6 +37,8 @@ import type * as McpInvocationContext from "../mcp/McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../mcp/PreviewAutomationBroker.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as CredentialProvider from "./CredentialProvider.ts";
+import * as TestLoginStore from "./TestLoginStore.ts";
+import { parseTotpSetup, totpCode } from "./totp.ts";
 import {
   matchingOrigin,
   parseSavedUrl,
@@ -114,6 +119,10 @@ export class CredentialAutofill extends Context.Service<
     readonly fillForSite: (
       input: FillSiteCredentialInput,
     ) => Effect.Effect<FillSiteCredentialResult, PreviewAutomationError>;
+    /** Saves a test user an agent created, in T3 Code's own test-login store. */
+    readonly saveTestLogin: (
+      input: SaveTestLoginInput,
+    ) => Effect.Effect<TestLoginSummary, TestLoginStoreError>;
     readonly guardScript: (
       scope: McpInvocationContext.McpInvocationScope,
       tabId: PreviewTabId | undefined,
@@ -123,6 +132,7 @@ export class CredentialAutofill extends Context.Service<
 
 const make = Effect.gen(function* () {
   const provider = yield* CredentialProvider.CredentialProvider;
+  const testLogins = yield* TestLoginStore.TestLoginStore;
   const broker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
   const grants = yield* Ref.make<ReadonlyMap<string, SignInGrant>>(new Map());
@@ -134,15 +144,72 @@ const make = Effect.gen(function* () {
     Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS.credentialAutofill),
   );
 
+  const testLoginsAsCredentials = testLogins.list.pipe(
+    Effect.map((stored) =>
+      stored.map((login): CredentialProvider.CredentialLogin => ({
+        id: login.id,
+        title: login.label || login.username,
+        vaultId: "",
+        urls: [login.url],
+        username: login.username,
+        source: "test",
+      })),
+    ),
+    // A broken test store must not take 1Password down with it.
+    Effect.orElseSucceed((): ReadonlyArray<CredentialProvider.CredentialLogin> => []),
+  );
+
+  /** Test logins first, then 1Password's. A 1Password failure leaves test logins usable. */
+  const allLogins = Effect.gen(function* () {
+    const test = yield* testLoginsAsCredentials;
+    const onePassword = yield* provider.listLogins.pipe(Effect.result);
+    return onePassword._tag === "Failure"
+      ? { logins: test, onePasswordError: onePassword.failure }
+      : { logins: [...test, ...onePassword.success], onePasswordError: null };
+  });
+
+  const readTestSecret = (id: string, field: CredentialField) =>
+    testLogins.list.pipe(
+      Effect.flatMap((stored) =>
+        Clock.currentTimeMillis.pipe(Effect.map((now) => ({ stored, now }))),
+      ),
+      Effect.map(({ stored, now }) => {
+        const login = stored.find((candidate) => candidate.id === id);
+        if (!login) return Option.none<Redacted.Redacted<string>>();
+        if (field === "otp") {
+          const setup = login.otpSecret ? parseTotpSetup(login.otpSecret) : null;
+          return setup ? Option.some(Redacted.make(totpCode(setup, now))) : Option.none();
+        }
+        const value = field === "username" ? login.username : login.password;
+        return value.length > 0 ? Option.some(Redacted.make(value)) : Option.none();
+      }),
+    );
+
+  const readSecret = (
+    login: CredentialProvider.CredentialLogin,
+    field: CredentialField,
+  ): Effect.Effect<
+    Option.Option<Redacted.Redacted<string>>,
+    CredentialProvider.CredentialProviderUnavailableError | TestLoginStoreError
+  > =>
+    login.source === "test" ? readTestSecret(login.id, field) : provider.readSecret(login, field);
+
   const request: CredentialAutofill["Service"]["request"] = Effect.fn("CredentialAutofill.request")(
     function* (input) {
       const host = requestedHost(input.domain);
       if (!host) return { items: [] };
-      const logins = yield* provider.listLogins;
+      const { logins, onePasswordError } = yield* allLogins;
+      const matches = logins.filter((login) => savedUrlsMatchHost(login.urls, host));
+      if (matches.length === 0 && onePasswordError) return yield* onePasswordError;
       return {
-        items: logins
-          .filter((login) => savedUrlsMatchHost(login.urls, host))
-          .map((login) => ({ id: login.id, title: login.title, urls: login.urls })),
+        items: matches.map((login) => ({
+          id: login.id,
+          title: login.title,
+          urls: login.urls,
+          source: login.source,
+          // Agents may see test usernames; 1Password's stay with the user.
+          ...(login.source === "test" && login.username ? { username: login.username } : {}),
+        })),
       };
     },
   );
@@ -150,10 +217,15 @@ const make = Effect.gen(function* () {
   const fill: CredentialAutofill["Service"]["fill"] = Effect.fn("CredentialAutofill.fill")(
     function* (scope, input) {
       const options = yield* settings;
-      const logins = yield* provider.listLogins.pipe(Effect.result);
-      if (logins._tag === "Failure") return result("provider_unavailable", logins.failure.message);
-      const login = logins.success.find((candidate) => candidate.id === input.itemId);
-      if (!login) return result("item_not_found");
+      const { logins, onePasswordError } = yield* allLogins;
+      const login = logins.find((candidate) => candidate.id === input.itemId);
+      if (!login) {
+        return onePasswordError
+          ? result("provider_unavailable", onePasswordError.message)
+          : result("item_not_found");
+      }
+      // Test logins are for sites you develop: no prompt and no script lock.
+      const isTest = login.source === "test";
 
       const page = yield* broker.invoke<PreviewAutomationStatus>({
         scope,
@@ -181,7 +253,8 @@ const make = Effect.gen(function* () {
       const grantKey = `${tabKey(scope, tabId)}\u0000${scope.providerSessionId}\u0000${login.id}\u0000${origin}`;
       const now = yield* Clock.currentTimeMillis;
       const grant = (yield* Ref.get(grants)).get(grantKey);
-      const granted = grant !== undefined && grant.expiresAt > now && grant.fields.has(input.field);
+      const granted =
+        isTest || (grant !== undefined && grant.expiresAt > now && grant.fields.has(input.field));
       if (!granted) {
         const approvalRequest: CredentialApprovalRequest = {
           itemTitle: login.title,
@@ -227,7 +300,7 @@ const make = Effect.gen(function* () {
         origin,
         pageUrl: page.url,
         fieldExpression,
-        blockScripts: options.blockScriptsAfterFill,
+        blockScripts: options.blockScriptsAfterFill && !isTest,
       });
     },
   );
@@ -244,7 +317,7 @@ const make = Effect.gen(function* () {
     readonly blockScripts: boolean;
     readonly clientId?: string;
   }) {
-    const secret = yield* provider.readSecret(step.login, step.field).pipe(Effect.result);
+    const secret = yield* readSecret(step.login, step.field).pipe(Effect.result);
     if (secret._tag === "Failure") return result("provider_unavailable", secret.failure.message);
     if (Option.isNone(secret.success)) return result("no_value");
 
@@ -275,11 +348,8 @@ const make = Effect.gen(function* () {
     "CredentialAutofill.listForSite",
   )(function* (input) {
     const options = yield* settings;
-    const logins = yield* provider.listLogins.pipe(Effect.result);
-    if (logins._tag === "Failure") {
-      return { origin: null, items: [], unavailable: logins.failure.message };
-    }
-    const matches = logins.success.flatMap((login) => {
+    const { logins, onePasswordError } = yield* allLogins;
+    const matches = logins.flatMap((login) => {
       const origin = matchingOrigin(login.urls, input.url, {
         allowSubdomains: options.allowSubdomains,
       });
@@ -291,8 +361,9 @@ const make = Effect.gen(function* () {
         id: login.id,
         title: login.title,
         username: login.username,
+        source: login.source,
       })),
-      unavailable: null,
+      unavailable: onePasswordError?.message ?? null,
     };
   });
 
@@ -311,10 +382,9 @@ const make = Effect.gen(function* () {
     const every = (status: CredentialFillStatus) => ({
       results: input.fields.map((field) => ({ field, status })),
     });
-    const logins = yield* provider.listLogins.pipe(Effect.result);
-    if (logins._tag === "Failure") return every("provider_unavailable");
-    const login = logins.success.find((candidate) => candidate.id === input.itemId);
-    if (!login) return every("item_not_found");
+    const { logins, onePasswordError } = yield* allLogins;
+    const login = logins.find((candidate) => candidate.id === input.itemId);
+    if (!login) return every(onePasswordError ? "provider_unavailable" : "item_not_found");
     const page = yield* broker.invoke<PreviewAutomationStatus>({
       scope,
       operation: "status",
@@ -337,7 +407,7 @@ const make = Effect.gen(function* () {
         origin,
         pageUrl: page.url,
         fieldExpression: credentialFieldExpression(field),
-        blockScripts: options.blockScriptsAfterFill,
+        blockScripts: options.blockScriptsAfterFill && login.source !== "test",
         clientId: input.hostClientId,
       });
       results.push({ field, status: filled.status });
@@ -382,6 +452,7 @@ const make = Effect.gen(function* () {
     fill,
     listForSite,
     fillForSite,
+    saveTestLogin: (input) => testLogins.save(input, "agent"),
     guardScript,
   });
 });

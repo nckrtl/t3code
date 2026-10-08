@@ -16,6 +16,7 @@ import * as CredentialAutofill from "../credentials/CredentialAutofill.ts";
 import * as CredentialProvider from "../credentials/CredentialProvider.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import * as ServerSettings from "../serverSettings.ts";
+import * as TestLoginStore from "../credentials/TestLoginStore.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
@@ -72,7 +73,25 @@ interface Scenario {
   readonly approvedFields?: ReadonlyArray<string>;
   readonly fillFails?: boolean;
   readonly settings?: Partial<CredentialAutofillSettings>;
+  readonly testLogins?: ReadonlyArray<TestLoginStore.StoredTestLogin>;
+  /** 1Password's CLI fails, as when it is locked or missing. */
+  readonly onePasswordDown?: boolean;
 }
+
+const TEST_LOGIN_ID = "11111111-2222-4333-8444-555555555555";
+const testLogin = (
+  overrides: Partial<TestLoginStore.StoredTestLogin> = {},
+): TestLoginStore.StoredTestLogin => ({
+  id: TEST_LOGIN_ID,
+  label: "admin",
+  url: "https://github.com/login",
+  username: "admin@myapp.test",
+  password: "test-password",
+  otpSecret: null,
+  createdAt: "2026-10-08T00:00:00.000Z",
+  createdBy: "user",
+  ...overrides,
+});
 
 const makeHarness = (scenario: Scenario = {}) => {
   const opCalls: Array<ReadonlyArray<string>> = [];
@@ -95,8 +114,27 @@ const makeHarness = (scenario: Scenario = {}) => {
   const runner = Layer.mock(ProcessRunner.ProcessRunner)({
     run: (input) => {
       opCalls.push(input.args);
+      if (scenario.onePasswordDown) return Effect.succeed({ ...output(""), code: 1 as never });
       return Effect.succeed(output(input.args[0] === "read" ? SECRET : itemList));
     },
+  });
+  const savedTestLogins: Array<TestLoginStore.StoredTestLogin> = [...(scenario.testLogins ?? [])];
+  const testLoginStore = Layer.mock(TestLoginStore.TestLoginStore)({
+    list: Effect.sync(() => [...savedTestLogins]),
+    save: (input, createdBy) =>
+      Effect.sync(() => {
+        const login = testLogin({
+          id: "99999999-2222-4333-8444-555555555555",
+          label: input.label ?? "",
+          url: input.url,
+          username: input.username,
+          password: input.password,
+          otpSecret: input.otpSecret ?? null,
+          createdBy,
+        });
+        savedTestLogins.push(login);
+        return TestLoginStore.summarizeTestLogin(login);
+      }),
   });
   const broker = Layer.mock(PreviewAutomationBroker.PreviewAutomationBroker)({
     invoke: <A>(request: PreviewAutomationBroker.PreviewAutomationInvokeInput) => {
@@ -154,6 +192,7 @@ const makeHarness = (scenario: Scenario = {}) => {
     Layer.provide(runner),
     Layer.provide(broker),
     Layer.provide(ServerSettings.layerTest({ credentialAutofill: scenario.settings ?? {} })),
+    Layer.provide(testLoginStore),
   );
   const call = (name: string, args: Record<string, unknown>, capabilities = ["preview"] as const) =>
     Effect.gen(function* () {
@@ -169,7 +208,7 @@ const makeHarness = (scenario: Scenario = {}) => {
         );
     });
   const scope = invocation(["preview"]);
-  return { opCalls, brokerCalls, layer, call, scope };
+  return { opCalls, brokerCalls, layer, call, scope, savedTestLogins };
 };
 
 const secretReads = (opCalls: ReadonlyArray<ReadonlyArray<string>>) =>
@@ -183,11 +222,14 @@ describe("credentials MCP tools", () => {
       expect(server.tools.map(({ tool }) => tool.name).toSorted()).toEqual([
         "fill_credential",
         "request_credentials",
+        "save_test_login",
       ]);
       const result = yield* harness.call("request_credentials", { domain: "github.com" });
       expect(result.isError).toBe(false);
       expect(result.structuredContent).toEqual({
-        items: [{ id: ITEM_ID, title: "GitHub", urls: ["https://github.com/login"] }],
+        items: [
+          { id: ITEM_ID, title: "GitHub", urls: ["https://github.com/login"], source: "1password" },
+        ],
       });
       // The username hint 1Password lists is not passed on.
       expect(toJson(result)).not.toContain("nick@example.com");
@@ -407,7 +449,9 @@ describe("credentials MCP tools", () => {
       const site = yield* autofill.listForSite({ url: "https://github.com/login?return_to=/" });
       expect(site).toEqual({
         origin: "https://github.com",
-        items: [{ id: ITEM_ID, title: "GitHub", username: "nick@example.com" }],
+        items: [
+          { id: ITEM_ID, title: "GitHub", username: "nick@example.com", source: "1password" },
+        ],
         unavailable: null,
       });
       const other = yield* autofill.listForSite({ url: "https://example.org/" });
@@ -459,6 +503,78 @@ describe("credentials MCP tools", () => {
       });
       expect(filled.results).toEqual([{ field: "password", status: "origin_mismatch" }]);
       expect(secretReads(harness.opCalls)).toEqual([]);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("fills a test login without a prompt or script lock", () => {
+    const harness = makeHarness({ testLogins: [testLogin()] });
+    return Effect.gen(function* () {
+      const found = yield* harness.call("request_credentials", { domain: "github.com" });
+      expect(found.structuredContent).toMatchObject({
+        items: [
+          { id: TEST_LOGIN_ID, source: "test", username: "admin@myapp.test" },
+          { id: ITEM_ID, source: "1password" },
+        ],
+      });
+      // 1Password usernames stay with the user.
+      expect(toJson(found)).not.toContain("nick@example.com");
+
+      const filled = yield* harness.call("fill_credential", {
+        itemId: TEST_LOGIN_ID,
+        field: "password",
+      });
+      expect(filled.structuredContent).toMatchObject({ status: "filled" });
+      expect(harness.brokerCalls.map((entry) => entry.operation)).toEqual([
+        "status",
+        "credentialFill",
+      ]);
+      expect(harness.brokerCalls[1]!.input).toMatchObject({ value: "test-password" });
+      expect(secretReads(harness.opCalls)).toEqual([]);
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      yield* autofill.guardScript(harness.scope, undefined);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("generates the one-time code of a test login", () => {
+    const harness = makeHarness({
+      testLogins: [testLogin({ otpSecret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" })],
+    });
+    return Effect.gen(function* () {
+      const filled = yield* harness.call("fill_credential", {
+        itemId: TEST_LOGIN_ID,
+        field: "otp",
+      });
+      expect(filled.structuredContent).toMatchObject({ status: "filled" });
+      const fill = harness.brokerCalls.find((entry) => entry.operation === "credentialFill");
+      expect((fill!.input as { value: string }).value).toMatch(/^\d{6}$/);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("lets agents save the test users they create", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const saved = yield* harness.call("save_test_login", {
+        url: "http://myapp.test/login",
+        username: "customer@myapp.test",
+        password: "secret-for-test",
+        label: "customer",
+      });
+      expect(saved.isError).toBe(false);
+      expect(saved.structuredContent).toMatchObject({ username: "customer@myapp.test" });
+      expect(toJson(saved.structuredContent)).not.toContain("secret-for-test");
+      expect(harness.savedTestLogins.map((login) => login.createdBy)).toEqual(["agent"]);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("keeps test logins usable while 1Password is down", () => {
+    const harness = makeHarness({ testLogins: [testLogin()], onePasswordDown: true });
+    return Effect.gen(function* () {
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      const site = yield* autofill.listForSite({ url: "https://github.com/login" });
+      expect(site.items).toEqual([
+        { id: TEST_LOGIN_ID, title: "admin", username: "admin@myapp.test", source: "test" },
+      ]);
+      expect(site.unavailable).not.toBeNull();
     }).pipe(Effect.scoped, Effect.provide(harness.layer));
   });
 });

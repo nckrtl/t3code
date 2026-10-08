@@ -127,6 +127,7 @@ const T3_MCP_TOOL_LABELS: Record<
   device_close: ["Close", "Closing", "Closed", "a device"],
   request_credentials: ["Find", "Finding", "Found", "saved logins"],
   fill_credential: ["Fill", "Filling", "Filled", "a saved login"],
+  save_test_login: ["Save", "Saving", "Saved", "a test login"],
 };
 
 const CREDENTIAL_FIELD_NAMES: Readonly<Record<string, string>> = {
@@ -164,6 +165,11 @@ function credentialToolDisplayName(
   input: Record<string, unknown> | null,
   data: unknown,
 ): string | null {
+  if (name === "save_test_login") {
+    const username = nonEmptyString(input?.username);
+    if (!username || (status !== "inProgress" && status !== "completed")) return null;
+    return `${status === "inProgress" ? "Saving" : "Saved"} test login ${username}`;
+  }
   if (name === "request_credentials") {
     const domain = nonEmptyString(input?.domain);
     if (!domain) return null;
@@ -231,7 +237,7 @@ function resolveT3McpToolPresentation(
   const payload = asRecord(data);
   const input =
     asRecord(payload?.arguments) ?? asRecord(payload?.input) ?? asRecord(payload?.rawInput);
-  if (name === "request_credentials" || name === "fill_credential") {
+  if (name === "request_credentials" || name === "fill_credential" || name === "save_test_login") {
     const credential: {
       displayName: string;
       icon: "credential";
@@ -239,7 +245,13 @@ function resolveT3McpToolPresentation(
     } = {
       displayName:
         credentialToolDisplayName(name, status, input, data) ??
-        `${verb} ${name === "fill_credential" ? "a saved login" : "saved logins"}`,
+        `${verb} ${
+          name === "fill_credential"
+            ? "a saved login"
+            : name === "save_test_login"
+              ? "a test login"
+              : "saved logins"
+        }`,
       icon: "credential",
     };
     return credential;

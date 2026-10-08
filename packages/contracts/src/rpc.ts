@@ -228,6 +228,14 @@ import {
   FillSiteCredentialResult,
   ListSiteCredentialsInput,
   ListSiteCredentialsResult,
+  SaveTestLoginInput,
+  TestLoginIdInput,
+  TestLoginList,
+  TestLoginNotFoundError,
+  TestLoginSecrets,
+  TestLoginStoreError,
+  TestLoginSummary,
+  UpdateTestLoginInput,
 } from "./credentials.ts";
 import {
   PreviewAutomationError,
@@ -377,6 +385,11 @@ export const WS_METHODS = {
   credentialsStatus: "credentials.status",
   credentialsListForSite: "credentials.listForSite",
   credentialsFillForSite: "credentials.fillForSite",
+  testLoginsList: "testLogins.list",
+  testLoginsSave: "testLogins.save",
+  testLoginsUpdate: "testLogins.update",
+  testLoginsRemove: "testLogins.remove",
+  testLoginsReveal: "testLogins.reveal",
 
   // Device methods
   deviceConfigure: "device.configure",
@@ -1289,6 +1302,41 @@ const WsCredentialsFillForSiteRpc = Rpc.make(WS_METHODS.credentialsFillForSite, 
   error: Schema.Union([PreviewAutomationError, EnvironmentAuthorizationError]),
 });
 
+const TestLoginRpcError = Schema.Union([
+  TestLoginStoreError,
+  TestLoginNotFoundError,
+  EnvironmentAuthorizationError,
+]);
+
+const WsTestLoginsListRpc = Rpc.make(WS_METHODS.testLoginsList, {
+  payload: Schema.Struct({}),
+  success: TestLoginList,
+  error: TestLoginRpcError,
+});
+
+const WsTestLoginsSaveRpc = Rpc.make(WS_METHODS.testLoginsSave, {
+  payload: SaveTestLoginInput,
+  success: TestLoginSummary,
+  error: TestLoginRpcError,
+});
+
+const WsTestLoginsUpdateRpc = Rpc.make(WS_METHODS.testLoginsUpdate, {
+  payload: UpdateTestLoginInput,
+  success: TestLoginSummary,
+  error: TestLoginRpcError,
+});
+
+const WsTestLoginsRemoveRpc = Rpc.make(WS_METHODS.testLoginsRemove, {
+  payload: TestLoginIdInput,
+  error: TestLoginRpcError,
+});
+
+const WsTestLoginsRevealRpc = Rpc.make(WS_METHODS.testLoginsReveal, {
+  payload: TestLoginIdInput,
+  success: TestLoginSecrets,
+  error: TestLoginRpcError,
+});
+
 const WsSubscribePreviewEventsRpc = Rpc.make(WS_METHODS.subscribePreviewEvents, {
   payload: Schema.Struct({}),
   success: PreviewEvent,
@@ -1607,6 +1655,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsCredentialsStatusRpc,
   WsCredentialsListForSiteRpc,
   WsCredentialsFillForSiteRpc,
+  WsTestLoginsListRpc,
+  WsTestLoginsSaveRpc,
+  WsTestLoginsUpdateRpc,
+  WsTestLoginsRemoveRpc,
+  WsTestLoginsRevealRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
   WsDeviceConfigureRpc,

@@ -4,6 +4,9 @@ import {
   PreviewAutomationError,
   RequestCredentialsInput,
   RequestCredentialsResult,
+  SaveTestLoginInput,
+  TestLoginStoreError,
+  TestLoginSummary,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
@@ -42,4 +45,19 @@ const FillCredentialTool = Tool.make("fill_credential", {
   .annotate(Tool.OpenWorld, true)
   .annotate(Tool.Destructive, true);
 
-export const CredentialsToolkit = Toolkit.make(RequestCredentialsTool, FillCredentialTool);
+const SaveTestLoginTool = Tool.make("save_test_login", {
+  description:
+    "Save a test user you created for a site under development (sign-up, seeder or admin) in T3 Code's test-login store, so you and the user can sign in with it later. Test logins appear in request_credentials with source 'test' and fill without an approval prompt. Only for test users of sites being developed, never for real accounts.",
+  parameters: SaveTestLoginInput,
+  success: TestLoginSummary,
+  failure: Schema.Union([PreviewAutomationError, TestLoginStoreError]),
+  dependencies,
+})
+  .annotate(Tool.Title, "Save test login")
+  .annotate(Tool.Destructive, false);
+
+export const CredentialsToolkit = Toolkit.make(
+  RequestCredentialsTool,
+  FillCredentialTool,
+  SaveTestLoginTool,
+);

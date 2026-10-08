@@ -23,5 +23,26 @@ export function createCredentialsEnvironmentAtoms<R, E>(
       label: "environment-data:credentials:fill-for-site",
       tag: WS_METHODS.credentialsFillForSite,
     }),
+    /** T3 Code's own logins for test users. */
+    testLogins: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:credentials:test-logins",
+      tag: WS_METHODS.testLoginsList,
+    }),
+    saveTestLogin: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:credentials:save-test-login",
+      tag: WS_METHODS.testLoginsSave,
+    }),
+    updateTestLogin: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:credentials:update-test-login",
+      tag: WS_METHODS.testLoginsUpdate,
+    }),
+    removeTestLogin: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:credentials:remove-test-login",
+      tag: WS_METHODS.testLoginsRemove,
+    }),
+    revealTestLogin: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:credentials:reveal-test-login",
+      tag: WS_METHODS.testLoginsReveal,
+    }),
   };
 }

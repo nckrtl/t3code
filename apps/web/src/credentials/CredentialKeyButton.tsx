@@ -9,6 +9,7 @@ import {
   MenuGroupLabel,
   MenuItem,
   MenuPopup,
+  MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
 import { toastManager } from "~/components/ui/toast";
@@ -19,6 +20,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { useAtomCommand } from "~/state/use-atom-command";
 
 import { hostOf, originOf } from "./credentialApproval";
+import { TestLoginDialog } from "./TestLoginDialog";
 import {
   EMPTY_PAGE_FIELDS,
   type CredentialPageFields,
@@ -58,6 +60,7 @@ export function CredentialKeyButton(props: {
   const { threadRef, tabId, runtimeTabId, pageUrl, loading } = props;
   const origin = originOf(pageUrl);
   // Detection result for one URL; a different or loading page reads as none.
+  const [saveOpen, setSaveOpen] = useState(false);
   const [detected, setDetected] = useState<{
     readonly url: string;
     readonly fields: CredentialPageFields;
@@ -129,58 +132,81 @@ export function CredentialKeyButton(props: {
     }
   };
 
+  const testItems = items.filter((item) => item.source === "test");
+  const onePasswordItems = items.filter((item) => item.source === "1password");
+  const loginItem = (item: (typeof items)[number]) => (
+    <MenuItem
+      key={item.id}
+      disabled={fields.length === 0}
+      onClick={() => void fillLogin(item.id, item.title)}
+    >
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate">{item.title}</span>
+        {item.username && item.username !== item.title ? (
+          <span className="truncate text-muted-foreground text-xs">{item.username}</span>
+        ) : null}
+      </span>
+    </MenuItem>
+  );
+
   return (
-    <Menu onOpenChange={(open) => (open && pageUrl ? void detect(pageUrl) : undefined)}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <MenuTrigger
-              render={<Button variant="ghost" size="icon-xs" type="button" aria-label={label} />}
-            />
-          }
-        >
-          <KeyRoundIcon className={ready ? "text-primary" : undefined} />
-        </TooltipTrigger>
-        <TooltipPopup>{label}</TooltipPopup>
-      </Tooltip>
-      <MenuPopup align="end" sideOffset={6}>
-        <MenuGroup>
-          <MenuGroupLabel className="max-w-72">
-            <span className="block truncate">1Password · {hostOf(origin)}</span>
-          </MenuGroupLabel>
+    <>
+      <Menu onOpenChange={(open) => (open && pageUrl ? void detect(pageUrl) : undefined)}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <MenuTrigger
+                render={<Button variant="ghost" size="icon-xs" type="button" aria-label={label} />}
+              />
+            }
+          >
+            <KeyRoundIcon className={ready ? "text-primary" : undefined} />
+          </TooltipTrigger>
+          <TooltipPopup>{label}</TooltipPopup>
+        </Tooltip>
+        <MenuPopup align="end" sideOffset={6}>
           {sites.error && !sites.data ? (
             // An older T3 server answers with an unknown-request error.
             <MenuItem disabled>This thread's server can't look up saved logins</MenuItem>
-          ) : sites.data?.unavailable ? (
-            <MenuItem disabled>1Password is unavailable</MenuItem>
-          ) : items.length === 0 ? (
-            <MenuItem disabled>
-              {sites.isPending ? "Checking…" : "No saved logins for this site"}
-            </MenuItem>
           ) : (
-            items.map((item) => (
-              <MenuItem
-                key={item.id}
-                disabled={fields.length === 0}
-                onClick={() => void fillLogin(item.id, item.title)}
-              >
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate">{item.title}</span>
-                  {item.username ? (
-                    <span className="truncate text-muted-foreground text-xs">{item.username}</span>
-                  ) : null}
-                </span>
-              </MenuItem>
-            ))
+            <>
+              <MenuGroup>
+                <MenuGroupLabel className="max-w-72">
+                  <span className="block truncate">Test logins · {hostOf(origin)}</span>
+                </MenuGroupLabel>
+                {testItems.map(loginItem)}
+                <MenuItem onClick={() => setSaveOpen(true)}>Save a test login…</MenuItem>
+              </MenuGroup>
+              <MenuSeparator />
+              <MenuGroup>
+                <MenuGroupLabel>1Password</MenuGroupLabel>
+                {sites.data?.unavailable ? (
+                  <MenuItem disabled>1Password is unavailable</MenuItem>
+                ) : onePasswordItems.length === 0 ? (
+                  <MenuItem disabled>
+                    {sites.isPending ? "Checking…" : "No saved logins for this site"}
+                  </MenuItem>
+                ) : (
+                  onePasswordItems.map(loginItem)
+                )}
+              </MenuGroup>
+              {items.length > 0 && fields.length === 0 ? (
+                <MenuGroupLabel>No sign-in field on this page</MenuGroupLabel>
+              ) : null}
+              {items.length > 0 && fields[0] === "otp" ? (
+                <MenuGroupLabel>Fills the one-time code</MenuGroupLabel>
+              ) : null}
+            </>
           )}
-        </MenuGroup>
-        {items.length > 0 && fields.length === 0 ? (
-          <MenuGroupLabel>No sign-in field on this page</MenuGroupLabel>
-        ) : null}
-        {items.length > 0 && fields.length > 0 && fields[0] === "otp" ? (
-          <MenuGroupLabel>Fills the one-time code</MenuGroupLabel>
-        ) : null}
-      </MenuPopup>
-    </Menu>
+        </MenuPopup>
+      </Menu>
+      <TestLoginDialog
+        environmentId={threadRef.environmentId}
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        initialUrl={pageUrl ?? undefined}
+        onSaved={() => sites.refresh()}
+      />
+    </>
   );
 }

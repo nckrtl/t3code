@@ -18,6 +18,7 @@ export interface CredentialLogin {
   readonly urls: ReadonlyArray<string>;
   /** 1Password's username hint. Shown to the user only, never to agents. */
   readonly username: string | null;
+  readonly source: "1password" | "test";
 }
 
 /**
@@ -105,6 +106,7 @@ function parseOnePasswordItemList(stdout: string): ReadonlyArray<CredentialLogin
           vaultId: item.vault.id,
           urls: (item.urls ?? []).map((url) => url.href),
           username: item.additional_information?.trim() || null,
+          source: "1password" as const,
         })),
   });
 }

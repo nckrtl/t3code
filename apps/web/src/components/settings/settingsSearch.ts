@@ -594,6 +594,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "test-logins",
+    title: "Test logins",
+    to: "/settings/passwords",
+    scope: "environment-defaults",
+    searchTerms: ["test users seed accounts development login passwords one-time code agents"],
+  },
+  {
     id: "credential-sign-in-approval",
     title: "One approval per sign-in",
     to: "/settings/passwords",
