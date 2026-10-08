@@ -220,6 +220,7 @@ import { PullRequestsUnavailableState } from "./pullRequest/PullRequestsUnavaila
 import { RightPanelTabs } from "./RightPanelTabs";
 import { AgentsPanel } from "./AgentsPanel";
 import { ApiPanel } from "../api/ApiPanel";
+import { DatabasePanel } from "../database/DatabasePanel";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
 import { ThreadPullRequestsPanel } from "./pullRequest/ThreadPullRequestsPanel";
 import { useDeviceState } from "~/state/device";
@@ -4586,6 +4587,12 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadRef ? (state.byThreadKey[scopedThreadKey(activeThreadRef)]?.url ?? null) : null,
   );
   const apiBaseUrl = orbitInstanceUrl ?? configuredPreviewUrls[0] ?? null;
+  // nckrtl fork: the Database panel asks Orbit from the project's machine.
+  const databaseAvailable = activeThreadRef !== null && activeProject !== null;
+  const addDatabaseSurface = useCallback(() => {
+    if (!activeThreadRef || !activeProject) return;
+    useRightPanelStore.getState().open(activeThreadRef, "database");
+  }, [activeProject, activeThreadRef]);
   const supportsThreadPullRequests =
     serverConfig?.environment.capabilities.threadPullRequests === true;
   const visiblePullRequests = visibleThreadPullRequests(
@@ -9741,6 +9748,16 @@ export default function ChatView(props: ChatViewProps) {
       <ThreadPullRequestsPanel threadRef={activeThreadRef} />
     ) : renderedRightPanelSurface?.kind === "api" && activeThreadRef && activeProjectKey ? (
       <ApiPanel threadRef={activeThreadRef} projectKey={activeProjectKey} baseUrl={apiBaseUrl} />
+    ) : renderedRightPanelSurface?.kind === "database" &&
+      activeThreadRef &&
+      activeProject &&
+      activeProjectKey ? (
+      <DatabasePanel
+        threadRef={activeThreadRef}
+        projectKey={activeProjectKey}
+        environmentId={activeProject.environmentId}
+        cwd={activeProject.workspaceRoot}
+      />
     ) : renderedRightPanelSurface?.kind === "agents" ? (
       <AgentsPanel
         model={agentPanelModel}
@@ -10429,6 +10446,8 @@ export default function ChatView(props: ChatViewProps) {
             onAddDevice={addDeviceSurface}
             onAddApi={addApiSurface}
             apiAvailable={apiAvailable}
+            onAddDatabase={addDatabaseSurface}
+            databaseAvailable={databaseAvailable}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}
@@ -10489,6 +10508,8 @@ export default function ChatView(props: ChatViewProps) {
             onAddDevice={addDeviceSurface}
             onAddApi={addApiSurface}
             apiAvailable={apiAvailable}
+            onAddDatabase={addDatabaseSurface}
+            databaseAvailable={databaseAvailable}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}

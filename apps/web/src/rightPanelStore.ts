@@ -30,6 +30,7 @@ const RIGHT_PANEL_KINDS = [
   "pull-requests",
   "agents",
   "api",
+  "database",
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
@@ -88,7 +89,9 @@ export type RightPanelSurface =
   | { id: "pull-requests"; kind: "pull-requests" }
   | { id: "agents"; kind: "agents" }
   /** nckrtl fork: the API request panel, one per thread. */
-  | { id: "api"; kind: "api" };
+  | { id: "api"; kind: "api" }
+  /** nckrtl fork: the Database panel (Orbit database connections), one per thread. */
+  | { id: "database"; kind: "database" };
 
 const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
 // v9 removed the "plan" surface kind (plans render inline in the transcript).
@@ -198,6 +201,8 @@ const singletonSurface = (
       return { id: "device", kind };
     case "api":
       return { id: "api", kind };
+    case "database":
+      return { id: "database", kind };
   }
 };
 

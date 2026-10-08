@@ -17,6 +17,7 @@ import {
   Bot,
   Smartphone,
   Webhook,
+  Database,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -127,6 +128,9 @@ interface RightPanelTabsProps {
   /** nckrtl fork: the API request panel; absent where it is not offered. */
   onAddApi?: (() => void) | undefined;
   apiAvailable?: boolean | undefined;
+  /** nckrtl fork: the Database panel (Orbit connections); absent where it is not offered. */
+  onAddDatabase?: (() => void) | undefined;
+  databaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -167,6 +171,7 @@ const SURFACE_DISABLED_REASONS = {
   agents: "Agents are only available from a thread.",
   device: "Devices are only available from a thread.",
   api: "API requests are only available in the T3 Code desktop app, from a project thread.",
+  database: "Databases are only available from a project thread.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -192,6 +197,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   agents: "Available from a thread.",
   device: "Available from a thread.",
   api: "Available in the desktop app.",
+  database: "Available when a project is open.",
 } as const;
 
 type TabContextMenuAction =
@@ -335,6 +341,9 @@ function RightPanelEmptyState(props: {
   /** nckrtl fork: the API request panel; absent where it is not offered. */
   onAddApi?: (() => void) | undefined;
   apiAvailable?: boolean | undefined;
+  /** nckrtl fork: the Database panel (Orbit connections); absent where it is not offered. */
+  onAddDatabase?: (() => void) | undefined;
+  databaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -366,6 +375,16 @@ function RightPanelEmptyState(props: {
       available: props.apiAvailable === true,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.api,
       onClick: props.onAddApi ?? (() => undefined),
+      badgeCount: 0,
+    },
+    {
+      label: "Database",
+      description: "Browse tables and run read-only SQL on Orbit's databases.",
+      icon: Database,
+      shortcut: "Q",
+      available: props.databaseAvailable === true,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.database,
+      onClick: props.onAddDatabase ?? (() => undefined),
       badgeCount: 0,
     },
     {
@@ -651,6 +670,8 @@ function surfaceTitle(
       return "Agents";
     case "api":
       return "API";
+    case "database":
+      return "Database";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
@@ -738,6 +759,8 @@ function SurfaceIcon({
       return <Bot className="size-4 shrink-0" />;
     case "api":
       return <Webhook className="size-4 shrink-0" />;
+    case "database":
+      return <Database className="size-4 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-4 shrink-0" />
@@ -907,6 +930,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.apiAvailable === true,
       disabledReason: SURFACE_DISABLED_REASONS.api,
       onClick: props.onAddApi ?? (() => undefined),
+    },
+    {
+      label: "Database",
+      icon: Database,
+      shortcut: "Q",
+      available: props.databaseAvailable === true,
+      disabledReason: SURFACE_DISABLED_REASONS.database,
+      onClick: props.onAddDatabase ?? (() => undefined),
     },
     {
       label: "Terminal",
@@ -1463,6 +1494,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddDevice={props.onAddDevice}
             onAddApi={props.onAddApi}
             apiAvailable={props.apiAvailable}
+            onAddDatabase={props.onAddDatabase}
+            databaseAvailable={props.databaseAvailable}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}

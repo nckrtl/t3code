@@ -8,7 +8,11 @@ export function ApiTabs<T extends string>({
   trailing,
 }: {
   value: T;
-  tabs: ReadonlyArray<{ readonly id: T; readonly label: string; readonly count?: number }>;
+  tabs: ReadonlyArray<{
+    readonly id: T;
+    readonly label: string;
+    readonly count?: number | undefined;
+  }>;
   onChange: (tab: T) => void;
   trailing?: React.ReactNode;
 }) {

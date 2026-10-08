@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  inlineBindings,
   errorReportingLabel,
   formatBytes,
   formatUptime,
@@ -106,5 +107,18 @@ describe("laravel toolbar model", () => {
 
   it("formats freed memory with a sign", () => {
     expect(formatBytes(-14162)).toBe("-13.83 KB");
+  });
+});
+
+describe("inlineBindings", () => {
+  it("writes bindings into placeholders outside quotes", () => {
+    expect(
+      inlineBindings("select * from `t?` where a = ? and b = ? and c = '?' and d = ?", [
+        "it's",
+        3,
+        null,
+      ]),
+    ).toBe("select * from `t?` where a = 'it''s' and b = 3 and c = '?' and d = NULL");
+    expect(inlineBindings("select ? , ?", [true])).toBe("select 1 , ?");
   });
 });

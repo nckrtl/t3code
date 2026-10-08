@@ -10,6 +10,8 @@ import { createTerminalOrbitTransport } from "~/orbit/orbitTransport";
 import { useProject, useThreadShell } from "~/state/entities";
 import { serverEnvironment } from "~/state/server";
 
+import { openDatabaseQuery } from "~/database/databaseStore";
+
 import { browserToolbarSource } from "./bridge";
 import { ToolbarProvider, type ToolbarSource } from "./context";
 import { gatewayOrbitSource, type OrbitSource } from "./orbit";
@@ -79,9 +81,10 @@ export function BrowserLaravelToolbar({
     () => ({
       ...browserToolbarSource(tabId, (target) => void openInPreferredEditor(target)),
       ...(fetchDetails ? { fetchDetails } : {}),
+      openQuery: (sql: string) => openDatabaseQuery(threadRef, sql),
       orbit,
     }),
-    [fetchDetails, openInPreferredEditor, orbit, tabId],
+    [fetchDetails, openInPreferredEditor, orbit, tabId, threadRef],
   );
   if (!tab?.currentId) return null;
   // The payload comes from the page. Data the bar cannot show hides the bar until new data
