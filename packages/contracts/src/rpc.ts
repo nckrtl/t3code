@@ -222,7 +222,13 @@ import {
   DeviceSession,
   DeviceShutdownInput,
 } from "./device.ts";
-import { CredentialProviderStatus } from "./credentials.ts";
+import {
+  CredentialProviderStatus,
+  FillSiteCredentialInput,
+  FillSiteCredentialResult,
+  ListSiteCredentialsInput,
+  ListSiteCredentialsResult,
+} from "./credentials.ts";
 import {
   PreviewAutomationError,
   PreviewAutomationHost,
@@ -369,6 +375,8 @@ export const WS_METHODS = {
   previewAutomationRespond: "previewAutomation.respond",
   previewAutomationFocusHost: "previewAutomation.focusHost",
   credentialsStatus: "credentials.status",
+  credentialsListForSite: "credentials.listForSite",
+  credentialsFillForSite: "credentials.fillForSite",
 
   // Device methods
   deviceConfigure: "device.configure",
@@ -1269,6 +1277,18 @@ const WsCredentialsStatusRpc = Rpc.make(WS_METHODS.credentialsStatus, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsCredentialsListForSiteRpc = Rpc.make(WS_METHODS.credentialsListForSite, {
+  payload: ListSiteCredentialsInput,
+  success: ListSiteCredentialsResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCredentialsFillForSiteRpc = Rpc.make(WS_METHODS.credentialsFillForSite, {
+  payload: FillSiteCredentialInput,
+  success: FillSiteCredentialResult,
+  error: Schema.Union([PreviewAutomationError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribePreviewEventsRpc = Rpc.make(WS_METHODS.subscribePreviewEvents, {
   payload: Schema.Struct({}),
   success: PreviewEvent,
@@ -1585,6 +1605,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsPreviewAutomationRespondRpc,
   WsPreviewAutomationFocusHostRpc,
   WsCredentialsStatusRpc,
+  WsCredentialsListForSiteRpc,
+  WsCredentialsFillForSiteRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
   WsDeviceConfigureRpc,

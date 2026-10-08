@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import {
   type CredentialAutofillSettings,
   EnvironmentId,
+  PreviewTabId,
   PreviewAutomationExecutionError,
   ProviderInstanceId,
   ThreadId,
@@ -75,7 +76,12 @@ interface Scenario {
 
 const makeHarness = (scenario: Scenario = {}) => {
   const opCalls: Array<ReadonlyArray<string>> = [];
-  const brokerCalls: Array<{ operation: string; input: unknown; tabId?: string }> = [];
+  const brokerCalls: Array<{
+    operation: string;
+    input: unknown;
+    tabId?: string;
+    clientId?: string;
+  }> = [];
   const output = (stdout: string): ProcessRunner.ProcessRunOutput => ({
     stdout,
     stderr: "",
@@ -98,6 +104,7 @@ const makeHarness = (scenario: Scenario = {}) => {
         operation: request.operation,
         input: request.input,
         ...(request.tabId === undefined ? {} : { tabId: request.tabId }),
+        ...(request.clientId === undefined ? {} : { clientId: request.clientId }),
       });
       switch (request.operation) {
         case "status": {
@@ -391,5 +398,67 @@ describe("credentials MCP tools", () => {
         yield* autofill.guardScript(off.scope, undefined);
       }).pipe(Effect.provide(off.layer));
     }).pipe(Effect.scoped);
+  });
+
+  it.effect("lists the site's logins with username hints for the user's key menu", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      const site = yield* autofill.listForSite({ url: "https://github.com/login?return_to=/" });
+      expect(site).toEqual({
+        origin: "https://github.com",
+        items: [{ id: ITEM_ID, title: "GitHub", username: "nick@example.com" }],
+        unavailable: null,
+      });
+      const other = yield* autofill.listForSite({ url: "https://example.org/" });
+      expect(other).toEqual({ origin: null, items: [], unavailable: null });
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("fills a login the user picked without a prompt, only through their host", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      const filled = yield* autofill.fillForSite({
+        environmentId: harness.scope.environmentId,
+        threadId: harness.scope.threadId,
+        tabId: PreviewTabId.make("tab-1"),
+        hostClientId: "desktop-host-1",
+        itemId: ITEM_ID,
+        fields: ["username", "password"],
+      });
+      expect(filled.results).toEqual([
+        { field: "username", status: "filled" },
+        { field: "password", status: "filled" },
+      ]);
+      expect(harness.brokerCalls.map((entry) => entry.operation)).toEqual([
+        "status",
+        "credentialFill",
+        "credentialFill",
+      ]);
+      expect(harness.brokerCalls.every((entry) => entry.clientId === "desktop-host-1")).toBe(true);
+      // The password fill locks agent scripts in that tab, as an agent fill would.
+      const blocked = yield* autofill
+        .guardScript(harness.scope, PreviewTabId.make("tab-1"))
+        .pipe(Effect.result);
+      expect(blocked._tag).toBe("Failure");
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
+  });
+
+  it.effect("refuses a user fill on another site without reading a secret", () => {
+    const harness = makeHarness({ tabUrl: "https://gitlab.com/users/sign_in" });
+    return Effect.gen(function* () {
+      const autofill = yield* CredentialAutofill.CredentialAutofill;
+      const filled = yield* autofill.fillForSite({
+        environmentId: harness.scope.environmentId,
+        threadId: harness.scope.threadId,
+        tabId: PreviewTabId.make("tab-1"),
+        hostClientId: "desktop-host-1",
+        itemId: ITEM_ID,
+        fields: ["password"],
+      });
+      expect(filled.results).toEqual([{ field: "password", status: "origin_mismatch" }]);
+      expect(secretReads(harness.opCalls)).toEqual([]);
+    }).pipe(Effect.scoped, Effect.provide(harness.layer));
   });
 });

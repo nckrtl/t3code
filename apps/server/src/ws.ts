@@ -3810,6 +3810,18 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.credentialsStatus, credentialAutofill.status, {
             "rpc.aggregate": "credentials",
           }),
+        [WS_METHODS.credentialsListForSite]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.credentialsListForSite,
+            credentialAutofill.listForSite(input),
+            { "rpc.aggregate": "credentials" },
+          ),
+        [WS_METHODS.credentialsFillForSite]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.credentialsFillForSite,
+            credentialAutofill.fillForSite(input),
+            { "rpc.aggregate": "credentials" },
+          ),
         [WS_METHODS.previewAutomationFocusHost]: (input) =>
           observeRpcEffect(
             WS_METHODS.previewAutomationFocusHost,

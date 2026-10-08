@@ -56,6 +56,8 @@ interface Props {
   pickDisabledReason?: string | undefined;
   /** rooms-patches: browser annotations control, rendered right after the picker. */
   annotationAction?: ReactNode;
+  /** The saved-login key, shown inside the address bar's trailing edge. */
+  credentialAction?: ReactNode;
   /**
    * Trailing slot rendered after the URL input. Used by the preview view
    * to mount the three-dot menu (hard reload, devtools, zoom, clear data).
@@ -96,6 +98,7 @@ export function PreviewChromeRow({
   trailingActions,
   leadingActions,
   annotationAction,
+  credentialAction,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState(url);
@@ -215,6 +218,9 @@ export function PreviewChromeRow({
               }
             />
           </Tooltip>
+          {credentialAction && !inputFocused ? (
+            <InputGroupAddon align="inline-end">{credentialAction}</InputGroupAddon>
+          ) : null}
           {onOpenInBrowser && !inputFocused ? (
             <InputGroupAddon align="inline-end">
               {/* Revealed on hover so a resting address bar reads as plain text. */}

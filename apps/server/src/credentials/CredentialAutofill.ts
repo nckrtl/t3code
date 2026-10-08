@@ -8,6 +8,11 @@ import {
   type CredentialFillStatus,
   type CredentialProviderStatus,
   type FillCredentialInput,
+  type FillSiteCredentialInput,
+  type FillSiteCredentialResult,
+  type ListSiteCredentialsInput,
+  type ListSiteCredentialsResult,
+  ProviderInstanceId,
   type FillCredentialResult,
   type PreviewAutomationError,
   type PreviewAutomationStatus,
@@ -98,6 +103,17 @@ export class CredentialAutofill extends Context.Service<
      * Fails when agent JavaScript would run in a tab that still shows a page
      * a password or code was filled into.
      */
+    /** Saved logins for the page the user is on, for the browser's key menu. */
+    readonly listForSite: (
+      input: ListSiteCredentialsInput,
+    ) => Effect.Effect<ListSiteCredentialsResult>;
+    /**
+     * Fills fields the user picked in the browser's key menu. No prompt: the
+     * user asked in that browser, and the value only goes to the host that sent it.
+     */
+    readonly fillForSite: (
+      input: FillSiteCredentialInput,
+    ) => Effect.Effect<FillSiteCredentialResult, PreviewAutomationError>;
     readonly guardScript: (
       scope: McpInvocationContext.McpInvocationScope,
       tabId: PreviewTabId | undefined,
@@ -203,30 +219,131 @@ const make = Effect.gen(function* () {
         }
       }
 
-      const secret = yield* provider.readSecret(login, input.field).pipe(Effect.result);
-      if (secret._tag === "Failure") return result("provider_unavailable", secret.failure.message);
-      if (Option.isNone(secret.success)) return result("no_value");
-
-      const filled = yield* broker.invoke<unknown>({
+      return yield* readAndFill({
         scope,
-        operation: "credentialFill",
-        input: {
-          field: input.field,
-          expectedOrigin: origin,
-          fieldExpression,
-          value: Redacted.value(secret.success.value),
-        },
+        login,
+        field: input.field,
         tabId,
-        updateCurrentTab: false,
+        origin,
+        pageUrl: page.url,
+        fieldExpression,
+        blockScripts: options.blockScriptsAfterFill,
       });
-      const status = Option.getOrUndefined(decodeFillResult(filled))?.status ?? "insert_failed";
-      if (status === "filled" && input.field !== "username" && options.blockScriptsAfterFill) {
-        const url = page.url;
-        yield* Ref.update(locks, (current) => new Map(current).set(tabKey(scope, tabId), url));
-      }
-      return result(status);
     },
   );
+
+  /** Reads one value and has the desktop insert it. Never returns the value. */
+  const readAndFill = Effect.fn("CredentialAutofill.readAndFill")(function* (step: {
+    readonly scope: McpInvocationContext.McpInvocationScope;
+    readonly login: CredentialProvider.CredentialLogin;
+    readonly field: CredentialField;
+    readonly tabId: PreviewTabId;
+    readonly origin: string;
+    readonly pageUrl: string;
+    readonly fieldExpression: string;
+    readonly blockScripts: boolean;
+    readonly clientId?: string;
+  }) {
+    const secret = yield* provider.readSecret(step.login, step.field).pipe(Effect.result);
+    if (secret._tag === "Failure") return result("provider_unavailable", secret.failure.message);
+    if (Option.isNone(secret.success)) return result("no_value");
+
+    const filled = yield* broker.invoke<unknown>({
+      scope: step.scope,
+      operation: "credentialFill",
+      input: {
+        field: step.field,
+        expectedOrigin: step.origin,
+        fieldExpression: step.fieldExpression,
+        value: Redacted.value(secret.success.value),
+      },
+      tabId: step.tabId,
+      updateCurrentTab: false,
+      ...(step.clientId === undefined ? {} : { clientId: step.clientId }),
+    });
+    const status = Option.getOrUndefined(decodeFillResult(filled))?.status ?? "insert_failed";
+    if (status === "filled" && step.field !== "username" && step.blockScripts) {
+      const url = step.pageUrl;
+      yield* Ref.update(locks, (current) =>
+        new Map(current).set(tabKey(step.scope, step.tabId), url),
+      );
+    }
+    return result(status);
+  });
+
+  const listForSite: CredentialAutofill["Service"]["listForSite"] = Effect.fn(
+    "CredentialAutofill.listForSite",
+  )(function* (input) {
+    const options = yield* settings;
+    const logins = yield* provider.listLogins.pipe(Effect.result);
+    if (logins._tag === "Failure") {
+      return { origin: null, items: [], unavailable: logins.failure.message };
+    }
+    const matches = logins.success.flatMap((login) => {
+      const origin = matchingOrigin(login.urls, input.url, {
+        allowSubdomains: options.allowSubdomains,
+      });
+      return origin ? [{ origin, login }] : [];
+    });
+    return {
+      origin: matches[0]?.origin ?? null,
+      items: matches.map(({ login }) => ({
+        id: login.id,
+        title: login.title,
+        username: login.username,
+      })),
+      unavailable: null,
+    };
+  });
+
+  const fillForSite: CredentialAutofill["Service"]["fillForSite"] = Effect.fn(
+    "CredentialAutofill.fillForSite",
+  )(function* (input) {
+    const options = yield* settings;
+    const scope: McpInvocationContext.McpInvocationScope = {
+      environmentId: input.environmentId,
+      threadId: input.threadId,
+      providerSessionId: `user:${input.hostClientId}`,
+      providerInstanceId: ProviderInstanceId.make("user"),
+      capabilities: new Set(["preview"]),
+      issuedAt: 0,
+    };
+    const every = (status: CredentialFillStatus) => ({
+      results: input.fields.map((field) => ({ field, status })),
+    });
+    const logins = yield* provider.listLogins.pipe(Effect.result);
+    if (logins._tag === "Failure") return every("provider_unavailable");
+    const login = logins.success.find((candidate) => candidate.id === input.itemId);
+    if (!login) return every("item_not_found");
+    const page = yield* broker.invoke<PreviewAutomationStatus>({
+      scope,
+      operation: "status",
+      input: {},
+      tabId: input.tabId,
+      clientId: input.hostClientId,
+    });
+    if (!page.available || !page.url) return every("tab_unavailable");
+    const origin = matchingOrigin(login.urls, page.url, {
+      allowSubdomains: options.allowSubdomains,
+    });
+    if (!origin) return every("origin_mismatch");
+    const results: Array<{ field: CredentialField; status: CredentialFillStatus }> = [];
+    for (const field of input.fields) {
+      const filled = yield* readAndFill({
+        scope,
+        login,
+        field,
+        tabId: input.tabId,
+        origin,
+        pageUrl: page.url,
+        fieldExpression: credentialFieldExpression(field),
+        blockScripts: options.blockScriptsAfterFill,
+        clientId: input.hostClientId,
+      });
+      results.push({ field, status: filled.status });
+    }
+    return { results };
+  });
 
   const guardScript: CredentialAutofill["Service"]["guardScript"] = Effect.fn(
     "CredentialAutofill.guardScript",
@@ -259,7 +376,14 @@ const make = Effect.gen(function* () {
     });
   });
 
-  return CredentialAutofill.of({ status: provider.status, request, fill, guardScript });
+  return CredentialAutofill.of({
+    status: provider.status,
+    request,
+    fill,
+    listForSite,
+    fillForSite,
+    guardScript,
+  });
 });
 
 export const layer = Layer.effect(CredentialAutofill, make);

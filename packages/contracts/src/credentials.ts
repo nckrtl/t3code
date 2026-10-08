@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect";
 
+import { EnvironmentId, ThreadId } from "./baseSchemas.ts";
 import { PreviewTabId } from "./preview.ts";
 
 /**
@@ -162,3 +163,46 @@ export const CredentialAutofillSettingsPatch = Schema.Struct({
   blockScriptsAfterFill: Schema.optionalKey(Schema.Boolean),
   allowSubdomains: Schema.optionalKey(Schema.Boolean),
 });
+
+/** A saved login offered in the browser's own key menu. Shown to the user only. */
+export const SiteCredentialOption = Schema.Struct({
+  id: CredentialItemId,
+  title: Schema.String,
+  /** The username hint 1Password lists. Never sent to agents. */
+  username: Schema.NullOr(Schema.String),
+});
+export type SiteCredentialOption = typeof SiteCredentialOption.Type;
+
+export const ListSiteCredentialsInput = Schema.Struct({
+  url: Schema.String.check(Schema.isMaxLength(4096)),
+});
+export type ListSiteCredentialsInput = typeof ListSiteCredentialsInput.Type;
+
+export const ListSiteCredentialsResult = Schema.Struct({
+  /** The tab origin the logins match, or null when nothing matches. */
+  origin: Schema.NullOr(Schema.String),
+  items: Schema.Array(SiteCredentialOption),
+  /** Set when the password manager could not be asked. */
+  unavailable: Schema.NullOr(Schema.String),
+});
+export type ListSiteCredentialsResult = typeof ListSiteCredentialsResult.Type;
+
+/**
+ * The user picked a login in the browser's key menu. Runs without a prompt,
+ * so it only goes to the desktop host named by `hostClientId`, the window
+ * whose own browser sent it.
+ */
+export const FillSiteCredentialInput = Schema.Struct({
+  environmentId: EnvironmentId,
+  threadId: ThreadId,
+  tabId: PreviewTabId,
+  hostClientId: Schema.String.check(Schema.isNonEmpty()).check(Schema.isMaxLength(128)),
+  itemId: CredentialItemId,
+  fields: Schema.Array(CredentialField).check(Schema.isMinLength(1)).check(Schema.isMaxLength(3)),
+});
+export type FillSiteCredentialInput = typeof FillSiteCredentialInput.Type;
+
+export const FillSiteCredentialResult = Schema.Struct({
+  results: Schema.Array(Schema.Struct({ field: CredentialField, status: CredentialFillStatus })),
+});
+export type FillSiteCredentialResult = typeof FillSiteCredentialResult.Type;

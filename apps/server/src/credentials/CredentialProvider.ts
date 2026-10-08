@@ -16,6 +16,8 @@ export interface CredentialLogin {
   readonly title: string;
   readonly vaultId: string;
   readonly urls: ReadonlyArray<string>;
+  /** 1Password's username hint. Shown to the user only, never to agents. */
+  readonly username: string | null;
 }
 
 /**
@@ -73,6 +75,7 @@ const OnePasswordItem = Schema.Struct({
   id: Schema.String,
   title: Schema.optional(Schema.String),
   vault: Schema.Struct({ id: Schema.String }),
+  additional_information: Schema.optional(Schema.String),
   urls: Schema.optional(Schema.Array(Schema.Struct({ href: Schema.String }))),
 });
 const decodeOnePasswordItems = Schema.decodeUnknownOption(
@@ -101,6 +104,7 @@ function parseOnePasswordItemList(stdout: string): ReadonlyArray<CredentialLogin
           title: item.title ?? "",
           vaultId: item.vault.id,
           urls: (item.urls ?? []).map((url) => url.href),
+          username: item.additional_information?.trim() || null,
         })),
   });
 }
