@@ -219,6 +219,8 @@ import { PullRequestDetailGhost } from "./pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "./pullRequest/PullRequestsUnavailableState";
 import { RightPanelTabs } from "./RightPanelTabs";
 import { AgentsPanel } from "./AgentsPanel";
+import { ApiPanel } from "../api/ApiPanel";
+import { DatabasePanel } from "../database/DatabasePanel";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
 import { ThreadPullRequestsPanel } from "./pullRequest/ThreadPullRequestsPanel";
 import { useDeviceState } from "~/state/device";
@@ -4571,6 +4573,30 @@ export default function ChatView(props: ChatViewProps) {
     if (!activeThreadRef) return;
     useRightPanelStore.getState().open(activeThreadRef, "agents");
   }, [activeThreadRef]);
+  // nckrtl fork: the API panel sends from the desktop shell, per project.
+  const apiAvailable =
+    activeThreadRef !== null &&
+    activeProjectKey !== null &&
+    typeof window !== "undefined" &&
+    window.desktopBridge?.apiSend !== undefined;
+  const addApiSurface = useCallback(() => {
+    if (!activeThreadRef || !apiAvailable) return;
+    useRightPanelStore.getState().open(activeThreadRef, "api");
+  }, [activeThreadRef, apiAvailable]);
+  const orbitInstanceUrl = useOrbitThreadStore((state) =>
+    activeThreadRef ? (state.byThreadKey[scopedThreadKey(activeThreadRef)]?.url ?? null) : null,
+  );
+  const apiBaseUrl = orbitInstanceUrl ?? configuredPreviewUrls[0] ?? null;
+  // nckrtl fork: the Database panel connects from the desktop shell.
+  const databaseAvailable =
+    activeThreadRef !== null &&
+    activeProject !== null &&
+    typeof window !== "undefined" &&
+    window.desktopBridge?.databaseRun !== undefined;
+  const addDatabaseSurface = useCallback(() => {
+    if (!activeThreadRef || !activeProject || !databaseAvailable) return;
+    useRightPanelStore.getState().open(activeThreadRef, "database");
+  }, [activeProject, activeThreadRef, databaseAvailable]);
   const supportsThreadPullRequests =
     serverConfig?.environment.capabilities.threadPullRequests === true;
   const visiblePullRequests = visibleThreadPullRequests(
@@ -9724,6 +9750,18 @@ export default function ChatView(props: ChatViewProps) {
       />
     ) : renderedRightPanelSurface?.kind === "pull-requests" && activeThreadRef ? (
       <ThreadPullRequestsPanel threadRef={activeThreadRef} />
+    ) : renderedRightPanelSurface?.kind === "api" && activeThreadRef && activeProjectKey ? (
+      <ApiPanel threadRef={activeThreadRef} projectKey={activeProjectKey} baseUrl={apiBaseUrl} />
+    ) : renderedRightPanelSurface?.kind === "database" &&
+      activeThreadRef &&
+      activeProject &&
+      activeProjectKey ? (
+      <DatabasePanel
+        threadRef={activeThreadRef}
+        projectKey={activeProjectKey}
+        environmentId={activeProject.environmentId}
+        cwd={activeProject.workspaceRoot}
+      />
     ) : renderedRightPanelSurface?.kind === "agents" ? (
       <AgentsPanel
         model={agentPanelModel}
@@ -10410,6 +10448,10 @@ export default function ChatView(props: ChatViewProps) {
             onAddPullRequests={addPullRequestsSurface}
             onAddAgents={addAgentsSurface}
             onAddDevice={addDeviceSurface}
+            onAddApi={addApiSurface}
+            apiAvailable={apiAvailable}
+            onAddDatabase={addDatabaseSurface}
+            databaseAvailable={databaseAvailable}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}
@@ -10468,6 +10510,10 @@ export default function ChatView(props: ChatViewProps) {
             onAddPullRequests={addPullRequestsSurface}
             onAddAgents={addAgentsSurface}
             onAddDevice={addDeviceSurface}
+            onAddApi={addApiSurface}
+            apiAvailable={apiAvailable}
+            onAddDatabase={addDatabaseSurface}
+            databaseAvailable={databaseAvailable}
             browserAvailable={isPreviewSupportedInRuntime()}
             terminalAvailable={activeProject !== null}
             diffAvailable={isServerThread && isGitRepo}

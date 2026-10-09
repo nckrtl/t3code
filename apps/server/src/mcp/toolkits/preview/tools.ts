@@ -26,6 +26,7 @@ import { Tool, Toolkit } from "effect/unstable/ai";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
 import * as ServerConfig from "../../../config.ts";
+import * as CredentialAutofill from "../../../credentials/CredentialAutofill.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,
@@ -204,7 +205,7 @@ const PreviewEvaluateTool = browserTool(
     parameters: PreviewAutomationEvaluateInput,
     success: PreviewEvaluateResult,
     failure: PreviewAutomationError,
-    dependencies,
+    dependencies: [...dependencies, CredentialAutofill.CredentialAutofill],
   }).annotate(Tool.Title, "Evaluate JavaScript in preview"),
 );
 

@@ -80,6 +80,9 @@ import { deviceHubProxyRouteLayer } from "./device/DeviceHubProxy.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as ProcessRunner from "./processRunner.ts";
+import * as CredentialAutofill from "./credentials/CredentialAutofill.ts";
+import * as CredentialProvider from "./credentials/CredentialProvider.ts";
+import * as TestLoginStore from "./credentials/TestLoginStore.ts";
 import * as GitManager from "./git/GitManager.ts";
 import * as EnvironmentTheme from "./environmentTheme.ts";
 import * as Keybindings from "./keybindings.ts";
@@ -618,6 +621,12 @@ export const makeRoutesLayer = Layer.mergeAll(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
+  Layer.provide(
+    CredentialAutofill.layer.pipe(
+      Layer.provide(CredentialProvider.layerOnePassword.pipe(Layer.provide(ProcessRunner.layer))),
+      Layer.provideMerge(TestLoginStore.layer.pipe(Layer.provide(ServerSecretStore.layer))),
+    ),
+  ),
   Layer.provide(PreviewAutomationBroker.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(DesktopAppUpdateLayerLive))),
   Layer.provide(commandReadinessLayer),

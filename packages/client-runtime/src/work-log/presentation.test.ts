@@ -206,6 +206,45 @@ describe("summarizeToolGroup", () => {
 });
 
 describe("resolveWorkEntryToolPresentation", () => {
+  const fill = (status: "inProgress" | "completed", result?: unknown) =>
+    resolveWorkEntryToolPresentation({
+      label: "t3-code · fill_credential",
+      toolLifecycleStatus: status,
+      toolData: {
+        server: "t3-code",
+        tool: "fill_credential",
+        arguments: { itemId: "abcdefghijklmnopqrstuvwxyz", field: "password" },
+        ...(result === undefined ? {} : { result }),
+      },
+    });
+
+  it("names the field and the outcome of a credential fill", () => {
+    expect(fill("inProgress")).toEqual({
+      displayName: "Waiting to fill the password",
+      icon: "credential",
+    });
+    expect(fill("completed", { structuredContent: { status: "filled" } })?.displayName).toBe(
+      "Filled the password",
+    );
+    expect(fill("completed", { structuredContent: { status: "denied" } })?.displayName).toBe(
+      "Fill denied: password",
+    );
+    expect(
+      fill("completed", { content: [{ type: "text", text: '{"status":"origin_mismatch"}' }] })
+        ?.displayName,
+    ).toBe("Not filled: the site doesn't match the saved login");
+  });
+
+  it("names the site of a credential lookup", () => {
+    expect(
+      resolveWorkEntryToolPresentation({
+        label: "mcp__t3-code__request_credentials",
+        toolLifecycleStatus: "completed",
+        toolData: { toolName: "request_credentials", input: { domain: "github.com" } },
+      }),
+    ).toEqual({ displayName: "Found saved logins for github.com", icon: "credential" });
+  });
+
   it.each([
     "mcp__t3-code__preview_click",
     "mcp__t3_code__preview_click",

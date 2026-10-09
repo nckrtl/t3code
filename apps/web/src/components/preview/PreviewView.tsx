@@ -1,5 +1,6 @@
 "use client";
 
+import { CredentialKeyButton } from "~/credentials/CredentialKeyButton";
 import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import {
   isAtomCommandInterrupted,
@@ -757,6 +758,17 @@ export function PreviewView({
               </TooltipTrigger>
               <TooltipPopup side="top">{activeProfileName}</TooltipPopup>
             </Tooltip>
+          ) : null
+        }
+        credentialAction={
+          previewBridge && tabId && runtimeTabId ? (
+            <CredentialKeyButton
+              threadRef={threadRef}
+              tabId={tabId}
+              runtimeTabId={runtimeTabId}
+              pageUrl={navUrl}
+              loading={loading}
+            />
           ) : null
         }
         annotationAction={

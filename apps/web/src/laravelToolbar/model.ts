@@ -36,6 +36,7 @@ export interface Query {
   readonly share: number;
   readonly file: string | null;
   readonly line: number | null;
+  readonly bindings: readonly unknown[];
 }
 
 const FALLBACK_STAGE_COLOR = "#8D76FF";
@@ -172,7 +173,40 @@ function toQuery(query: ToolbarQuery): Query {
     share: query.percentage ?? 0,
     file: query.file ?? null,
     line: query.line ?? null,
+    bindings: query.bindings ?? [],
   };
+}
+
+function sqlLiteral(value: unknown): string {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "boolean") return value ? "1" : "0";
+  if (typeof value === "number" || typeof value === "bigint") return String(value);
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return `'${text.replace(/'/g, "''")}'`;
+}
+
+/**
+ * The query with its bindings written in, so it can run on its own. Placeholders inside
+ * quoted strings and identifiers stay; extra placeholders stay `?`.
+ */
+export function inlineBindings(sql: string, bindings: readonly unknown[]): string {
+  let next = 0;
+  let quote: string | null = null;
+  let out = "";
+  for (const char of sql) {
+    if (quote) {
+      if (char === quote) quote = null;
+      out += char;
+    } else if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      out += char;
+    } else if (char === "?" && next < bindings.length) {
+      out += sqlLiteral(bindings[next++]);
+    } else {
+      out += char;
+    }
+  }
+  return out;
 }
 
 export function queries(data: ToolbarData): Query[] {

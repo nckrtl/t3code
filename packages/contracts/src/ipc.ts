@@ -11,6 +11,7 @@ import {
   PreviewAutomationWaitForInput,
 } from "./previewAutomation.ts";
 import { SnapShotSource } from "./orchestration.ts";
+import { CredentialField, type DesktopCredentialFillResult } from "./credentials.ts";
 import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { BrowserProfileId } from "./browserProfile.ts";
 import type {
@@ -1115,11 +1116,96 @@ export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
 });
 
 /**
+ * One approved credential fill. The desktop re-checks the tab's origin,
+ * focuses the element `fieldExpression` evaluates to, and inserts `value`.
+ * `value` decodes to `Redacted` so a logged payload or decode error never
+ * prints it.
+ */
+export const DesktopPreviewAutomationFillCredentialInputSchema = Schema.Struct({
+  tabId: DesktopPreviewTabIdSchema,
+  input: Schema.Struct({
+    field: CredentialField,
+    expectedOrigin: Schema.String,
+    fieldExpression: Schema.String,
+    value: Schema.RedactedFromValue(Schema.String),
+  }),
+});
+export type DesktopPreviewAutomationFillCredentialInput =
+  typeof DesktopPreviewAutomationFillCredentialInputSchema.Encoded;
+
+/**
  * A System Settings pane the app can deep-link to. The identifier crosses IPC
  * rather than a URL, so the renderer can only reach these known destinations.
  */
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
+
+export interface DesktopApiHeader {
+  readonly name: string;
+  readonly value: string;
+}
+
+export interface DesktopApiRequest {
+  readonly method: string;
+  readonly url: string;
+  readonly headers: readonly DesktopApiHeader[];
+  readonly body: string | null;
+  readonly timeoutMs?: number;
+}
+
+export interface DesktopApiResponse {
+  /** Set when no response arrived (bad URL, DNS, TLS, timeout); the other fields are empty. */
+  readonly error: string | null;
+  readonly status: number;
+  readonly statusText: string;
+  /** The final URL, after redirects. */
+  readonly url: string;
+  readonly headers: readonly DesktopApiHeader[];
+  /** Text for text-like content types, otherwise base64. */
+  readonly body: string;
+  readonly bodyEncoding: "text" | "base64";
+  /** Bytes the server sent; `truncated` when the body kept fewer. */
+  readonly size: number;
+  readonly truncated: boolean;
+  readonly durationMs: number;
+}
+
+export interface DesktopDatabaseConnection {
+  readonly driver: "mysql" | "pgsql" | "sqlite";
+  readonly host: string;
+  readonly port: number | null;
+  /** The database name, or the SQLite file's absolute path. */
+  readonly database: string;
+  readonly username: string;
+  readonly password: string;
+}
+
+export interface DesktopDatabaseRequest {
+  readonly connection: DesktopDatabaseConnection;
+  readonly operation: "tables" | "describe" | "query";
+  readonly table?: string;
+  readonly sql?: string;
+}
+
+export interface DesktopDatabaseColumn {
+  readonly name: string;
+  readonly type: string;
+  readonly nullable: boolean;
+  readonly default: string | null;
+  readonly primary: boolean;
+}
+
+export interface DesktopDatabaseResponse {
+  readonly error: string | null;
+  readonly tables: readonly string[];
+  readonly columns: readonly DesktopDatabaseColumn[];
+  readonly resultColumns: readonly string[];
+  readonly rows: ReadonlyArray<Readonly<Record<string, string | number | boolean | null>>>;
+  /** Rows the query returned; `truncated` when the panel kept the first 500. */
+  readonly rowCount: number;
+  readonly truncated: boolean;
+  readonly durationMs: number;
+}
 
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
@@ -1228,6 +1314,16 @@ export interface DesktopBridge {
    * builds lack it; callers fall back to VS Code only.
    */
   probeRemoteEditors?: () => Promise<readonly EditorId[]>;
+  /**
+   * nckrtl fork: sends one API panel request from the main process (no CORS, all headers,
+   * the integrated browser's certificate trust). Optional: other desktop builds lack it.
+   */
+  apiSend?: (request: DesktopApiRequest) => Promise<DesktopApiResponse>;
+  /**
+   * nckrtl fork: one read-only Database panel call, run by the main process on a direct
+   * connection. Optional: other desktop builds lack it.
+   */
+  databaseRun?: (request: DesktopDatabaseRequest) => Promise<DesktopDatabaseResponse>;
   /** Present when the desktop shell can perform an ordered plain-text paste. */
   pasteAsText?: () => Promise<void>;
   /** Opens an extra desktop window showing a workspace (id or name; null = all projects). */
@@ -1358,6 +1454,10 @@ export interface DesktopPreviewBridge {
     scroll: (tabId: string, input: PreviewAutomationScrollInput) => Promise<void>;
     evaluate: (tabId: string, input: PreviewAutomationEvaluateInput) => Promise<unknown>;
     waitFor: (tabId: string, input: PreviewAutomationWaitForInput) => Promise<void>;
+    fillCredential: (
+      tabId: string,
+      input: DesktopPreviewAutomationFillCredentialInput["input"],
+    ) => Promise<DesktopCredentialFillResult>;
   };
   onStateChange: (listener: (tabId: string, state: DesktopPreviewTabState) => void) => () => void;
   onPointerEvent: (listener: (event: DesktopPreviewPointerEvent) => void) => () => void;

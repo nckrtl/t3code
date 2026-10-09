@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  inlineBindings,
   errorReportingLabel,
   formatBytes,
   formatUptime,
@@ -120,5 +121,18 @@ describe("laravel toolbar model", () => {
       framework({ ...page, framework: { name: "Symfony", version: "8.1.2", debug: true } }),
     ).toMatchObject({ name: "Symfony", isLaravel: false, version: "8.1.2", timezone: null });
     expect(framework(page)).toMatchObject({ name: "Laravel", version: null });
+  });
+});
+
+describe("inlineBindings", () => {
+  it("writes bindings into placeholders outside quotes", () => {
+    expect(
+      inlineBindings("select * from `t?` where a = ? and b = ? and c = '?' and d = ?", [
+        "it's",
+        3,
+        null,
+      ]),
+    ).toBe("select * from `t?` where a = 'it''s' and b = 3 and c = '?' and d = NULL");
+    expect(inlineBindings("select ? , ?", [true])).toBe("select 1 , ?");
   });
 });

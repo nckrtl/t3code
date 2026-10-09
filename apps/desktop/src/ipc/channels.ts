@@ -7,6 +7,8 @@ export const CONTEXT_MENU_CHANNEL = "desktop:context-menu";
 export const OPEN_EXTERNAL_CHANNEL = "desktop:open-external";
 export const OPEN_SYSTEM_SETTINGS_CHANNEL = "desktop:open-system-settings";
 export const PROBE_REMOTE_EDITORS_CHANNEL = "desktop:probe-remote-editors";
+export const API_SEND_CHANNEL = "desktop:api-send";
+export const DATABASE_RUN_CHANNEL = "desktop:database-run";
 export const MENU_ACTION_CHANNEL = "desktop:menu-action";
 export const PASTE_AS_TEXT_CHANNEL = "desktop:paste-as-text";
 export const OPEN_WORKSPACE_WINDOW_CHANNEL = "desktop:open-workspace-window";
@@ -106,6 +108,8 @@ export const PREVIEW_AUTOMATION_PRESS_CHANNEL = "desktop:preview-automation-pres
 export const PREVIEW_AUTOMATION_SCROLL_CHANNEL = "desktop:preview-automation-scroll";
 export const PREVIEW_AUTOMATION_EVALUATE_CHANNEL = "desktop:preview-automation-evaluate";
 export const PREVIEW_AUTOMATION_WAIT_FOR_CHANNEL = "desktop:preview-automation-wait-for";
+export const PREVIEW_AUTOMATION_FILL_CREDENTIAL_CHANNEL =
+  "desktop:preview-automation-fill-credential";
 export const PREVIEW_RECORDING_START_CHANNEL = "desktop:preview-recording-start";
 export const PREVIEW_RECORDING_STOP_CHANNEL = "desktop:preview-recording-stop";
 export const PREVIEW_RECORDING_SAVE_CHANNEL = "desktop:preview-recording-save";

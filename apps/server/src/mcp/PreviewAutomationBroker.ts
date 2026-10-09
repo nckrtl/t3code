@@ -49,6 +49,11 @@ export interface PreviewAutomationInvokeInput {
   readonly updateCurrentTab?: boolean;
   /** Capture the routed tab before another request changes the current assignment. */
   readonly onTargetTab?: (tabId: PreviewTabId | undefined) => void;
+  /**
+   * Send only to this desktop host, leaving agent tab assignments untouched.
+   * Used for requests the user started in that host's own browser.
+   */
+  readonly clientId?: string;
 }
 
 export class PreviewAutomationBroker extends Context.Service<
@@ -485,6 +490,36 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
           );
         }),
       );
+      if (input.clientId !== undefined) {
+        const pinned = current.clients.get(input.clientId);
+        if (
+          !pinned ||
+          pinned.environmentId !== input.scope.environmentId ||
+          !supportsOperation(pinned, input.operation)
+        ) {
+          return [undefined, current] as const;
+        }
+        const requestSequence = current.requestSequence;
+        const requestId = `preview-${requestSequence}`;
+        const context: PreviewAutomationRequestErrorContext = {
+          operation: input.operation,
+          environmentId: input.scope.environmentId,
+          threadId: input.scope.threadId,
+          providerSessionId: input.scope.providerSessionId,
+          providerInstanceId: input.scope.providerInstanceId,
+          clientId: pinned.clientId,
+          connectionId: pinned.connectionId,
+          requestId,
+          ...(input.tabId === undefined ? {} : { tabId: input.tabId }),
+          timeoutMs,
+        };
+        const pending = new Map(current.pending);
+        pending.set(requestId, { queue: pinned.queue, deferred, context });
+        return [
+          { connection: pinned, requestId, requestContext: context, requestSequence },
+          { ...current, pending, requestSequence: current.requestSequence + 1 },
+        ] as const;
+      }
       const assignmentKey = hostAssignmentKey(input.scope);
       const assigned = assignments.get(assignmentKey);
       const assignedConnection = assigned ? current.clients.get(assigned.clientId) : undefined;
@@ -623,7 +658,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
       });
     });
     const result = yield* awaitResponse().pipe(Effect.ensuring(removePending));
-    if (input.updateCurrentTab === false) return result;
+    if (input.updateCurrentTab === false || input.clientId !== undefined) return result;
     const responseTabId = readResultTabId(result);
     const resultTabId = responseTabId === undefined ? input.tabId : responseTabId;
     if (resultTabId === undefined) return result;

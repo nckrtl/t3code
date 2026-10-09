@@ -10,8 +10,10 @@ import { createTerminalOrbitTransport } from "~/orbit/orbitTransport";
 import { useProject, useThreadShell } from "~/state/entities";
 import { serverEnvironment } from "~/state/server";
 
+import { openDatabaseQuery } from "~/database/databaseStore";
+
 import { browserToolbarSource } from "./bridge";
-import { ToolbarProvider } from "./context";
+import { ToolbarProvider, type ToolbarSource } from "./context";
 import { gatewayOrbitSource, type OrbitSource } from "./orbit";
 import { useLaravelToolbarStore } from "./store";
 import { ToolbarBar } from "./ui/ToolbarBar";
@@ -51,17 +53,20 @@ function useOrbitSource(threadRef: ScopedThreadRef, pageUrl: string): OrbitSourc
 }
 
 /**
- * The Laravel Toolbar under a browser tab's page. Renders nothing until the page sends
- * toolbar data, so non-Laravel pages keep the full height.
+ * The Laravel Toolbar under a browser tab's page, or under the API panel. Renders nothing
+ * until toolbar data arrives, so non-Laravel pages keep the full height.
  */
 export function BrowserLaravelToolbar({
   tabId,
   threadRef,
   pageUrl,
+  fetchDetails,
 }: {
   tabId: string;
   threadRef: ScopedThreadRef;
   pageUrl: string;
+  /** Loads history requests when there is no browser page to fetch them in (API panel). */
+  fetchDetails?: ToolbarSource["fetchDetails"] | undefined;
 }) {
   const tab = useLaravelToolbarStore((state) => state.byTabId[tabId]);
   const serverConfig = useAtomValue(serverEnvironment.configValueAtom(threadRef.environmentId));
@@ -75,9 +80,11 @@ export function BrowserLaravelToolbar({
   const source = useMemo(
     () => ({
       ...browserToolbarSource(tabId, (target) => void openInPreferredEditor(target)),
+      ...(fetchDetails ? { fetchDetails } : {}),
+      openQuery: (sql: string) => openDatabaseQuery(threadRef, sql),
       orbit,
     }),
-    [openInPreferredEditor, orbit, tabId],
+    [fetchDetails, openInPreferredEditor, orbit, tabId, threadRef],
   );
   if (!tab?.currentId) return null;
   // The payload comes from the page. Data the bar cannot show hides the bar until new data

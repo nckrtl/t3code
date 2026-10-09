@@ -15,6 +15,7 @@ import {
   type Framework,
   framework as toFramework,
   iniSwitch,
+  inlineBindings,
   phpLimit,
   queries as toQueries,
   shortLocation,
@@ -268,7 +269,7 @@ function SqlText({ sql }: { sql: string }) {
 }
 
 export function DatabasePanel() {
-  const { selected, openSource } = useToolbarTab();
+  const { selected, openSource, openQuery } = useToolbarTab();
   const [filter, setFilter] = useState<QueryFilter>("all");
   const all = selected ? toQueries(selected) : [];
   const recordedQueryTime = all.reduce((sum, query) => sum + query.durationMs, 0);
@@ -384,6 +385,16 @@ export function DatabasePanel() {
                                   }
                                 >
                                   {location}
+                                </SourceLink>
+                              ) : null}
+                              {openQuery ? (
+                                <SourceLink
+                                  small
+                                  onOpen={() =>
+                                    openQuery(inlineBindings(query.sql, query.bindings))
+                                  }
+                                >
+                                  Open in Database
                                 </SourceLink>
                               ) : null}
                               {query.isDuplicate ? (

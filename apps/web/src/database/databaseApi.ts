@@ -1,0 +1,182 @@
+// The Database panel's connections and calls. The desktop main process connects directly
+// (`databaseRun` IPC); connections come from the project's `.env` or are added by hand.
+import type {
+  DesktopDatabaseColumn,
+  DesktopDatabaseConnection,
+  DesktopDatabaseResponse,
+} from "@t3tools/contracts";
+
+export type DatabaseDriver = DesktopDatabaseConnection["driver"];
+export type DatabaseColumn = DesktopDatabaseColumn;
+export type DatabaseValue = string | number | boolean | null;
+
+export interface DatabaseConnection extends DesktopDatabaseConnection {
+  readonly id: string;
+  readonly name: string;
+  /** `env`: read from the project's `.env` on every open; `manual`: saved in the panel. */
+  readonly source: "env" | "manual";
+}
+
+export interface DatabaseQueryResult {
+  readonly columns: readonly string[];
+  readonly rows: ReadonlyArray<Readonly<Record<string, DatabaseValue>>>;
+  readonly rowCount: number;
+  /** The panel keeps the first 500 rows. */
+  readonly truncated: boolean;
+  readonly durationMs: number;
+}
+
+export const ENV_CONNECTION_ID = "env";
+
+export const DRIVER_LABELS: Record<DatabaseDriver, string> = {
+  mysql: "MySQL / MariaDB",
+  pgsql: "PostgreSQL",
+  sqlite: "SQLite",
+};
+
+/** `KEY=value` lines; quotes stripped, comments and `export ` prefixes ignored. */
+export function parseDotEnv(contents: string): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const raw of contents.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!match) continue;
+    let value = match[2]!.trim();
+    const quote = value[0];
+    if ((quote === '"' || quote === "'") && value.endsWith(quote) && value.length >= 2) {
+      value = value.slice(1, -1);
+    } else {
+      value = value.replace(/\s+#.*$/, "");
+    }
+    values[match[1]!] = value;
+  }
+  return values;
+}
+
+function driverFor(connection: string | undefined): DatabaseDriver | null {
+  switch ((connection ?? "").toLowerCase()) {
+    case "mysql":
+    case "mariadb":
+      return "mysql";
+    case "pgsql":
+    case "postgres":
+    case "postgresql":
+      return "pgsql";
+    case "sqlite":
+      return "sqlite";
+    default:
+      return null;
+  }
+}
+
+function joinPath(root: string, path: string): string {
+  if (path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path)) return path;
+  return `${root.replace(/[\\/]+$/, "")}/${path}`;
+}
+
+/** The Laravel-style `DB_*` connection in a project's `.env`, or null when it has none. */
+export function connectionFromEnv(
+  contents: string,
+  projectRoot: string,
+): DatabaseConnection | null {
+  const env = parseDotEnv(contents);
+  const driver = driverFor(env.DB_CONNECTION);
+  if (!driver) return null;
+  const port = Number.parseInt(env.DB_PORT ?? "", 10);
+  return {
+    id: ENV_CONNECTION_ID,
+    name: ".env",
+    source: "env",
+    driver,
+    host: env.DB_HOST ?? "127.0.0.1",
+    port: Number.isFinite(port) ? port : null,
+    database:
+      driver === "sqlite"
+        ? joinPath(projectRoot, env.DB_DATABASE || "database/database.sqlite")
+        : (env.DB_DATABASE ?? ""),
+    username: env.DB_USERNAME ?? "",
+    password: env.DB_PASSWORD ?? "",
+  };
+}
+
+/** `host/database` for the menu; the file name for SQLite. */
+export function connectionTarget(connection: DesktopDatabaseConnection): string {
+  if (connection.driver === "sqlite") {
+    return connection.database.split(/[\\/]/).pop() || connection.database;
+  }
+  return `${connection.host}${connection.port ? `:${connection.port}` : ""}/${connection.database}`;
+}
+
+/** The connection picked before, else the project's `.env` one, else the first. */
+export function defaultConnection(
+  connections: readonly DatabaseConnection[],
+  remembered: string | null,
+): DatabaseConnection | null {
+  return (
+    connections.find((connection) => connection.id === remembered) ??
+    connections.find((connection) => connection.source === "env") ??
+    connections[0] ??
+    null
+  );
+}
+
+const UNREACHABLE = /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH|connect timeout|timed out/i;
+
+async function call(
+  connection: DesktopDatabaseConnection,
+  request: { operation: "tables" | "describe" | "query"; table?: string; sql?: string },
+): Promise<DesktopDatabaseResponse> {
+  const run = window.desktopBridge?.databaseRun;
+  if (!run) throw new Error("The Database panel needs the T3 Code desktop app.");
+  const { host, port, driver, database, username, password } = connection;
+  const response = await run({
+    connection: { host, port, driver, database, username, password },
+    ...request,
+  });
+  if (response.error) {
+    throw new Error(
+      UNREACHABLE.test(response.error)
+        ? `${response.error}. The desktop app connects from this Mac; for a database on another machine, add a connection with a host this Mac can reach.`
+        : response.error,
+    );
+  }
+  return response;
+}
+
+export async function listDatabaseTables(connection: DesktopDatabaseConnection): Promise<string[]> {
+  return [...(await call(connection, { operation: "tables" })).tables];
+}
+
+export async function describeDatabaseTable(
+  connection: DesktopDatabaseConnection,
+  table: string,
+): Promise<DatabaseColumn[]> {
+  return [...(await call(connection, { operation: "describe", table })).columns];
+}
+
+export async function runReadOnlyQuery(
+  connection: DesktopDatabaseConnection,
+  sql: string,
+): Promise<DatabaseQueryResult> {
+  const response = await call(connection, { operation: "query", sql });
+  return {
+    columns: response.resultColumns,
+    rows: response.rows,
+    rowCount: response.rowCount,
+    truncated: response.truncated,
+    durationMs: response.durationMs,
+  };
+}
+
+/** `select * from <table> limit 100`, with the driver's identifier quoting. */
+export function browseTableSql(driver: DatabaseDriver, table: string): string {
+  if (driver === "mysql") return `select * from \`${table.replace(/`/g, "``")}\` limit 100`;
+  const quote = (part: string) => `"${part.replace(/"/g, '""')}"`;
+  // PostgreSQL lists tables outside `public` as `schema.table`.
+  const name =
+    driver === "pgsql" && table.includes(".")
+      ? `${quote(table.slice(0, table.indexOf(".")))}.${quote(table.slice(table.indexOf(".") + 1))}`
+      : quote(table);
+  return `select * from ${name} limit 100`;
+}

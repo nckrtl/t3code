@@ -127,6 +127,8 @@ import * as ServerSettings from "./serverSettings.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { withTerminalOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
+import * as CredentialAutofill from "./credentials/CredentialAutofill.ts";
+import * as TestLoginStore from "./credentials/TestLoginStore.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
@@ -504,6 +506,8 @@ const makeWsRpcLayer = (
   clientOrigin: OrchestrationClientOrigin,
   clientAnalyticsProps: Readonly<Record<string, unknown>>,
   previewAutomationBroker: PreviewAutomationBroker.PreviewAutomationBroker["Service"],
+  credentialAutofill: CredentialAutofill.CredentialAutofill["Service"],
+  testLoginStore: TestLoginStore.TestLoginStore["Service"],
 ) =>
   WsRpcGroup.toLayer(
     Effect.gen(function* () {
@@ -3804,6 +3808,46 @@ const makeWsRpcLayer = (
             previewAutomationBroker.respond(input),
             { "rpc.aggregate": "preview-automation" },
           ),
+        [WS_METHODS.credentialsStatus]: (_input) =>
+          observeRpcEffect(WS_METHODS.credentialsStatus, credentialAutofill.status, {
+            "rpc.aggregate": "credentials",
+          }),
+        [WS_METHODS.credentialsListForSite]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.credentialsListForSite,
+            credentialAutofill.listForSite(input),
+            { "rpc.aggregate": "credentials" },
+          ),
+        [WS_METHODS.testLoginsList]: (_input) =>
+          observeRpcEffect(
+            WS_METHODS.testLoginsList,
+            testLoginStore.list.pipe(
+              Effect.map((logins) => ({ items: logins.map(TestLoginStore.summarizeTestLogin) })),
+            ),
+            { "rpc.aggregate": "credentials" },
+          ),
+        [WS_METHODS.testLoginsSave]: (input) =>
+          observeRpcEffect(WS_METHODS.testLoginsSave, testLoginStore.save(input, "user"), {
+            "rpc.aggregate": "credentials",
+          }),
+        [WS_METHODS.testLoginsUpdate]: (input) =>
+          observeRpcEffect(WS_METHODS.testLoginsUpdate, testLoginStore.update(input), {
+            "rpc.aggregate": "credentials",
+          }),
+        [WS_METHODS.testLoginsRemove]: (input) =>
+          observeRpcEffect(WS_METHODS.testLoginsRemove, testLoginStore.remove(input.id), {
+            "rpc.aggregate": "credentials",
+          }),
+        [WS_METHODS.testLoginsReveal]: (input) =>
+          observeRpcEffect(WS_METHODS.testLoginsReveal, testLoginStore.reveal(input.id), {
+            "rpc.aggregate": "credentials",
+          }),
+        [WS_METHODS.credentialsFillForSite]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.credentialsFillForSite,
+            credentialAutofill.fillForSite(input),
+            { "rpc.aggregate": "credentials" },
+          ),
         [WS_METHODS.previewAutomationFocusHost]: (input) =>
           observeRpcEffect(
             WS_METHODS.previewAutomationFocusHost,
@@ -4081,6 +4125,8 @@ const makeWsRpcLayer = (
 export const websocketRpcRouteLayer = Layer.unwrap(
   Effect.gen(function* () {
     const previewAutomationBroker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
+    const credentialAutofill = yield* CredentialAutofill.CredentialAutofill;
+    const testLoginStore = yield* TestLoginStore.TestLoginStore;
     const baseServerSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
     const config = yield* ServerConfig.ServerConfig;
     const startup = yield* ServerRuntimeStartup.ServerRuntimeStartup;
@@ -4147,6 +4193,8 @@ export const websocketRpcRouteLayer = Layer.unwrap(
               clientOrigin,
               clientAnalyticsProps,
               previewAutomationBroker,
+              credentialAutofill,
+              testLoginStore,
             ).pipe(
               Layer.provideMerge(RpcSerialization.layerJson),
               Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),

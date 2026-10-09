@@ -25,6 +25,15 @@ interface LaravelToolbarState {
   /** A later request (fetch, XHR, Inertia visit): a full payload or a summary row. */
   readonly receiveUpdate: (tabId: string, data: ToolbarData) => void;
   readonly receiveDetails: (tabId: string, id: string, data: ToolbarData) => void;
+  /**
+   * A request T3 sent itself (the API panel): it becomes the current one and joins the
+   * history. `data` is the full payload, or null when only a summary row arrived.
+   */
+  readonly receiveRequest: (
+    tabId: string,
+    row: ToolbarHistoryRow,
+    data: ToolbarData | null,
+  ) => void;
   readonly select: (tabId: string, id: string | null) => void;
   readonly clearHistory: (tabId: string) => void;
   /** The page left Laravel or reloaded without the toolbar. */
@@ -101,6 +110,15 @@ export const useLaravelToolbarStore = create<LaravelToolbarState>((set) => ({
   receiveDetails: (tabId, id, data) =>
     set((state) =>
       update(state, tabId, (tab) => ({ ...tab, details: { ...tab.details, [id]: data } })),
+    ),
+  receiveRequest: (tabId, row, data) =>
+    set((state) =>
+      update(state, tabId, (tab) => ({
+        currentId: row.id,
+        history: upsert(tab.history, row, Date.now()),
+        details: data ? { ...tab.details, [row.id]: data } : tab.details,
+        selectedId: null,
+      })),
     ),
   select: (tabId, id) =>
     set((state) =>

@@ -11,6 +11,8 @@ export interface ToolbarSource {
   readonly fetchDetails: (id: string) => Promise<ToolbarData | null>;
   /** Opens `path` or `path:line` in the editor; absent when the files are not reachable. */
   readonly openSource?: ((target: string) => void) | undefined;
+  /** Opens a query in the Database panel; absent where there is no thread to open it in. */
+  readonly openQuery?: ((sql: string) => void) | undefined;
   /** The page's Orbit Instance; absent when Orbit is not set up for this thread. */
   readonly orbit?: OrbitSource | null | undefined;
 }
@@ -76,5 +78,6 @@ export function useToolbarTab() {
     select: (id: string | null) => select(context.tabId, id),
     clearHistory: () => clearHistory(context.tabId),
     openSource: context.source.openSource,
+    openQuery: context.source.openQuery,
   };
 }
