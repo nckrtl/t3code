@@ -1170,6 +1170,21 @@ export interface DesktopApiResponse {
   readonly durationMs: number;
 }
 
+/** One call to the Orbit Gateway's T3 Code layer; `path` is below `/api/v1/t3`. */
+export interface DesktopOrbitGatewayRequest {
+  readonly method: "GET" | "POST" | "PUT";
+  readonly path: string;
+  /** A JSON body, or null. */
+  readonly body: string | null;
+}
+
+export interface DesktopOrbitGatewayResponse {
+  /** Set when no response arrived (DNS, TLS, timeout); `status` is then 0. */
+  readonly error: string | null;
+  readonly status: number;
+  readonly body: string;
+}
+
 export interface DesktopDatabaseConnection {
   readonly driver: "mysql" | "pgsql" | "sqlite";
   readonly host: string;
@@ -1319,6 +1334,11 @@ export interface DesktopBridge {
    * the integrated browser's certificate trust). Optional: other desktop builds lack it.
    */
   apiSend?: (request: DesktopApiRequest) => Promise<DesktopApiResponse>;
+  /**
+   * nckrtl fork: one Orbit Gateway call for the profile workspace sync, sent by the main process
+   * (the Gateway refuses a page Origin). Optional: other desktop builds lack it.
+   */
+  orbitGatewaySend?: (request: DesktopOrbitGatewayRequest) => Promise<DesktopOrbitGatewayResponse>;
   /**
    * nckrtl fork: one read-only Database panel call, run by the main process on a direct
    * connection. Optional: other desktop builds lack it.

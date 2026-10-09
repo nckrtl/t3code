@@ -17,6 +17,7 @@ import {
   SettingsEnvironmentFilterHeader,
 } from "./components/SettingsEnvironmentFilterHeader";
 import { useSettingsEnvironmentFilter } from "./settings-environment-filter";
+import { useOrbitGateway } from "../orbit/orbitGatewayStore";
 
 export function SettingsRouteScreen() {
   const navigation = useNavigation();
@@ -56,6 +57,7 @@ function ConfiguredSettingsRouteScreen() {
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const { user } = useUser();
   const { savedConnectionsById } = useSavedRemoteConnections();
+  const orbitLabel = useOrbitProfileLabel();
   const accountLabel = !isLoaded
     ? "Checking"
     : !isSignedIn
@@ -80,6 +82,13 @@ function ConfiguredSettingsRouteScreen() {
             onPress={() => navigation.navigate("SettingsSheet", { screen: "SettingsAuth" })}
           />
           <SettingsRow
+            icon="globe"
+            label="Orbit"
+            value={orbitLabel}
+            valuePosition="trailing"
+            target="SettingsOrbit"
+          />
+          <SettingsRow
             icon="desktopcomputer"
             label="Environments"
             value={`${Object.keys(savedConnectionsById).length}`}
@@ -98,6 +107,7 @@ function ConfiguredSettingsRouteScreen() {
 function LocalSettingsRouteScreen() {
   const insets = useSafeAreaInsets();
   const { savedConnectionsById } = useSavedRemoteConnections();
+  const orbitLabel = useOrbitProfileLabel();
   const environmentCount = Object.keys(savedConnectionsById).length;
 
   return (
@@ -113,6 +123,13 @@ function LocalSettingsRouteScreen() {
       >
         <SettingsSection title="Connections">
           <SettingsRow
+            icon="globe"
+            label="Orbit"
+            value={orbitLabel}
+            valuePosition="trailing"
+            target="SettingsOrbit"
+          />
+          <SettingsRow
             icon="desktopcomputer"
             label="Environments"
             value={`${environmentCount}`}
@@ -125,6 +142,13 @@ function LocalSettingsRouteScreen() {
       </ScrollView>
     </View>
   );
+}
+
+function useOrbitProfileLabel(): string {
+  const gateway = useOrbitGateway();
+  if (gateway.node?.profile) return gateway.node.profile.name;
+  if (gateway.node) return "Choose profile";
+  return gateway.phase === "error" ? "Offline" : "";
 }
 
 function SettingsIndexSections() {

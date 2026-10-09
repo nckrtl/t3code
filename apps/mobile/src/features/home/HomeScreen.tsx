@@ -35,6 +35,7 @@ import { MaterialFloatingActionButton } from "../../components/MaterialFloatingA
 import type { WorkspaceEnvironment, WorkspaceState } from "../../state/workspaceModel";
 import type { SavedRemoteConnection } from "../../lib/connection";
 import { scopedProjectKey } from "../../lib/scopedEntities";
+import { selectedWorkspaceProjectRefs, useOrbitGateway } from "../orbit/orbitGatewayStore";
 import { NATIVE_LIQUID_GLASS_SUPPORTED } from "../../native/native-glass";
 import { useThreadSearch } from "../../state/queries";
 import { useThreadJumpShortcuts } from "../keyboard/threadKeyboardShortcuts";
@@ -338,6 +339,12 @@ export function HomeScreen(props: HomeScreenProps) {
     return map;
   }, [props.projects]);
 
+  const orbitGateway = useOrbitGateway();
+  // The workspace selected from the device's Orbit profile; a selected project narrows it further.
+  const workspaceProjectRefs = useMemo(
+    () => selectedWorkspaceProjectRefs(orbitGateway),
+    [orbitGateway],
+  );
   const v2ProjectScopeKey = props.selectedProjectKey;
   const v2ScopeProjects = useMemo(
     () =>
@@ -613,7 +620,8 @@ export function HomeScreen(props: HomeScreenProps) {
       pendingOrder,
       threads: props.threads.filter((thread) => thread.archivedAt === null),
       environmentId: props.selectedEnvironmentId,
-      projectRefs: v2ScopedProjectGroup === null ? null : v2ScopedProjectGroup.projectRefs,
+      projectRefs:
+        v2ScopedProjectGroup === null ? workspaceProjectRefs : v2ScopedProjectGroup.projectRefs,
       searchQuery: props.searchQuery,
       matchedThreadKeys,
       settlementEnvironmentIds,
@@ -640,6 +648,7 @@ export function HomeScreen(props: HomeScreenProps) {
     props.threads,
     matchedThreadKeys,
     v2ScopedProjectGroup,
+    workspaceProjectRefs,
   ]);
   // Re-partition the moment the earliest snooze expires (clamped to the
   // signed-32-bit setTimeout range; far-future wakes re-arm at the clamp).

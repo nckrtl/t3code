@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
 import { MaterialThreadListToolbar } from "./MaterialThreadListToolbar";
 import type { HomeHeaderProps } from "./HomeHeader.types";
+import { selectOrbitWorkspace, useOrbitGateway } from "../orbit/orbitGatewayStore";
 
 export type { HomeHeaderEnvironment } from "./HomeHeader.types";
 
@@ -14,10 +15,33 @@ export function HomeHeader(props: HomeHeaderProps) {
   // The list uses a fixed creation order and ignores sort/group options, so
   // the filter menu only carries the filters and the "customized" icon state
   // keys off those alone.
+  const gateway = useOrbitGateway();
   const hasCustomListOptions =
-    props.selectedEnvironmentId !== null || props.selectedProjectKey !== null;
+    props.selectedEnvironmentId !== null ||
+    props.selectedProjectKey !== null ||
+    gateway.selectedWorkspaceId !== null;
   const menuActions = useMemo<MenuAction[]>(
     () => [
+      ...(gateway.workspaces.length === 0
+        ? []
+        : ([
+            {
+              id: "workspace",
+              title: "Workspace",
+              subactions: [
+                {
+                  id: "workspace:all",
+                  title: "All projects",
+                  state: checkedMenuState(gateway.selectedWorkspaceId === null),
+                },
+                ...gateway.workspaces.map((workspace) => ({
+                  id: `workspace:${workspace.id}`,
+                  title: workspace.name,
+                  state: checkedMenuState(gateway.selectedWorkspaceId === workspace.id),
+                })),
+              ],
+            },
+          ] satisfies MenuAction[])),
       {
         id: "environment",
         title: "Environment",
@@ -55,11 +79,28 @@ export function HomeHeader(props: HomeHeaderProps) {
             },
           ] satisfies MenuAction[])),
     ],
-    [props.environments, props.projects, props.selectedEnvironmentId, props.selectedProjectKey],
+    [
+      gateway.selectedWorkspaceId,
+      gateway.workspaces,
+      props.environments,
+      props.projects,
+      props.selectedEnvironmentId,
+      props.selectedProjectKey,
+    ],
   );
   const handleMenuAction = useCallback(
     (event: { nativeEvent: { event: string } }) => {
       const id = event.nativeEvent.event;
+      if (id === "workspace:all") {
+        selectOrbitWorkspace(null);
+        return;
+      }
+
+      if (id.startsWith("workspace:")) {
+        selectOrbitWorkspace(id.slice("workspace:".length));
+        return;
+      }
+
       if (id === "environment:all") {
         props.onEnvironmentChange(null);
         return;

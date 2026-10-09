@@ -5,6 +5,12 @@ export interface HomeListFilterMenuEnvironment {
   readonly label: string;
 }
 
+/** A workspace from the device's Orbit profile; selecting one scopes the list to its projects. */
+export interface HomeListFilterMenuWorkspace {
+  readonly id: string;
+  readonly label: string;
+}
+
 export interface HomeListFilterMenuProject {
   readonly key: string;
   readonly label: string;
@@ -36,8 +42,35 @@ export function buildHomeListFilterMenu(props: {
   readonly selectedProjectKey: string | null;
   readonly onEnvironmentChange: (environmentId: EnvironmentId | null) => void;
   readonly onProjectChange: (projectKey: string | null) => void;
+  readonly workspaces?: ReadonlyArray<HomeListFilterMenuWorkspace>;
+  readonly selectedWorkspaceId?: string | null;
+  readonly onWorkspaceChange?: (workspaceId: string | null) => void;
 }): HomeListFilterMenu {
   const items: Array<HomeListFilterMenuAction | HomeListFilterMenuSubmenu> = [];
+  const workspaces = props.workspaces ?? [];
+  const onWorkspaceChange = props.onWorkspaceChange;
+
+  if (workspaces.length > 0 && onWorkspaceChange) {
+    items.push({
+      type: "submenu",
+      title: "Workspace",
+      items: [
+        {
+          type: "action",
+          title: "All projects",
+          subtitle: "Show threads from every workspace",
+          state: (props.selectedWorkspaceId ?? null) === null ? "on" : "off",
+          onPress: () => onWorkspaceChange(null),
+        },
+        ...workspaces.map((workspace) => ({
+          type: "action" as const,
+          title: workspace.label,
+          state: props.selectedWorkspaceId === workspace.id ? ("on" as const) : ("off" as const),
+          onPress: () => onWorkspaceChange(workspace.id),
+        })),
+      ],
+    });
+  }
 
   items.push({
     type: "submenu",

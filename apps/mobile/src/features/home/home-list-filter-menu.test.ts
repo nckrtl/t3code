@@ -36,4 +36,44 @@ describe("buildHomeListFilterMenu", () => {
     expect(onProjectChange).toHaveBeenNthCalledWith(1, null);
     expect(onProjectChange).toHaveBeenNthCalledWith(2, "environment-1:project-2");
   });
+
+  it("offers the Orbit profile's workspaces first, only when there are any", () => {
+    const onWorkspaceChange = vi.fn();
+    const base = {
+      environments: [],
+      projects: [],
+      selectedEnvironmentId: null,
+      selectedProjectKey: null,
+      onEnvironmentChange: vi.fn(),
+      onProjectChange: vi.fn(),
+    };
+    expect(buildHomeListFilterMenu(base).items.some((item) => item.title === "Workspace")).toBe(
+      false,
+    );
+
+    const menu = buildHomeListFilterMenu({
+      ...base,
+      workspaces: [
+        { id: "ws-1", label: "Orbit" },
+        { id: "ws-2", label: "Apps" },
+      ],
+      selectedWorkspaceId: "ws-2",
+      onWorkspaceChange,
+    });
+    const workspaceMenu = menu.items[0];
+    expect(workspaceMenu).toMatchObject({
+      type: "submenu",
+      title: "Workspace",
+      items: [
+        { title: "All projects", state: "off" },
+        { title: "Orbit", state: "off" },
+        { title: "Apps", state: "on" },
+      ],
+    });
+    if (workspaceMenu?.type !== "submenu") throw new Error("Expected workspace submenu");
+    workspaceMenu.items[1]?.onPress();
+    workspaceMenu.items[0]?.onPress();
+    expect(onWorkspaceChange).toHaveBeenNthCalledWith(1, "ws-1");
+    expect(onWorkspaceChange).toHaveBeenNthCalledWith(2, null);
+  });
 });

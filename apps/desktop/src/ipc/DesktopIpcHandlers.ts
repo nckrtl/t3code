@@ -4,6 +4,7 @@ import { receiveProviderAuthCallback, cancelProviderAuthCallback } from "./metho
 import * as DesktopIpc from "./DesktopIpc.ts";
 import { installNotificationBadge } from "./methods/notificationBadge.ts";
 import { apiSend } from "./methods/apiRequest.ts";
+import { orbitGatewaySend } from "./methods/orbitGateway.ts";
 import { databaseRun } from "./methods/database.ts";
 import { getClientSettings, setClientSettings } from "./methods/clientSettings.ts";
 import {
@@ -145,6 +146,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(reportWorkspace);
   yield* ipc.handle(probeRemoteEditors);
   yield* ipc.handle(apiSend);
+  yield* ipc.handle(orbitGatewaySend);
   yield* ipc.handle(databaseRun);
   yield* ipc.handle(getUpdateState);
   yield* ipc.handle(setUpdateChannel);

@@ -8,6 +8,7 @@ import {
   createNativeMailSearchToolbarItem,
   NATIVE_MAIL_SEARCH_TOOLBAR_SUPPORTED,
 } from "../layout/native-mail-search-toolbar";
+import { selectOrbitWorkspace, useOrbitGateway } from "../orbit/orbitGatewayStore";
 import { buildHomeListFilterMenu } from "./home-list-filter-menu";
 import type { HomeHeaderProps } from "./HomeHeader.types";
 
@@ -19,14 +20,26 @@ export function HomeHeader(props: HomeHeaderProps) {
   // The list uses a fixed creation order and ignores sort/group options, so
   // the filter menu only carries the filters and the "customized" icon state
   // keys off those alone.
+  const gateway = useOrbitGateway();
+  const workspaces = gateway.workspaces.map((workspace) => ({
+    id: workspace.id,
+    label: workspace.name,
+  }));
   const hasCustomListOptions =
-    props.selectedEnvironmentId !== null || props.selectedProjectKey !== null;
+    props.selectedEnvironmentId !== null ||
+    props.selectedProjectKey !== null ||
+    gateway.selectedWorkspaceId !== null;
   const focusSearch = useCallback(() => {
     searchBarRef.current?.focus();
     return searchBarRef.current !== null;
   }, []);
   useHardwareKeyboardCommand("focusSearch", focusSearch);
-  const filterMenu = buildHomeListFilterMenu(props);
+  const filterMenu = buildHomeListFilterMenu({
+    ...props,
+    workspaces,
+    selectedWorkspaceId: gateway.selectedWorkspaceId,
+    onWorkspaceChange: selectOrbitWorkspace,
+  });
 
   return (
     <>
@@ -98,6 +111,28 @@ export function HomeHeader(props: HomeHeaderProps) {
             title="Thread list options"
             separateBackground
           >
+            {workspaces.length > 0 ? (
+              <NativeHeaderToolbar.Menu title="Workspace">
+                <NativeHeaderToolbar.Label>Workspace</NativeHeaderToolbar.Label>
+                <NativeHeaderToolbar.MenuAction
+                  isOn={gateway.selectedWorkspaceId === null}
+                  onPress={() => selectOrbitWorkspace(null)}
+                  subtitle="Show threads from every workspace"
+                >
+                  <NativeHeaderToolbar.Label>All projects</NativeHeaderToolbar.Label>
+                </NativeHeaderToolbar.MenuAction>
+                {workspaces.map((workspace) => (
+                  <NativeHeaderToolbar.MenuAction
+                    key={workspace.id}
+                    isOn={gateway.selectedWorkspaceId === workspace.id}
+                    onPress={() => selectOrbitWorkspace(workspace.id)}
+                  >
+                    <NativeHeaderToolbar.Label>{workspace.label}</NativeHeaderToolbar.Label>
+                  </NativeHeaderToolbar.MenuAction>
+                ))}
+              </NativeHeaderToolbar.Menu>
+            ) : null}
+
             <NativeHeaderToolbar.Menu title="Environment">
               <NativeHeaderToolbar.Label>Environment</NativeHeaderToolbar.Label>
               <NativeHeaderToolbar.MenuAction

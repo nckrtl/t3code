@@ -40,6 +40,11 @@ import { useSavedRemoteConnections } from "../../state/use-remote-environment-re
 import { useHardwareKeyboardCommand } from "../keyboard/hardwareKeyboardCommands";
 import { useThreadJumpShortcuts } from "../keyboard/threadKeyboardShortcuts";
 import { useHomeListOptions } from "../home/home-list-options";
+import {
+  selectOrbitWorkspace,
+  selectedWorkspaceProjectRefs,
+  useOrbitGateway,
+} from "../orbit/orbitGatewayStore";
 import { buildHomeListFilterMenu } from "../home/home-list-filter-menu";
 import { buildHomeProjectScopes } from "../home/homeThreadList";
 import { SwipeableScrollGateProvider, useSwipeableScrollGate } from "../home/thread-swipe-actions";
@@ -426,12 +431,19 @@ function ThreadNavigationSidebarPane(
     nowMinute,
     snoozeWakeTick,
   ]);
+  const orbitGateway = useOrbitGateway();
+  // The workspace selected from the device's Orbit profile; a selected project narrows it further.
+  const workspaceProjectRefs = useMemo(
+    () => selectedWorkspaceProjectRefs(orbitGateway),
+    [orbitGateway],
+  );
   const threadListV2Layout = useMemo(() => {
     return buildThreadListV2Items({
       pendingOrder,
       threads: threads.filter((thread) => thread.archivedAt === null),
       environmentId: options.selectedEnvironmentId,
-      projectRefs: selectedProjectScope === null ? null : selectedProjectScope.projectRefs,
+      projectRefs:
+        selectedProjectScope === null ? workspaceProjectRefs : selectedProjectScope.projectRefs,
       searchQuery: props.searchQuery,
       matchedThreadKeys,
       settlementEnvironmentIds,
@@ -459,6 +471,7 @@ function ThreadNavigationSidebarPane(
     snoozeEnvironmentIds,
     threads,
     selectedProjectScope,
+    workspaceProjectRefs,
   ]);
   // Re-partition the moment the earliest snooze expires (clamped to the
   // signed-32-bit setTimeout range; far-future wakes re-arm at the clamp).
@@ -873,7 +886,11 @@ function ThreadNavigationSidebarPane(
   );
   // The list ignores sort/group options, so only the environment and project
   // filters can light the "customized" state.
-  const filterCustomized = options.selectedEnvironmentId !== null || selectedProjectKey !== null;
+  const orbitWorkspaces = useOrbitGateway();
+  const filterCustomized =
+    options.selectedEnvironmentId !== null ||
+    selectedProjectKey !== null ||
+    orbitWorkspaces.selectedWorkspaceId !== null;
   const filterIcon = filterCustomized
     ? "line.3.horizontal.decrease.circle.fill"
     : "line.3.horizontal.decrease.circle";
@@ -886,8 +903,21 @@ function ThreadNavigationSidebarPane(
         selectedProjectKey,
         onEnvironmentChange: setSelectedEnvironmentId,
         onProjectChange: setSelectedProjectKey,
+        workspaces: orbitWorkspaces.workspaces.map((workspace) => ({
+          id: workspace.id,
+          label: workspace.name,
+        })),
+        selectedWorkspaceId: orbitWorkspaces.selectedWorkspaceId,
+        onWorkspaceChange: selectOrbitWorkspace,
       }),
-    [environments, options, projectFilterOptions, selectedProjectKey, setSelectedEnvironmentId],
+    [
+      environments,
+      options,
+      orbitWorkspaces,
+      projectFilterOptions,
+      selectedProjectKey,
+      setSelectedEnvironmentId,
+    ],
   );
   const nativeHeaderItems = useMemo(
     () =>

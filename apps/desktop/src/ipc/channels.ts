@@ -8,6 +8,7 @@ export const OPEN_EXTERNAL_CHANNEL = "desktop:open-external";
 export const OPEN_SYSTEM_SETTINGS_CHANNEL = "desktop:open-system-settings";
 export const PROBE_REMOTE_EDITORS_CHANNEL = "desktop:probe-remote-editors";
 export const API_SEND_CHANNEL = "desktop:api-send";
+export const ORBIT_GATEWAY_SEND_CHANNEL = "desktop:orbit-gateway-send";
 export const DATABASE_RUN_CHANNEL = "desktop:database-run";
 export const MENU_ACTION_CHANNEL = "desktop:menu-action";
 export const PASTE_AS_TEXT_CHANNEL = "desktop:paste-as-text";
