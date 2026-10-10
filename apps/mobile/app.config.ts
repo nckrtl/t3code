@@ -148,9 +148,18 @@ if (isOwnBundleBuild && !ownTeamId) {
   throw new Error("T3CODE_IOS_BUNDLE_ID needs T3CODE_IOS_TEAM_ID, the Apple team that signs it.");
 }
 
+// nckrtl fork: the variants install side by side under one own id, as upstream's do:
+// `<id>.dev` and "<name> Dev" for development, `<id>` and "<name>" for production. The widget and
+// share extensions, app group and keychain group below derive from this id.
+const ownVariantSuffix = { development: "dev", preview: "preview", production: "" }[APP_VARIANT];
 const iosBundleIdentifier = isIosPersonalTeamBuild
   ? personalTeamBundleIdentifier!
-  : (ownBundleIdentifier ?? variant.iosBundleIdentifier);
+  : ownBundleIdentifier
+    ? `${ownBundleIdentifier}${ownVariantSuffix && `.${ownVariantSuffix}`}`
+    : variant.iosBundleIdentifier;
+const ownVariantAppName = ownAppName
+  ? `${ownAppName}${{ development: " Dev", preview: " Preview", production: "" }[APP_VARIANT]}`
+  : undefined;
 
 const dmSansFonts = {
   regular: "@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
@@ -263,7 +272,7 @@ const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 // family names without waiting for runtime font loading.
 
 const config: ExpoConfig = {
-  name: ownAppName || variant.appName,
+  name: ownVariantAppName || variant.appName,
   slug: "t3-code",
   platforms: ["ios", "android"],
   scheme: variant.scheme,
