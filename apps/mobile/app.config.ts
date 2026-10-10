@@ -15,6 +15,13 @@ const runtimeVersionPolicy =
   (APP_VARIANT === "development" ? "appVersion" : "fingerprint");
 
 const personalTeamBundleIdentifier = repoEnv.T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID?.trim();
+// nckrtl fork: sign with your own paid Apple team under your own bundle id and app name (the fork
+// ships as Conn). Unlike the Personal Team switch this keeps every capability; it only drops what
+// is tied to T3's own bundle ids (T3's associated domains, Sign in with Apple, T3's OTA updates).
+const ownTeamId = repoEnv.T3CODE_IOS_TEAM_ID?.trim();
+const ownBundleIdentifier = repoEnv.T3CODE_IOS_BUNDLE_ID?.trim();
+const ownAppName = repoEnv.T3CODE_APP_NAME?.trim();
+const isOwnBundleBuild = Boolean(ownBundleIdentifier);
 const IOS_BUNDLE_IDENTIFIER_PATTERN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 
 const fromRepoRoot = (relativePath: string) => `../../${relativePath}`;
@@ -110,9 +117,18 @@ function resolveAppVariant(value: string | undefined): AppVariant {
 }
 
 const variant = VARIANT_CONFIG[APP_VARIANT];
+if (ownBundleIdentifier && !IOS_BUNDLE_IDENTIFIER_PATTERN.test(ownBundleIdentifier)) {
+  throw new Error(
+    "T3CODE_IOS_BUNDLE_ID must be a reverse-DNS identifier such as com.example.conn.",
+  );
+}
+if (isOwnBundleBuild && !ownTeamId) {
+  throw new Error("T3CODE_IOS_BUNDLE_ID needs T3CODE_IOS_TEAM_ID, the Apple team that signs it.");
+}
+
 const iosBundleIdentifier = isIosPersonalTeamBuild
   ? personalTeamBundleIdentifier!
-  : variant.iosBundleIdentifier;
+  : (ownBundleIdentifier ?? variant.iosBundleIdentifier);
 
 const dmSansFonts = {
   regular: "@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
@@ -225,7 +241,7 @@ const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 // family names without waiting for runtime font loading.
 
 const config: ExpoConfig = {
-  name: variant.appName,
+  name: ownAppName || variant.appName,
   slug: "t3-code",
   platforms: ["ios", "android"],
   scheme: variant.scheme,
@@ -240,7 +256,8 @@ const config: ExpoConfig = {
   icon: variant.assets.appIcon,
   userInterfaceStyle: "automatic",
   updates: {
-    enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0",
+    // T3's update channel only serves T3's own bundle ids.
+    enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0" && !isOwnBundleBuild,
     url: "https://u.expo.dev/d763fcb8-d37c-41ea-a773-b54a0ab4a454",
     checkAutomatically: "ON_LOAD",
     fallbackToCacheTimeout: 0,
@@ -255,13 +272,15 @@ const config: ExpoConfig = {
     // Pin code signing to the T3 Tools team so non-interactive `expo run:ios`
     // does not fall back to a personal team (which cannot sign app groups,
     // Sign in with Apple, or push notification entitlements).
-    appleTeamId: "ARK85ZXQ4Z",
-    associatedDomains: [
-      `applinks:${variant.relyingParty}`,
-      `webcredentials:${variant.relyingParty}`,
-    ],
+    appleTeamId: ownTeamId || "ARK85ZXQ4Z",
+    // T3's relying party only vouches for T3's own app ids.
+    associatedDomains: isOwnBundleBuild
+      ? []
+      : [`applinks:${variant.relyingParty}`, `webcredentials:${variant.relyingParty}`],
     entitlements: {
-      "keychain-access-groups": [`$(AppIdentifierPrefix)${variant.iosBundleIdentifier}`],
+      "keychain-access-groups": [
+        `$(AppIdentifierPrefix)${isOwnBundleBuild ? iosBundleIdentifier : variant.iosBundleIdentifier}`,
+      ],
     },
     infoPlist: {
       NSAppTransportSecurity: {
@@ -351,7 +370,10 @@ const config: ExpoConfig = {
     ],
     // appleSignIn must be gated here: withoutIosPersonalTeamCapabilities.cjs runs before
     // plugins earlier in this array, so it cannot strip the entitlement Clerk would add.
-    ["@clerk/expo", { theme: "./clerk-theme.json", appleSignIn: !isIosPersonalTeamBuild }],
+    [
+      "@clerk/expo",
+      { theme: "./clerk-theme.json", appleSignIn: !isIosPersonalTeamBuild && !isOwnBundleBuild },
+    ],
     "expo-web-browser",
     [
       "expo-quick-actions",
