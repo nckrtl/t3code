@@ -80,6 +80,7 @@ import { previewBridge } from "./preview/previewBridge";
 import { PierreEntryIcon } from "./chat/PierreEntryIcon";
 import { resolvePullRequestState } from "./pullRequest/pullRequestPresentation";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { APP_BASE_NAME } from "../branding";
 
 interface RightPanelTabsProps {
   mode: PreviewPanelMode;
@@ -162,7 +163,7 @@ export function shouldOpenDefaultBrowserProfileFromMenuClick(
 }
 
 const SURFACE_DISABLED_REASONS = {
-  browser: "Browser previews are only available in the T3 Code desktop app.",
+  browser: `Browser previews are only available in the ${APP_BASE_NAME} desktop app.`,
   terminal: "Terminal surfaces are only available from a project thread.",
   files: "Files are only available when a project is open.",
   diff: "Diff is only available for server threads in Git repositories.",
@@ -170,9 +171,8 @@ const SURFACE_DISABLED_REASONS = {
   pullRequests: "No linked pull requests are available for this thread.",
   agents: "Agents are only available from a thread.",
   device: "Devices are only available from a thread.",
-  api: "API requests are only available in the T3 Code desktop app, from a project thread.",
-  database:
-    "The Database panel is only available in the T3 Code desktop app, from a project thread.",
+  api: `API requests are only available in the ${APP_BASE_NAME} desktop app, from a project thread.`,
+  database: `The Database panel is only available in the ${APP_BASE_NAME} desktop app, from a project thread.`,
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */

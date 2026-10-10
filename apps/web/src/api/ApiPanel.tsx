@@ -32,6 +32,7 @@ import {
   useApiRequestStore,
 } from "./apiRequestStore";
 import { ApiResponseView } from "./ApiResponseView";
+import { APP_BASE_NAME } from "../branding";
 
 // Where each toolbar request came from, so its full payload can be loaded from that app.
 const toolbarOrigins = new Map<string, string>();
@@ -298,7 +299,9 @@ export function ApiPanel({
             >
               {sending ? <Spinner className="size-4" /> : <SendHorizontal />}
             </TooltipTrigger>
-            <TooltipPopup>{apiSend ? "Send (⌘↵)" : "Needs the T3 Code desktop app"}</TooltipPopup>
+            <TooltipPopup>
+              {apiSend ? "Send (⌘↵)" : `Needs the ${APP_BASE_NAME} desktop app`}
+            </TooltipPopup>
           </Tooltip>
         </ToolbarGroup>
       </form>

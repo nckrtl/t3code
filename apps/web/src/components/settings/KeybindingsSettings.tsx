@@ -70,6 +70,7 @@ import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsL
 import { keybindingSearchAnchorId, searchableSetting } from "./settingsSearch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { APP_BASE_NAME } from "../../branding";
 
 function KeybindingPill({ value }: { value: string }) {
   // Keys dedupe repeated parts; a literal "+" in a shortcut splits into empty strings.
@@ -283,8 +284,8 @@ function UnknownWhenVariableWarning({
 
   return (
     <WarningTooltipIcon label={label} focusable={focusable} className="size-4.5">
-      T3 Code does not recognize this condition yet. It can still be saved, but it may not match
-      unless the runtime provides it.
+      {APP_BASE_NAME} does not recognize this condition yet. It can still be saved, but it may not
+      match unless the runtime provides it.
     </WarningTooltipIcon>
   );
 }
@@ -1318,8 +1319,8 @@ function BrowserKeybindingNotice() {
       <div className="flex items-center gap-2 rounded-md bg-warning/10 px-2.5 py-2 text-ui leading-normal text-warning sm:px-3">
         <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
         <span>
-          Some shortcuts may be claimed by the browser before T3 Code sees them. Use the desktop app
-          for better keybinding support.
+          Some shortcuts may be claimed by the browser before {APP_BASE_NAME} sees them. Use the
+          desktop app for better keybinding support.
         </span>
       </div>
     </div>

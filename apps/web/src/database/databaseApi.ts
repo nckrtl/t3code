@@ -5,6 +5,7 @@ import type {
   DesktopDatabaseConnection,
   DesktopDatabaseResponse,
 } from "@t3tools/contracts";
+import { APP_BASE_NAME } from "../branding";
 
 export type DatabaseDriver = DesktopDatabaseConnection["driver"];
 export type DatabaseColumn = DesktopDatabaseColumn;
@@ -128,7 +129,7 @@ async function call(
   request: { operation: "tables" | "describe" | "query"; table?: string; sql?: string },
 ): Promise<DesktopDatabaseResponse> {
   const run = window.desktopBridge?.databaseRun;
-  if (!run) throw new Error("The Database panel needs the T3 Code desktop app.");
+  if (!run) throw new Error(`The Database panel needs the ${APP_BASE_NAME} desktop app.`);
   const { host, port, driver, database, username, password } = connection;
   const response = await run({
     connection: { host, port, driver, database, username, password },

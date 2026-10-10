@@ -195,7 +195,10 @@ export async function startDesktopAppControlServer(input: {
       activeRequestId = parsed.requestId;
       void input.handle(parsed).then(finish, () => {
         finish(
-          invalidResponse(parsed.requestId, "T3 Code could not process the desktop app request."),
+          invalidResponse(
+            parsed.requestId,
+            `${appBrand.name} could not process the desktop app request.`,
+          ),
         );
       });
     });
