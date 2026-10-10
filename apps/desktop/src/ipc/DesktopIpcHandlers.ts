@@ -7,6 +7,7 @@ import { apiSend } from "./methods/apiRequest.ts";
 import { orbitGatewaySend } from "./methods/orbitGateway.ts";
 import { databaseRun } from "./methods/database.ts";
 import { getClientSettings, setClientSettings } from "./methods/clientSettings.ts";
+import { getLocalThemes, installLocalThemesWatcher } from "./methods/localThemes.ts";
 import {
   clearConnectionCatalog,
   getConnectionCatalog,
@@ -81,6 +82,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   const ipc = yield* DesktopIpc.DesktopIpc;
   yield* installNotificationBadge();
   yield* PreviewIpc.installPreviewEventForwarding();
+  yield* installLocalThemesWatcher();
 
   yield* ipc.handle(AppActivationIpc.setReady);
   yield* ipc.handle(AppActivationIpc.complete);
@@ -95,6 +97,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
 
   yield* ipc.handle(getClientSettings);
   yield* ipc.handle(setClientSettings);
+  yield* ipc.handle(getLocalThemes);
   yield* ipc.handle(getConnectionCatalog);
   yield* ipc.handle(getSnapShotState);
   yield* ipc.handle(setupSnapShot);

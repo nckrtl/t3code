@@ -58,6 +58,7 @@ async function setupThemeSync(mode: "dark" | "system" = "dark") {
     useCallback: <A>(callback: A) => callback,
     useEffect: (effect: () => void) => effects.push(effect),
     useRef: () => lastPublished,
+    useState: <S>(initial: S) => [initial, () => {}],
     useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => {
       readSnapshot = getSnapshot;
       return getSnapshot();

@@ -120,6 +120,15 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   getClientSettings: () => ipcRenderer.invoke(IpcChannels.GET_CLIENT_SETTINGS_CHANNEL),
   setClientSettings: (settings) =>
     ipcRenderer.invoke(IpcChannels.SET_CLIENT_SETTINGS_CHANNEL, settings),
+  getLocalThemes: () => ipcRenderer.invoke(IpcChannels.GET_LOCAL_THEMES_CHANNEL),
+  onLocalThemesChanged: (listener) => {
+    // The main process sends themes it already validated.
+    const handler = (_event: Electron.IpcRendererEvent, themes: unknown) => {
+      if (Array.isArray(themes)) listener(themes);
+    };
+    ipcRenderer.on(IpcChannels.LOCAL_THEMES_CHANGED_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(IpcChannels.LOCAL_THEMES_CHANGED_CHANNEL, handler);
+  },
   requestSnapShotPermissions: (includeAccessibility) =>
     ipcRenderer.invoke(IpcChannels.REQUEST_SNAP_SHOT_PERMISSIONS_CHANNEL, includeAccessibility),
   getSnapShotState: () => ipcRenderer.invoke(IpcChannels.GET_SNAP_SHOT_STATE_CHANNEL),

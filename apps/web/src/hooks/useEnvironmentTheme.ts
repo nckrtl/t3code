@@ -1,7 +1,9 @@
 import type { EnvironmentTheme } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import * as Equal from "effect/Equal";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+import { isLocalEnvironmentDisabled } from "../localEnvironment";
 
 import { primaryServerEnvironmentThemesAtom } from "../state/server";
 import {
@@ -99,13 +101,45 @@ export function useEnvironmentThemeDefinitions(): ReadonlyArray<ThemeDefinition>
 }
 
 /**
+ * Without a local environment there is no primary server to publish themes,
+ * so the desktop app reads this machine's themes folder itself. Null when the
+ * primary environment is the source.
+ */
+function useDesktopLocalThemes(): ReadonlyArray<EnvironmentTheme> | null {
+  const [themes, setThemes] = useState<ReadonlyArray<EnvironmentTheme> | null>(null);
+  useEffect(() => {
+    const bridge = window.desktopBridge;
+    if (!isLocalEnvironmentDisabled() || bridge?.getLocalThemes === undefined) return;
+    let active = true;
+    // Subscribed first, so an edit landing during the initial read is not lost.
+    const unsubscribe = bridge.onLocalThemesChanged?.((next) => {
+      active = false;
+      setThemes(next);
+    });
+    bridge.getLocalThemes().then(
+      (next) => {
+        if (active) setThemes(next);
+      },
+      () => {},
+    );
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+  return themes;
+}
+
+/**
  * Keeps the machine's published themes in the theme library for as long as
- * the primary environment publishes them. A client with a published theme
+ * the primary environment publishes them, or, with the local environment off,
+ * as the desktop reads them from disk. A client with a published theme
  * selected retints the moment the machine rewrites it; everyone else just
  * gains cards in the theme library.
  */
 export function useEnvironmentThemeSync(): void {
-  const published = useAtomValue(primaryServerEnvironmentThemesAtom);
+  const primaryPublished = useAtomValue(primaryServerEnvironmentThemesAtom);
+  const published = useDesktopLocalThemes() ?? primaryPublished;
   const { refreshTheme } = useTheme();
   const lastPublished = useRef<ReadonlyArray<EnvironmentTheme> | null>(null);
 

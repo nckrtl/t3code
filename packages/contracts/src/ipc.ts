@@ -24,6 +24,7 @@ import { AdvertisedEndpoint } from "./remoteAccess.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
 import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from "./settings.ts";
 import type { EditorId } from "./editor.ts";
+import type { EnvironmentTheme } from "./server.ts";
 
 import type {
   DesktopAppActivationRequest,
@@ -1247,6 +1248,9 @@ export interface DesktopBridge {
   getLocalEnvironmentBearerToken: () => Promise<string>;
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
+  /** Themes from this machine's themes folder, read without a local server. */
+  getLocalThemes?: () => Promise<readonly EnvironmentTheme[]>;
+  onLocalThemesChanged?: (listener: (themes: readonly EnvironmentTheme[]) => void) => () => void;
   getConnectionCatalog?: () => Promise<string | null>;
   setConnectionCatalog?: (catalog: string) => Promise<boolean>;
   clearConnectionCatalog?: () => Promise<void>;
