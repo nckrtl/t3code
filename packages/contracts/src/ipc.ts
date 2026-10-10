@@ -1171,7 +1171,7 @@ export interface DesktopApiResponse {
   readonly durationMs: number;
 }
 
-/** One call to the Orbit Gateway's T3 Code layer; `path` is below `/api/v1/t3`. */
+/** One call to the Orbit Gateway's Conn layer; `path` is below `/api/v1/conn`. */
 export interface DesktopOrbitGatewayRequest {
   readonly method: "GET" | "POST" | "PUT";
   readonly path: string;

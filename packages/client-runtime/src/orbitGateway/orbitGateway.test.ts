@@ -138,7 +138,7 @@ describe("createOrbitGatewayClient", () => {
     const client = createOrbitGatewayClient(
       respond(409, {
         error: {
-          code: "t3.settings_version_conflict",
+          code: "conn.settings_version_conflict",
           message: "stale",
           details: { current_version: 5 },
         },
@@ -147,7 +147,7 @@ describe("createOrbitGatewayClient", () => {
     const error = await client.settings(1).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(OrbitGatewayError);
     expect(error).toMatchObject({
-      code: "t3.settings_version_conflict",
+      code: "conn.settings_version_conflict",
       status: 409,
       details: { current_version: 5 },
     });

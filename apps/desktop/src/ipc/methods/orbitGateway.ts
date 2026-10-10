@@ -6,9 +6,9 @@ import { DEFAULT_ORBIT_GATEWAY_URL } from "@t3tools/client-runtime/orbit-gateway
 import * as DesktopIpc from "../DesktopIpc.ts";
 import { ORBIT_GATEWAY_SEND_CHANNEL } from "../channels.ts";
 
-// Calls the T3 Code layer of the Orbit Gateway for the renderer's profile sync. It runs in the
+// Calls the Conn layer of the Orbit Gateway for the renderer's profile sync. It runs in the
 // main process because the Gateway refuses requests that carry a page `Origin`, and Chromium's
-// network stack trusts the Orbit root CA from the keychain. Only paths below /api/v1/t3 are sent.
+// network stack trusts the Orbit root CA from the keychain. Only paths below /api/v1/conn are sent.
 
 const TIMEOUT_MS = 15_000;
 
@@ -29,7 +29,7 @@ async function send(
 ): Promise<typeof OrbitGatewayResponse.Type> {
   try {
     const response = await Electron.net.fetch(
-      `${DEFAULT_ORBIT_GATEWAY_URL}/api/v1/t3${request.path}`,
+      `${DEFAULT_ORBIT_GATEWAY_URL}/api/v1/conn${request.path}`,
       {
         method: request.method,
         headers: {

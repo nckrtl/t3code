@@ -1,5 +1,5 @@
 /**
- * The T3 Code layer of the Orbit Gateway (`/api/v1/t3`, see Orbit's docs/reference/t3-code.md).
+ * The Conn layer of the Orbit Gateway (`/api/v1/conn`, see Orbit's docs/reference/conn.md).
  *
  * The Gateway knows the caller by its WireGuard address, so a request carries no credentials. Each
  * app supplies the transport: the desktop main process (Electron `net.fetch`, which trusts the
@@ -10,7 +10,7 @@ export const DEFAULT_ORBIT_GATEWAY_URL = "https://gateway.orbit";
 
 export interface OrbitGatewayRequest {
   readonly method: "GET" | "POST" | "PUT";
-  /** A path below `/api/v1/t3`, such as `/me`. */
+  /** A path below `/api/v1/conn`, such as `/me`. */
   readonly path: string;
   readonly body?: unknown;
 }
@@ -95,7 +95,7 @@ export interface OrbitGatewayClient {
   readonly createProfile: (name: string) => Promise<OrbitGatewayProfile>;
   readonly bindProfile: (profileId: number) => Promise<OrbitGatewayNode>;
   readonly settings: (profileId: number) => Promise<OrbitGatewaySettings>;
-  /** Replaces the workspaces. A stale `version` fails with `t3.settings_version_conflict`. */
+  /** Replaces the workspaces. A stale `version` fails with `conn.settings_version_conflict`. */
   readonly replaceWorkspaces: (
     profileId: number,
     version: number,
@@ -106,7 +106,7 @@ export interface OrbitGatewayClient {
   readonly pair: (environmentId: string) => Promise<OrbitGatewayPairing>;
 }
 
-export const SETTINGS_VERSION_CONFLICT = "t3.settings_version_conflict";
+export const SETTINGS_VERSION_CONFLICT = "conn.settings_version_conflict";
 
 export function createOrbitGatewayClient(transport: OrbitGatewayTransport): OrbitGatewayClient {
   const call = async (request: OrbitGatewayRequest): Promise<unknown> => {

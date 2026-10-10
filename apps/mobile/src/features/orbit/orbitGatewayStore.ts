@@ -48,7 +48,7 @@ export interface OrbitGatewayState {
 }
 
 const client = createOrbitGatewayClient(async (request) => {
-  const response = await fetch(`${DEFAULT_ORBIT_GATEWAY_URL}/api/v1/t3${request.path}`, {
+  const response = await fetch(`${DEFAULT_ORBIT_GATEWAY_URL}/api/v1/conn${request.path}`, {
     method: request.method,
     headers: {
       Accept: "application/json",

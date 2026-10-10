@@ -2,7 +2,7 @@ import type { OrbitGatewayWorkspace } from "./client.ts";
 
 /**
  * Three-way merge of a profile's workspaces, used when another device replaced the settings while
- * this one had unsent edits (`t3.settings_version_conflict`).
+ * this one had unsent edits (`conn.settings_version_conflict`).
  *
  * `base` is the list both sides started from (the last version this device read), `local` holds
  * this device's edits, and `remote` is the profile's current list. Per workspace id, a side that
