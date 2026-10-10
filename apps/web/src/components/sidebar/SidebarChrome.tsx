@@ -61,7 +61,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         className="relative top-auto z-10 translate-y-0 md:hidden"
       />
       {/* <SidebarBrand onBackdrop={backdropVariant !== null} /> */}
-      {pillLabel ? (
+      {pillLabel && pillLabel !== "Dev" ? (
         <Badge
           className="relative z-10 ml-1 hidden @[15rem]/sidebar-header:inline-flex"
           data-environment-identification="pill"
