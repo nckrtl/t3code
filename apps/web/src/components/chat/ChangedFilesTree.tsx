@@ -11,11 +11,9 @@ import {
   ChevronsUpDownIcon,
   ChevronRightIcon,
   FileDiffIcon,
-  FolderIcon,
-  FolderClosedIcon,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
-import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
+import { DiffStatLabel, diffStatColumnsStyle, hasNonZeroStat } from "./DiffStatLabel";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -49,14 +47,14 @@ export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
 
   return (
     <div
-      className="@container/changed-files mt-4 rounded-lg bg-secondary dark:bg-input/20"
+      className="@container/changed-files mt-4 rounded-bubble bg-secondary dark:bg-input/20"
       data-changed-files-state="tree"
     >
       <div
         data-changed-files-header=""
-        className="sticky top-2 z-10 flex items-center justify-between gap-2 rounded-t-lg bg-secondary px-3 py-2 dark:bg-background dark:bg-linear-to-b dark:from-input/20 dark:to-input/20"
+        className="sticky top-2 z-10 flex items-center justify-between gap-2 rounded-t-bubble bg-secondary ps-4.5 pe-2.5 pt-2 pb-1 dark:bg-background dark:bg-linear-to-b dark:from-input/20 dark:to-input/20"
       >
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-foreground">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-ui font-medium text-foreground">
           <span>
             {files.length} changed file{files.length === 1 ? "" : "s"}
           </span>
@@ -65,7 +63,8 @@ export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
               additions={summaryStat.additions}
               deletions={summaryStat.deletions}
               layout="inline"
-              className="text-xs leading-4"
+              font="sans"
+              className="text-ui"
             />
           )}
         </div>
@@ -110,7 +109,7 @@ export const ChangedFilesCard = memo(function ChangedFilesCard(props: {
               }
             >
               <FileDiffIcon className="size-3" />
-              <span className="hidden @[24rem]/changed-files:inline">Open diff</span>
+              <span className="hidden text-ui @[24rem]/changed-files:inline">Open diff</span>
             </TooltipTrigger>
             <TooltipPopup side="top">Open the full diff</TooltipPopup>
           </Tooltip>
@@ -181,7 +180,7 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
   );
 
   const renderTreeNode = (node: TurnDiffTreeNode, depth: number) => {
-    const leftPadding = 8 + depth * 14;
+    const leftPadding = 4 + depth * 14;
     if (node.kind === "directory") {
       const isExpanded = expandedDirectories[node.path] ?? allDirectoriesExpanded;
       return (
@@ -190,28 +189,32 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
             type="button"
             data-scroll-anchor-ignore
             aria-expanded={isExpanded}
-            className="group flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            className="group flex w-full items-center gap-1 rounded-md py-1 pr-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             style={{ paddingLeft: `${leftPadding}px` }}
             onClick={() => toggleDirectory(node.path)}
           >
-            <ChevronRightIcon
+            {/* Only the caret takes the hover highlight; the whole row stays the click target. */}
+            <span
               aria-hidden="true"
-              className={cn(
-                "size-3.5 shrink-0 text-muted-foreground/70 transition-transform group-hover:text-foreground/80",
-                isExpanded && "rotate-90",
-              )}
-            />
-            {isExpanded ? (
-              <FolderIcon className="size-3.5 shrink-0 text-muted-foreground/75" />
-            ) : (
-              <FolderClosedIcon className="size-3.5 shrink-0 text-muted-foreground/75" />
-            )}
-            <span className="truncate font-mono text-2xs text-muted-foreground/90 group-hover:text-foreground/90">
+              className="flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors group-hover:bg-accent"
+            >
+              <ChevronRightIcon
+                className={cn(
+                  "size-3 text-muted-foreground transition-transform",
+                  isExpanded && "rotate-90",
+                )}
+              />
+            </span>
+            <span className="truncate text-ui leading-4.5 text-muted-foreground/90 group-hover:text-foreground/90">
               {node.name}
             </span>
             {hasNonZeroStat(node.stat) && (
-              <span className="ml-auto shrink-0 font-mono text-2xs tabular-nums">
-                <DiffStatLabel additions={node.stat.additions} deletions={node.stat.deletions} />
+              <span className="ml-auto flex shrink-0 text-ui leading-4.5 tabular-nums">
+                <DiffStatLabel
+                  additions={node.stat.additions}
+                  deletions={node.stat.deletions}
+                  font="sans"
+                />
               </span>
             )}
           </button>
@@ -226,7 +229,7 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
       <button
         key={`file:${node.path}`}
         type="button"
-        className="group flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        className="group flex w-full items-center gap-1 rounded-md py-1 pr-2.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         style={{ paddingLeft: `${leftPadding}px` }}
         onClick={() => onOpenTurnDiff(turnId, node.path)}
         onContextMenu={
@@ -239,7 +242,7 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
         }
       >
         {hasDirectoryNodes || depth > 0 ? (
-          <span aria-hidden="true" className="size-3.5 shrink-0" />
+          <span aria-hidden="true" className="size-4 shrink-0" />
         ) : null}
         <PierreEntryIcon
           pathValue={node.path}
@@ -247,19 +250,32 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
           theme={resolvedTheme}
           className="size-3.5 text-muted-foreground/70"
         />
-        <span className="flex min-w-0 font-mono text-xs text-foreground/85 group-hover:text-foreground">
+        <span className="flex min-w-0 text-ui leading-4.5 text-foreground/85 group-hover:text-foreground">
           <MiddleTruncate value={node.name} />
         </span>
         {node.stat && (
-          <span className="ml-auto shrink-0 font-mono text-xs tabular-nums">
-            <DiffStatLabel additions={node.stat.additions} deletions={node.stat.deletions} />
+          <span className="ml-auto flex shrink-0 text-ui leading-4.5 tabular-nums">
+            <DiffStatLabel
+              additions={node.stat.additions}
+              deletions={node.stat.deletions}
+              font="sans"
+            />
           </span>
         )}
       </button>
     );
   };
 
-  return <div className="p-2">{treeNodes.map((node) => renderTreeNode(node, 0))}</div>;
+  return (
+    // Top-level nodes carry the largest counts, since a directory sums its children.
+    <div
+      className="px-2 pt-1 pb-2"
+      data-diff-stat-columns=""
+      style={diffStatColumnsStyle(treeNodes.map((node) => node.stat))}
+    >
+      {treeNodes.map((node) => renderTreeNode(node, 0))}
+    </div>
+  );
 });
 
 function collectDirectoryPaths(nodes: ReadonlyArray<TurnDiffTreeNode>): string[] {

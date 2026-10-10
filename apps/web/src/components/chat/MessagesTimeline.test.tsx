@@ -427,8 +427,8 @@ describe("MessagesTimeline", () => {
       // Heading + accessible label.
       expect(markup.match(/Which repository\?/g)).toHaveLength(2);
       await act(() => questionToggle.props.onClick());
-      // Expanded history adds a third occurrence alongside heading and label.
-      expect(JSON.stringify(renderer!.toJSON()).match(/Which repository\?/g)).toHaveLength(3);
+      // The row title already shows the question, so the expanded history does not repeat it.
+      expect(JSON.stringify(renderer!.toJSON()).match(/Which repository\?/g)).toHaveLength(2);
     } finally {
       await act(() => renderer?.unmount());
     }
@@ -1190,7 +1190,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).not.toContain("Show full message");
     expect(markup).toContain('data-user-message-collapsible="false"');
-    expect(markup).toContain("rounded-2xl bg-message p-3");
+    expect(markup).toContain("bg-message");
   });
 
   it("preserves arbitrary XML-like tags and comparisons in rendered user messages", async () => {

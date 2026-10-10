@@ -195,14 +195,6 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
       transparent calc(1rem + 10px)
     ),
     linear-gradient(rgb(255 255 255 / 1%), rgb(255 255 255 / 1%));
-  --background-image-composer-seam-above:
-    linear-gradient(var(--chat-composer-attached-tint), var(--chat-composer-attached-tint)),
-    linear-gradient(
-      to top,
-      transparent 0 var(--chat-composer-attachment-overlap),
-      rgb(0 0 0 / 18%) var(--chat-composer-attachment-overlap),
-      transparent calc(var(--chat-composer-attachment-overlap) + 10px)
-    );
   --color-zinc-25: oklch(99.2% 0 0);
   --animate-skeleton: skeleton 2.4s infinite;
   /* Duty-cycled indicator animations: long holds with stepped ramps, so the
@@ -373,21 +365,33 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 @utility dialog-glass {
-  background: color-mix(in srgb, var(--background) var(--glass-opacity), transparent);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border-color: color-mix(in srgb, var(--contrast-foreground) 10%, transparent);
+  /* Dialogs share dropdown-glass's edge and row highlight. Light mode uses the
+     theme overlay; dark mode fills with --shell-raised, the same color as the
+     composer, so modal panels do not read lighter than the prompt panel. The
+     deeper shadow is their own. */
+  --accent: var(--shell-highlight);
+  --glass-divider: color-mix(in srgb, var(--foreground) 8%, transparent);
+  /* The overlay can sit lighter than the theme's default border, which would
+     draw every border-border inside a dialog as a dark line. Re-root it on the
+     dialog's own edge so inner borders stay lighter than the fill. */
+  --contrast-border: var(--glass-divider);
+  background: var(--shell-overlay);
+  -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
+  backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-saturate));
+  border-color: var(--glass-divider);
   box-shadow: 0 24px 64px -24px rgb(0 0 0 / 65%);
 
   @variant dark {
-    border-color: color-mix(in srgb, var(--color-white) 8%, transparent);
-    box-shadow:
-      inset 0 1px rgb(255 255 255 / 4%),
-      0 24px 72px -20px rgb(0 0 0 / 90%);
+    background: var(--shell-raised);
+    box-shadow: 0 24px 72px -20px rgb(0 0 0 / 90%);
   }
 
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     background: var(--popover) !important;
+
+    @variant dark {
+      background: var(--shell-raised) !important;
+    }
   }
 }
 
@@ -1355,7 +1359,7 @@ html[data-theme-id] [data-chat-header] [data-slot="button"],
 html[data-theme-id] [data-chat-header] [data-slot="menu-trigger"],
 html[data-theme-id] [data-chat-header] [data-toolbar-control] {
   --control-icon-color: var(--contrast-toolbar-control-foreground);
-  background-color: var(--toolbar-control);
+  background-color: var(--shell-header-control);
   border-color: var(--contrast-toolbar-border);
   color: var(--contrast-toolbar-control-foreground);
 }
@@ -1391,7 +1395,7 @@ html[data-theme-id] [data-chat-header] [data-slot="menu-trigger"]:hover,
 html[data-theme-id] [data-chat-header] [data-slot="menu-trigger"][data-pressed],
 html[data-theme-id] [data-chat-header] [data-toolbar-control]:hover,
 html[data-theme-id] [data-chat-header] [data-toolbar-control][data-pressed] {
-  background-color: var(--toolbar-control-hover);
+  background-color: var(--shell-header-control-hover);
 }
 
 html[data-theme-id] [data-chat-header] [data-slot="separator"] {
@@ -2315,8 +2319,8 @@ code {
   --shell-highlight: color-mix(in srgb, var(--foreground) 6%, transparent);
   --shell-divider: color-mix(in oklab, var(--sidebar) 90%, var(--foreground));
   --shell-divider-header: color-mix(in oklab, var(--sidebar) 84%, var(--foreground));
-  /* Raised cards (settings groups) sit on --shell-highlight, so their row dividers and
-     secondary text step lighter to keep the same contrast against the lighter fill. */
+  /* Raised cards (settings groups) sit on the selected-row fill (--sidebar-row-active), so
+     their row dividers and secondary text step lighter to keep contrast on the lighter fill. */
   --shell-divider-raised: color-mix(in oklab, var(--sidebar) 80%, var(--foreground));
   --muted-foreground-raised: color-mix(in oklab, var(--muted-foreground) 80%, var(--foreground));
   /* Opaque tiles (empty-state icons) that sit on a raised card and read a step lighter. */
@@ -2334,10 +2338,17 @@ code {
   /* What ToolbarGroup paints; a surface re-roots these to raise its groups. */
   --toolbar-group-fill: var(--shell-control);
   --toolbar-group-border: var(--shell-divider-header);
+  /* Fill of the chat header's buttons (see the [data-chat-header] rules). Light keeps the
+     theme's toolbar control roles as they are. */
+  --shell-header-control: var(--toolbar-control);
+  --shell-header-control-hover: var(--toolbar-control-hover);
   /* The tile's border is the raised card's own color made opaque, so stacked tiles
      separate with a cut of the card instead of a drawn line. */
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 94%, var(--foreground));
   --shell-header-height: 44px;
+  /* The top-edge highlight of the user's chat bubble: one step lighter than its fill,
+     like the active thread row's top edge. */
+  --message-highlight: color-mix(in oklab, var(--message-surface) 90%, var(--foreground));
   /* The checked track of every switch (the Switch primitive and the menu's switch items). */
   --switch-on: color-mix(in oklab, var(--primary) 70%, var(--foreground));
   /* Switch shape. 9999px gives the classic pill; a small radius gives a rounded square.
@@ -2376,6 +2387,19 @@ code {
   --shell-control-raised-border: color-mix(in oklab, var(--sidebar) 74%, var(--foreground));
   --toolbar-group-fill: var(--shell-control);
   --toolbar-group-border: var(--shell-divider-header);
+  /* Header buttons sit on the frosted frame, where the theme's toolbar control role alone reads
+     darker than outline buttons on cards. Rest sits halfway to the theme's hover role; hover goes
+     one step past it. Both still follow the theme's roles. */
+  --shell-header-control: color-mix(
+    in oklab,
+    var(--toolbar-control) 50%,
+    var(--toolbar-control-hover)
+  );
+  --shell-header-control-hover: color-mix(
+    in oklab,
+    var(--toolbar-control-hover) 94%,
+    var(--foreground)
+  );
   --shell-tile-border: color-mix(in srgb, var(--sidebar) 92%, var(--foreground));
 }
 

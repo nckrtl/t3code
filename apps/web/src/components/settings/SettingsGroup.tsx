@@ -18,7 +18,7 @@ export function SettingsGroup({
       className={cn(
         "relative overflow-visible text-foreground",
         variant === "grouped"
-          ? "rounded-lg border border-(--shell-divider-header)! bg-(--shell-highlight) [--muted-foreground:var(--muted-foreground-raised)]"
+          ? "rounded-lg border border-(--shell-divider-header)! border-t-(--shell-divider-raised)! bg-sidebar-row-active [--muted-foreground:var(--muted-foreground-raised)]"
           : "space-y-1",
         variant === "grouped" &&
           divided &&

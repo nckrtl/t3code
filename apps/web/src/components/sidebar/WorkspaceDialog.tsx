@@ -1,6 +1,7 @@
-import { ImageIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { ImageIcon, PlusIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { isCommandPaletteOpen, openCommandPalette } from "../../commandPaletteBus";
 import { cn } from "../../lib/utils";
 import { workspaceImageFromFile } from "../../lib/workspaceImage";
 import { useWorkspaceStore } from "../../workspaceStore";
@@ -28,6 +29,14 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { WORKSPACE_COLOR_CLASSES, WORKSPACE_ICONS, WorkspaceBadge } from "./workspaceVisuals";
+
+/**
+ * Surface of the Letter, Image and icon pickers: the unchecked Checkbox look
+ * (fill above the dialog, `input` border above that fill). List it before the
+ * selected `border-foreground` so the selection wins.
+ */
+const PICKER_BUTTON_SURFACE =
+  "flex h-7 items-center justify-center rounded-md border border-input bg-background dark:bg-input/32";
 
 /**
  * Creates a workspace ("new") or edits one. The caller remounts it (a new
@@ -136,13 +145,48 @@ export function WorkspaceDialog({
     }
   };
 
+  // "Add project" runs the app's own add-project flow (the command palette opens
+  // over this dialog). The flow only navigates to the project, so the project
+  // that appears next in the sidebar's list is the one just added: remember the
+  // refs known now and check the first new one.
+  const refsBeforeAdd = useRef<ReadonlySet<string> | null>(null);
+  const addProject = () => {
+    refsBeforeAdd.current = new Set(availableProjects.flatMap((project) => project.refs));
+    openCommandPalette({ open: "add-project" });
+  };
+  useEffect(() => {
+    const before = refsBeforeAdd.current;
+    if (!before) return;
+    const added = availableProjects
+      .flatMap((project) => project.refs)
+      .filter((ref) => !before.has(ref));
+    if (added.length === 0) return;
+    refsBeforeAdd.current = null;
+    setProjectKeys((keys) => [...new Set([...keys, ...added])]);
+  }, [availableProjects]);
+
   const toggleProject = (key: string, checked: boolean) =>
     setProjectKeys((keys) =>
       checked ? [...new Set([...keys, key])] : keys.filter((k) => k !== key),
     );
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(next, eventDetails) => {
+        if (next) return;
+        // The add-project palette is a separate dialog over this one. Its Escape
+        // and backdrop clicks must not also close this form.
+        if (
+          (eventDetails.reason === "escape-key" || eventDetails.reason === "outside-press") &&
+          isCommandPaletteOpen()
+        ) {
+          eventDetails.cancel();
+          return;
+        }
+        onClose();
+      }}
+    >
       <DialogPopup className="max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? `Edit ${editing.name}` : "New workspace"}</DialogTitle>
@@ -178,7 +222,8 @@ export function WorkspaceDialog({
 
             <div className="grid gap-1.5">
               <Label>Color</Label>
-              <div className="flex flex-wrap gap-1.5">
+              {/* Same 12 columns as the icons below, so the two grids line up. */}
+              <div className="grid grid-cols-12 gap-1">
                 {WORKSPACE_COLORS.map((option) => (
                   <button
                     key={option}
@@ -187,7 +232,7 @@ export function WorkspaceDialog({
                     aria-pressed={color === option}
                     onClick={() => setColor(option)}
                     className={cn(
-                      "size-6 rounded-md outline-offset-2",
+                      "aspect-square rounded-md outline-offset-2",
                       WORKSPACE_COLOR_CLASSES[option],
                       color === option && "outline-2 outline-foreground",
                     )}
@@ -198,13 +243,15 @@ export function WorkspaceDialog({
 
             <div className="grid gap-1.5">
               <Label>Icon</Label>
-              <div className="flex flex-wrap gap-1">
+              {/* Letter and Image take 5 of 12 columns, so both rows of icons fill the width. */}
+              <div className="grid grid-cols-12 gap-1">
                 <button
                   type="button"
                   aria-pressed={icon === null && image === null}
                   onClick={() => chooseIcon(null)}
                   className={cn(
-                    "flex h-7 items-center rounded-md border border-border px-2 text-xs",
+                    PICKER_BUTTON_SURFACE,
+                    "col-span-2 px-2 text-xs",
                     icon === null && image === null && "border-foreground",
                   )}
                 >
@@ -216,7 +263,8 @@ export function WorkspaceDialog({
                   aria-pressed={image !== null}
                   onClick={() => imageInputRef.current?.click()}
                   className={cn(
-                    "flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-xs",
+                    PICKER_BUTTON_SURFACE,
+                    "col-span-3 gap-1.5 px-2 text-xs",
                     image !== null && "border-foreground",
                   )}
                 >
@@ -245,7 +293,7 @@ export function WorkspaceDialog({
                     aria-pressed={icon === key && image === null}
                     onClick={() => chooseIcon(key)}
                     className={cn(
-                      "flex size-7 items-center justify-center rounded-md border border-border",
+                      PICKER_BUTTON_SURFACE,
                       icon === key && image === null && "border-foreground",
                     )}
                   >
@@ -256,7 +304,13 @@ export function WorkspaceDialog({
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Projects</Label>
+              <div className="flex items-center justify-between">
+                <Label>Projects</Label>
+                <Button variant="ghost" size="xs" onClick={addProject}>
+                  <PlusIcon />
+                  Add project
+                </Button>
+              </div>
               {projects.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No projects yet.</p>
               ) : (

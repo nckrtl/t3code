@@ -23,12 +23,15 @@ const neutralOutline = cn(
   "dark:[html[data-theme-id=t3-chat]_&]:[--chat-composer-attached-outline:#241e28]",
 );
 
+// Dark: neutral banners take the context strip's border, so both read as one family.
+const neutralSurfaceOutline = cn(neutralOutline, "dark:before:border-white/7");
+
 const variantColors: Record<ComposerBannerVariant, string> = {
-  default: neutralOutline,
+  default: neutralSurfaceOutline,
   error:
     "[--chat-composer-attached-outline:color-mix(in_srgb,var(--error)_32%,transparent)] [--chat-composer-attached-tint:color-mix(in_srgb,var(--error)_8%,transparent)]",
-  info: neutralOutline,
-  success: neutralOutline,
+  info: neutralSurfaceOutline,
+  success: neutralSurfaceOutline,
   warning:
     "[--chat-composer-attached-outline:color-mix(in_srgb,var(--warning)_28%,transparent)] [--chat-composer-attached-tint:color-mix(in_srgb,var(--warning)_8%,transparent)]",
 };
@@ -56,12 +59,11 @@ function Surface({
         // off the device-pixel grid, and the composer's surface starts exactly there.
         // The composer's own glass covers the extra row, so the overlap never shows.
         placement === "attached"
-          ? "[--chat-composer-attachment-overlap:calc(1rem+1px)] before:rounded-t-2xl before:mask-t-from-transparent before:mask-t-from-4 before:mask-t-to-black before:mask-t-to-4"
+          ? "[--chat-composer-attachment-overlap:calc(1rem+1px)] before:rounded-t-2xl before:mask-t-from-transparent before:mask-t-from-4 before:mask-t-to-black before:mask-t-to-4 dark:before:bg-(--chat-composer-drawer-surface,var(--chat-composer-attached-surface))"
           : "[--chat-composer-attachment-overlap:0px] before:rounded-2xl",
         "before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:border before:border-(--chat-composer-attached-outline)",
         "before:bg-(--chat-composer-attached-surface)/(--glass-opacity) before:bg-linear-to-b before:from-(--chat-composer-attached-tint) before:to-(--chat-composer-attached-tint) before:backdrop-blur-(--glass-blur) before:backdrop-saturate-(--glass-saturation)",
         "before:shadow-composer dark:before:shadow-composer-dark",
-        "dark:supports-[(backdrop-filter:blur(1px))_or_(-webkit-backdrop-filter:blur(1px))]:before:bg-composer-seam-above",
         "not-supports-[((backdrop-filter:blur(1px))_or_(-webkit-backdrop-filter:blur(1px)))]:before:bg-(--chat-composer-attached-surface)",
         className,
       )}

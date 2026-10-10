@@ -115,6 +115,7 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   CircleAlertIcon,
+  CircleHelpIcon,
   DownloadIcon,
   EyeIcon,
   GlobeIcon,
@@ -2116,7 +2117,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
 
   return (
     <div className="group flex flex-col items-end gap-1">
-      <div className="relative max-w-[80%] rounded-bubble bg-message p-3 text-message-foreground">
+      <div className="relative max-w-[80%] rounded-bubble border-t border-t-(--message-highlight)! bg-message px-4 pt-2.5 pb-3 text-message-foreground">
         <MessageAuthorHeading>You</MessageAuthorHeading>
         {(regularImages.length > 0 || userVideos.length > 0) && (
           <div className="mb-2 grid max-w-[210px] grid-cols-2 gap-2">
@@ -2364,7 +2365,7 @@ function TurnFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "turn-
   const Icon = row.expanded ? ChevronDownIcon : ChevronRightIcon;
 
   return (
-    <div className="group/timeline-row relative flex items-center gap-1 border-b border-(--shell-divider-header)! pb-2 pe-0.5 pt-1">
+    <div className="group/timeline-row relative flex items-center gap-1 border-b border-(--shell-divider)! pb-2 pe-0.5 pt-1">
       <button
         type="button"
         aria-expanded={row.expanded}
@@ -2553,7 +2554,7 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
     "Working..."
   );
   return (
-    <div className="border-b border-(--shell-divider-header)! pb-2 pt-1">
+    <div className="border-b border-(--shell-divider)! pb-2 pt-1">
       <div className="flex h-6 min-w-0 items-baseline gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
         <span
           ref={shimmer ? observeVisibleAnimation : undefined}
@@ -4144,12 +4145,12 @@ type WorkEntryIconName =
   | "browser"
   | "check"
   | "circle-alert"
+  | "circle-help"
   | "computer"
   | "device"
   | "eye"
   | "globe"
   | "hammer"
-  | "message-circle"
   | "search"
   | "square-pen"
   | "terminal"
@@ -4355,14 +4356,14 @@ function WorkEntryIcon({ name, className }: { name: WorkEntryIconName; className
       return <CheckIcon className={className} aria-hidden />;
     case "circle-alert":
       return <CircleAlertIcon className={className} aria-hidden />;
+    case "circle-help":
+      return <CircleHelpIcon className={className} aria-hidden />;
     case "eye":
       return <EyeIcon className={className} aria-hidden />;
     case "globe":
       return <GlobeIcon className={className} aria-hidden />;
     case "hammer":
       return <HammerIcon className={className} aria-hidden />;
-    case "message-circle":
-      return <MessageCircleIcon className={className} aria-hidden />;
     case "search":
       return <SearchIcon className={className} aria-hidden />;
     case "square-pen":
@@ -4473,7 +4474,7 @@ function workEntryIconName(workEntry: TimelineWorkEntry): WorkEntryIconName {
     workEntry.sourceActivityKind === "user-input.requested" ||
     workEntry.sourceActivityKind === "user-input.resolved"
   ) {
-    return "message-circle";
+    return "circle-help";
   }
   if (workEntry.toolSurface) return workEntry.toolSurface;
   const toolPresentation = resolveWorkEntryToolPresentation(workEntry);
@@ -4767,8 +4768,8 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
       ? undefined
       : (workEntry.toolIcon ?? workEntry.toolSource?.icon);
   // The question is the row's identity: a generic "User input submitted"
-  // label buries what was asked, so lead with the question text and keep the
-  // answer as the trailing preview.
+  // label buries what was asked, so lead with the question text. The answer
+  // shows in the expanded detail and in the accessible label, not in the title.
   const questionHeading = workEntry.questionAnswer
     ? getQuestionTextPreview(workEntry.questionAnswer)
     : "";
@@ -4856,7 +4857,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
       )}
       {...rowToggleProps}
     >
-      <div className="flex select-none items-center gap-1.5 transition-[opacity,translate] duration-200">
+      <div className="flex select-none items-start gap-1.5 transition-[opacity,translate] duration-200">
         <span
           className={iconWrapperClass}
           role={showFailedIndicator ? "img" : undefined}
@@ -4869,12 +4870,12 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
             muted
           />
         </span>
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="flex min-w-0 flex-1 items-start gap-1.5">
+          <div className="flex min-h-6 min-w-0 flex-1 items-center overflow-hidden">
             <p className="flex min-w-0 w-full items-baseline gap-1.5 text-sm leading-relaxed">
               <span
                 className={cn(
-                  answerPreview ? "min-w-0" : "min-w-0 flex-1",
+                  "min-w-0 flex-1",
                   expanded ? "whitespace-pre-wrap break-words select-text" : "truncate",
                   headingClass,
                 )}
@@ -4883,42 +4884,34 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
               >
                 {previewText}
               </span>
-              {answerPreview ? (
-                <span
-                  className={cn(
-                    "min-w-0 truncate",
-                    !expanded &&
-                      workEntry.questionAnswer &&
-                      hasQuestionAnswer(workEntry.questionAnswer)
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {answerPreview}
-                </span>
-              ) : null}
             </p>
           </div>
-          {showFailedIndicator &&
-          !showDestructiveRowStyle &&
-          !toolIconAcceptsTint(entryIconName, entryToolIcon) ? (
-            <XIcon aria-hidden className={cn("size-3 shrink-0", failedToolIconClassName)} />
-          ) : null}
-          <TimelineRowTimestamp createdAt={workEntry.createdAt} timestampFormat={timestampFormat} />
-          <span
-            className={cn(
-              "flex size-4 shrink-0 items-center justify-center",
-              !canExpand && "invisible",
-            )}
-            aria-hidden
-          >
-            <ChevronRightIcon
-              className={cn(
-                "size-3 shrink-0 text-icon-muted opacity-70 transition-transform duration-200",
-                expanded && "rotate-90",
-              )}
+          {/* One 24px-tall group, so the failure mark, time and chevron stay on the title's first line when it wraps. */}
+          <div className="flex h-6 shrink-0 items-center gap-1.5">
+            {showFailedIndicator &&
+            !showDestructiveRowStyle &&
+            !toolIconAcceptsTint(entryIconName, entryToolIcon) ? (
+              <XIcon aria-hidden className={cn("size-3 shrink-0", failedToolIconClassName)} />
+            ) : null}
+            <TimelineRowTimestamp
+              createdAt={workEntry.createdAt}
+              timestampFormat={timestampFormat}
             />
-          </span>
+            <span
+              className={cn(
+                "flex size-4 shrink-0 items-center justify-center",
+                !canExpand && "invisible",
+              )}
+              aria-hidden
+            >
+              <ChevronRightIcon
+                className={cn(
+                  "size-3 shrink-0 text-icon-muted opacity-70 transition-transform duration-200",
+                  expanded && "rotate-90",
+                )}
+              />
+            </span>
+          </div>
         </div>
       </div>
       {expanded && viewedImage && threadRef ? (
@@ -4939,7 +4932,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
         </div>
       ) : null}
       {expanded && workEntry.questionAnswer ? (
-        <QuestionAnswerHistory answer={workEntry.questionAnswer} />
+        <QuestionAnswerHistory answer={workEntry.questionAnswer} title={previewText} />
       ) : null}
       {expanded && canExpand && expandedBody && !workEntry.questionAnswer ? (
         <div
@@ -4954,11 +4947,20 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
   );
 });
 
+/**
+ * The expanded detail of a question/answer entry. Its icon and text columns
+ * line up with the row's own icon (24px box) and title. A question is left out
+ * when the row title already shows it, which is the single-question case.
+ */
 function QuestionAnswerHistory({
   answer,
+  title,
 }: {
   answer: import("@t3tools/contracts").UserInputAttachmentAnswerPayload;
+  title: string;
 }) {
+  const isShownInTitle = (questionText: string) =>
+    questionText.replace(/\s+/g, " ").trim() === title;
   const { activeThreadEnvironmentId } = use(TimelineRowCtx);
   const attachments = useMemo(() => Object.values(answer.attachmentsByQuestionId).flat(), [answer]);
   const resources = useMemo(
@@ -4971,7 +4973,7 @@ function QuestionAnswerHistory({
   );
   const urls = useAssetUrls(activeThreadEnvironmentId, resources);
   return (
-    <div className="ms-7 mt-2 space-y-2" onClick={stopRowToggle}>
+    <div className="mt-2 space-y-2" onClick={stopRowToggle}>
       {[
         ...new Set([
           ...Object.keys(answer.questionTextById ?? {}),
@@ -4980,40 +4982,54 @@ function QuestionAnswerHistory({
         ]),
       ].map((questionId) => (
         <div key={questionId} className="space-y-1">
-          {answer.questionTextById?.[questionId] ? (
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {answer.questionTextById[questionId]}
-            </p>
+          {answer.questionTextById?.[questionId] &&
+          !isShownInTitle(answer.questionTextById[questionId]) ? (
+            <div className="flex items-start gap-1.5 pe-2">
+              <span className="flex h-5 w-6 shrink-0 items-center justify-center text-icon-muted">
+                <CircleHelpIcon aria-hidden className="size-3.5" />
+              </span>
+              <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                {answer.questionTextById[questionId]}
+              </p>
+            </div>
           ) : null}
           {getQuestionAnswerText(answer.answers[questionId]) ? (
-            <p className="ms-3 whitespace-pre-wrap text-sm text-muted-foreground">
-              {getQuestionAnswerText(answer.answers[questionId])}
-            </p>
+            <div className="flex items-start gap-1.5 rounded-md bg-(--shell-highlight) pe-2 py-1">
+              <span className="flex h-5 w-6 shrink-0 items-center justify-center text-icon-muted">
+                <MessageCircleIcon aria-hidden className="size-3.5" />
+              </span>
+              <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-foreground">
+                {getQuestionAnswerText(answer.answers[questionId])}
+              </p>
+            </div>
           ) : null}
-          <div className="flex flex-wrap gap-2">
-            {(answer.attachmentsByQuestionId[questionId] ?? []).map((attachment) => {
-              const url = urls[attachments.indexOf(attachment)];
-              return (
-                <a
-                  key={attachment.id}
-                  href={url ?? undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm underline"
-                >
-                  {attachment.type === "image" && url ? (
-                    <img
-                      src={url}
-                      alt={attachment.name}
-                      className="h-20 max-w-32 rounded object-contain"
-                    />
-                  ) : (
-                    attachment.name
-                  )}
-                </a>
-              );
-            })}
-          </div>
+          {/* Rendered only with attachments: an empty sibling would still get the stack's bottom margin. */}
+          {(answer.attachmentsByQuestionId[questionId] ?? []).length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {(answer.attachmentsByQuestionId[questionId] ?? []).map((attachment) => {
+                const url = urls[attachments.indexOf(attachment)];
+                return (
+                  <a
+                    key={attachment.id}
+                    href={url ?? undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm underline"
+                  >
+                    {attachment.type === "image" && url ? (
+                      <img
+                        src={url}
+                        alt={attachment.name}
+                        className="h-20 max-w-32 rounded object-contain"
+                      />
+                    ) : (
+                      attachment.name
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       ))}
     </div>

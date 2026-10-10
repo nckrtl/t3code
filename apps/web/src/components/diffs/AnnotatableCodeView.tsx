@@ -251,6 +251,9 @@ export function AnnotatableCodeView({
       key={codeViewKey}
       {...(viewerRef ? { viewerRef } : {})}
       {...(className ? { className } : {})}
+      // Matches the Files tree's 8px side inset (6px padding + 2px row margin), which the diff
+      // list lacks, so rows breathe evenly at the top and bottom of the scroll content.
+      edgePadding={8}
       {...(unsafeCSSExtra ? { unsafeCSSExtra } : {})}
       {...(renderHeaderMetadata
         ? {

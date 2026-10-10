@@ -250,6 +250,11 @@ export function SettingsUnavailableGroup({
  * Keep descriptions short enough for one line where possible. Allow wrapping
  * for clarity or narrow screens instead of truncating or forcing no-wrap.
  *
+ * On wide rows with a description, the control slot spans the title line plus
+ * the first description line and centers its children there, so a picker sits
+ * between title and description. Without a description it starts at the title
+ * line's top. Switches always start at the title line's top.
+ *
  * Control sizing across settings follows three tiers so rows share a baseline:
  * - `control` slot: `size="sm"` (Button, Select, Input, NumberField) or `icon-sm`.
  * - Section `headerAction`s and buttons inside list items, cards, toolbars: `xs` / `icon-xs`.
@@ -359,7 +364,7 @@ export function SettingsRow({
           // Focusable so keyboard users can still reach the explanation.
           <span
             tabIndex={0}
-            className="flex w-full items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring @min-[32rem]/settings-row:w-auto"
+            className="flex w-full items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring @min-[32rem]/settings-row:min-h-5 @min-[32rem]/settings-row:w-auto @min-[32rem]/settings-row:items-start @min-[32rem]/settings-row:has-[[data-slot=switch]]:self-start"
           />
         }
       >
@@ -459,7 +464,15 @@ export function SettingsRow({
           ) : null}
         </div>
         {renderedControl ? (
-          <div className="flex w-full min-w-0 shrink-0 items-center gap-2 @min-[32rem]/settings-row:h-5 @min-[32rem]/settings-row:w-auto @min-[32rem]/settings-row:justify-end [&_button]:text-ui [&_input]:text-ui">
+          <div
+            className={cn(
+              "flex w-full min-w-0 shrink-0 items-center gap-2 @min-[32rem]/settings-row:w-auto @min-[32rem]/settings-row:justify-end @min-[32rem]/settings-row:[&>[data-slot=switch]]:self-start [&_button]:text-ui [&_input]:text-ui",
+              description
+                ? // Same height as the title line + gap + first description line (leading-normal).
+                  "@min-[32rem]/settings-row:min-h-[calc(--spacing(5)+--spacing(1)+var(--text-ui)*1.5)] @min-[32rem]/settings-row:items-center"
+                : "@min-[32rem]/settings-row:min-h-5 @min-[32rem]/settings-row:items-start",
+            )}
+          >
             {renderedControl}
           </div>
         ) : null}

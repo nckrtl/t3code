@@ -961,7 +961,10 @@ function MarkdownCodeBlockTitleContent({
           <span className="inline-flex shrink-0 rounded-sm" aria-label={`Language: ${language}`} />
         }
       >
-        <PierreEntryIcon pathValue={fileName} kind="file" theme={theme} className="size-3.5" />
+        {/* Pierre glyphs sit inside a padded 16px viewBox (bash's "$_" is only half
+            the box), so this is larger than the 12px action icons to match them
+            visually. */}
+        <PierreEntryIcon pathValue={fileName} kind="file" theme={theme} className="size-5" />
       </TooltipTrigger>
       <TooltipPopup side="top">{language}</TooltipPopup>
     </Tooltip>
@@ -1042,7 +1045,7 @@ function MarkdownCodeBlock({
 
   return (
     <div
-      className="chat-markdown-codeblock my-[0.65rem] overflow-hidden rounded-lg border border-border/70 bg-secondary leading-snug dark:border-transparent dark:bg-input/32"
+      className="chat-markdown-codeblock my-[0.65rem] overflow-hidden rounded-bubble border border-border/70 bg-secondary leading-relaxed dark:border-transparent dark:bg-input/32"
       data-language={language}
       data-wrap={wrapped ? "true" : "false"}
     >

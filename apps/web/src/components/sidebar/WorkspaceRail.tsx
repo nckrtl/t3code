@@ -118,7 +118,6 @@ function RailButton({
               if (event.metaKey && onOpenWindow) onOpenWindow();
               else onClick();
             }}
-            onDoubleClick={onEdit}
             onContextMenu={
               hasMenu
                 ? (event) => {

@@ -277,6 +277,11 @@ type StyledDiffCodeViewProps<LAnnotation> = (
    * to restyle chrome the viewer owns — such as replacing its per-file line counts.
    */
   readonly unsafeCSSExtra?: string;
+  /**
+   * Space in px above the first and below the last item, inside the scrollable content. Uses
+   * the viewer's own layout inset so virtualization measurements stay correct.
+   */
+  readonly edgePadding?: number;
 };
 
 /** The shared web CodeView surface: app styling and virtualized geometry stay paired here. */
@@ -285,6 +290,7 @@ export function StyledDiffCodeView<LAnnotation = undefined>({
   viewerRef,
   className,
   unsafeCSSExtra,
+  edgePadding = 0,
   ...props
 }: StyledDiffCodeViewProps<LAnnotation>) {
   return (
@@ -319,7 +325,7 @@ export function StyledDiffCodeView<LAnnotation = undefined>({
             // one clipped file row per expanded file above it.
             paddingBottom: 8,
           },
-          layout: { paddingTop: 0, paddingBottom: 0, gap: 0 },
+          layout: { paddingTop: edgePadding, paddingBottom: edgePadding, gap: 0 },
         }}
       />
     </DiffWorkerPoolProvider>
