@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {
   DEFAULT_CLIENT_SETTINGS,
   DEFAULT_UNIFIED_SETTINGS,

@@ -84,11 +84,16 @@ vi.mock("~/browser/browserDefaults", () => ({
 
 vi.mock("~/composerDraftStore", () => ({
   useComposerDraftStore: (
-    select: (store: { addPreviewAnnotation: () => void; addImage: () => void }) => unknown,
+    select: (store: {
+      addPreviewAnnotation: () => void;
+      addImage: () => void;
+      getDraftThreadByRef: () => null;
+    }) => unknown,
   ) =>
     select({
       addPreviewAnnotation: mocks.addPreviewAnnotation,
       addImage: mocks.addImage,
+      getDraftThreadByRef: () => null,
     }),
 }));
 
