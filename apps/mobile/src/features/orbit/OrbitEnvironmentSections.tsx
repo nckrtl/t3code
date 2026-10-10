@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 
 import { SymbolView } from "../../components/AppSymbol";
 import { AppText as Text } from "../../components/AppText";
+import { ControlPillMenu } from "../../components/ControlPillMenu";
 import { ErrorBanner } from "../../components/ErrorBanner";
 import { useSavedRemoteConnections } from "../../state/use-remote-environment-registry";
 import { ConnectionSheetButton } from "../connection/ConnectionSheetButton";
@@ -33,45 +34,55 @@ const PROVIDER_OPTIONS: ReadonlyArray<{
   },
 ];
 
-/** Where this device's environments come from, at the top of Settings › Environments. */
+/** Which provider supplies this device's environments, at the top of Settings › Environments. */
 export function EnvironmentProviderPicker() {
   const gateway = useOrbitGateway();
   const [switching, setSwitching] = useState(false);
+  const current =
+    PROVIDER_OPTIONS.find((option) => option.provider === gateway.provider) ?? PROVIDER_OPTIONS[0]!;
+  const disabled = switching || !gateway.providerLoaded;
+
   return (
-    <SettingsSection title="Environments from">
-      {PROVIDER_OPTIONS.map((option, index) => (
-        <Pressable
-          key={option.provider}
-          accessibilityRole="radio"
-          accessibilityState={{
-            checked: gateway.provider === option.provider,
-            disabled: switching || !gateway.providerLoaded,
-          }}
-          disabled={switching || !gateway.providerLoaded}
-          onPress={() => {
-            if (gateway.provider === option.provider) return;
-            setSwitching(true);
-            void setEnvironmentProvider(option.provider).finally(() => setSwitching(false));
-          }}
-          className={
-            index === 0
-              ? "flex-row items-center gap-4 p-4"
-              : "flex-row items-center gap-4 border-t border-border-subtle p-4"
-          }
-        >
-          <View className="min-w-0 flex-1 gap-1">
-            <Text className="text-lg text-foreground">{option.label}</Text>
-            <Text className="text-sm leading-normal text-foreground-muted">
-              {option.description}
-            </Text>
-          </View>
-          {switching && gateway.provider !== option.provider ? (
-            <ActivityIndicator />
-          ) : gateway.provider === option.provider ? (
-            <SymbolView name="checkmark" size={18} tintColorClassName="accent-icon" />
-          ) : null}
-        </Pressable>
-      ))}
+    <SettingsSection>
+      <View className="flex-row items-center gap-4 p-4">
+        <View className="min-w-0 flex-1 gap-1">
+          <Text className="text-lg text-foreground">Provider</Text>
+          <Text className="text-sm leading-normal text-foreground-muted">
+            {current.description}
+          </Text>
+        </View>
+        {switching ? (
+          <ActivityIndicator />
+        ) : (
+          <ControlPillMenu
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={`Environment provider: ${current.label}`}
+            title="Environment provider"
+            actions={PROVIDER_OPTIONS.map((option) => ({
+              id: option.provider,
+              title: option.label,
+              state: option.provider === gateway.provider ? ("on" as const) : ("off" as const),
+            }))}
+            onPressAction={({ nativeEvent }) => {
+              const next = PROVIDER_OPTIONS.find((option) => option.provider === nativeEvent.event);
+              if (!next || next.provider === gateway.provider || disabled) return;
+              setSwitching(true);
+              void setEnvironmentProvider(next.provider).finally(() => setSwitching(false));
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Environment provider: ${current.label}`}
+              disabled={disabled}
+              className="flex-row items-center gap-1.5"
+            >
+              <Text className="text-base text-foreground-muted">{current.label}</Text>
+              <SymbolView name="chevron.down" size={14} tintColorClassName="accent-chevron" />
+            </Pressable>
+          </ControlPillMenu>
+        )}
+      </View>
     </SettingsSection>
   );
 }
