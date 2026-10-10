@@ -90,6 +90,7 @@ import {
   WslRuntimeArchiveMissingError,
   wslRuntimeArchiveStem,
 } from "./build-desktop-artifact.ts";
+import { resolveAppBrand } from "../apps/desktop/src/branding/appBrand.ts";
 import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
@@ -279,6 +280,30 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
       windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
     });
+  });
+
+  it("packages the brand's own stable icons and leaves nightly ones alone", () => {
+    const brand = resolveAppBrand(
+      {
+        icons: {
+          prod: {
+            macPng: "assets/fork/mac.png",
+            universalPng: "assets/fork/universal.png",
+            windowsIco: "assets/fork/windows.ico",
+          },
+        },
+      },
+      {},
+    );
+    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17", brand), {
+      macIconPng: "assets/fork/mac.png",
+      linuxIconPng: "assets/fork/universal.png",
+      windowsIconIco: "assets/fork/windows.ico",
+    });
+    assert.equal(
+      resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42", brand).macIconPng,
+      BRAND_ASSET_PATHS.nightlyMacIconPng,
+    );
   });
 
   it("switches the bundled splash and favicon branding for nightly versions", () => {

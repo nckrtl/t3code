@@ -116,7 +116,29 @@ function resolveAppVariant(value: string | undefined): AppVariant {
   }
 }
 
-const variant = VARIANT_CONFIG[APP_VARIANT];
+// nckrtl fork: a build under your own bundle id shows the Conn logo instead of the T3 mark. The
+// Icon Composer projects and exports live in assets/conn (see FORK.md). Preview keeps upstream's.
+const CONN_ICON_ASSETS = {
+  development: {
+    appIcon: fromRepoRoot("assets/conn/dev/conn-dev-ios-1024.png"),
+    iosIcon: fromRepoRoot("assets/conn/dev/app-icon.icon"),
+    splashIcon: fromRepoRoot("assets/conn/dev/conn-dev-ios-1024.png"),
+  },
+  production: {
+    appIcon: fromRepoRoot("assets/conn/prod/conn-prod-ios-1024.png"),
+    iosIcon: fromRepoRoot("assets/conn/prod/app-icon.icon"),
+    splashIcon: fromRepoRoot("assets/conn/prod/conn-prod-ios-1024.png"),
+  },
+} as const;
+
+const baseVariant = VARIANT_CONFIG[APP_VARIANT];
+const variant = {
+  ...baseVariant,
+  assets: {
+    ...baseVariant.assets,
+    ...(isOwnBundleBuild && APP_VARIANT !== "preview" ? CONN_ICON_ASSETS[APP_VARIANT] : {}),
+  },
+};
 if (ownBundleIdentifier && !IOS_BUNDLE_IDENTIFIER_PATTERN.test(ownBundleIdentifier)) {
   throw new Error(
     "T3CODE_IOS_BUNDLE_ID must be a reverse-DNS identifier such as com.example.conn.",

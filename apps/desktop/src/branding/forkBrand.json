@@ -3,5 +3,17 @@
   "appId": "com.nckrtl.conn",
   "scheme": "conn",
   "appleTeamId": "9SVJ4SYB9B",
-  "omitStageLabel": "Alpha"
+  "omitStageLabel": "Alpha",
+  "icons": {
+    "dev": {
+      "macPng": "assets/conn/dev/conn-dev-macos-1024.png",
+      "universalPng": "assets/conn/dev/conn-dev-universal-1024.png",
+      "windowsIco": "assets/conn/dev/conn-dev-windows.ico"
+    },
+    "prod": {
+      "macPng": "assets/conn/prod/conn-prod-macos-1024.png",
+      "universalPng": "assets/conn/prod/conn-prod-universal-1024.png",
+      "windowsIco": "assets/conn/prod/conn-prod-windows.ico"
+    }
+  }
 }

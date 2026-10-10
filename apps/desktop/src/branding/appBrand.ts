@@ -15,6 +15,18 @@
 
 export type AppBrandStage = "Alpha" | "Dev" | "Nightly";
 
+/** Repo-relative paths of the app icon files one channel (dev or packaged) uses. */
+export interface AppBrandIconSet {
+  readonly macPng: string;
+  readonly universalPng: string;
+  readonly windowsIco: string;
+}
+
+export interface AppBrandIcons {
+  readonly dev: AppBrandIconSet;
+  readonly prod: AppBrandIconSet;
+}
+
 /** The values a fork file or the environment may set. */
 export interface AppBrandSource {
   readonly name?: string;
@@ -23,6 +35,11 @@ export interface AppBrandSource {
   readonly appleTeamId?: string;
   /** A stage label that is left out of the app name, such as "Alpha" for a packaged "Conn". */
   readonly omitStageLabel?: AppBrandStage;
+  /** Icon files that replace upstream's; a missing file keeps upstream's. */
+  readonly icons?: {
+    readonly dev?: Partial<AppBrandIconSet>;
+    readonly prod?: Partial<AppBrandIconSet>;
+  };
 }
 
 /** Where an earlier build of the same app kept its data and links. */
@@ -43,6 +60,7 @@ export interface AppBrand {
   readonly devUserDataDirName: string;
   readonly appleTeamId: string | null;
   readonly omitStageLabel: AppBrandStage | null;
+  readonly icons: AppBrandIcons;
   /** Set when the brand replaces upstream's identity: data is copied over on first launch. */
   readonly previous: AppBrandPrevious | null;
 }
@@ -57,6 +75,18 @@ export const UPSTREAM_APP_BRAND: AppBrand = {
   devUserDataDirName: "t3code-dev",
   appleTeamId: null,
   omitStageLabel: null,
+  icons: {
+    dev: {
+      macPng: "assets/dev/blueprint-macos-1024.png",
+      universalPng: "assets/dev/blueprint-universal-1024.png",
+      windowsIco: "assets/dev/blueprint-windows.ico",
+    },
+    prod: {
+      macPng: "assets/prod/black-macos-1024.png",
+      universalPng: "assets/prod/black-universal-1024.png",
+      windowsIco: "assets/prod/t3-black-windows.ico",
+    },
+  },
   previous: null,
 };
 
@@ -107,6 +137,10 @@ export function resolveAppBrand(fork: AppBrandSource | undefined, env: Environme
     devUserDataDirName: `${scheme}-dev`,
     appleTeamId,
     omitStageLabel: fork?.omitStageLabel ?? null,
+    icons: {
+      dev: { ...UPSTREAM_APP_BRAND.icons.dev, ...fork?.icons?.dev },
+      prod: { ...UPSTREAM_APP_BRAND.icons.prod, ...fork?.icons?.prod },
+    },
     previous: replacesUpstream
       ? {
           scheme: UPSTREAM_APP_BRAND.scheme,
@@ -118,11 +152,16 @@ export function resolveAppBrand(fork: AppBrandSource | undefined, env: Environme
   };
 }
 
-declare const __T3CODE_APP_BRAND__: AppBrand | undefined;
+// A dev runner that started before `icons` existed still bakes a brand without it until it restarts.
+declare const __T3CODE_APP_BRAND__:
+  | (Omit<AppBrand, "icons"> & { icons?: AppBrandIcons })
+  | undefined;
 
 /** The identity of the running app. */
 export const appBrand: AppBrand =
-  typeof __T3CODE_APP_BRAND__ === "undefined" ? UPSTREAM_APP_BRAND : __T3CODE_APP_BRAND__;
+  typeof __T3CODE_APP_BRAND__ === "undefined"
+    ? UPSTREAM_APP_BRAND
+    : { ...__T3CODE_APP_BRAND__, icons: __T3CODE_APP_BRAND__.icons ?? UPSTREAM_APP_BRAND.icons };
 
 /** "T3 Code (Alpha)", or "Conn" for a brand that leaves the Alpha label out. */
 export function appBrandDisplayName(brand: AppBrand, stage: AppBrandStage): string {

@@ -33,6 +33,18 @@ describe("app brand", () => {
       devUserDataDirName: "conn-dev",
       appleTeamId: "9SVJ4SYB9B",
       omitStageLabel: "Alpha",
+      icons: {
+        dev: {
+          macPng: "assets/conn/dev/conn-dev-macos-1024.png",
+          universalPng: "assets/conn/dev/conn-dev-universal-1024.png",
+          windowsIco: "assets/conn/dev/conn-dev-windows.ico",
+        },
+        prod: {
+          macPng: "assets/conn/prod/conn-prod-macos-1024.png",
+          universalPng: "assets/conn/prod/conn-prod-universal-1024.png",
+          windowsIco: "assets/conn/prod/conn-prod-windows.ico",
+        },
+      },
       previous: {
         scheme: "t3code",
         devScheme: "t3code-dev",
@@ -41,6 +53,15 @@ describe("app brand", () => {
       },
     });
     expect(FORK_BRAND_SOURCE.name).toBe("Conn");
+  });
+
+  it("keeps upstream's icon for a channel or file the fork does not replace", () => {
+    const brand = resolveAppBrand({ icons: { dev: { macPng: "assets/x/dev.png" } } }, {});
+    expect(brand.icons.dev).toEqual({
+      ...UPSTREAM_APP_BRAND.icons.dev,
+      macPng: "assets/x/dev.png",
+    });
+    expect(brand.icons.prod).toEqual(UPSTREAM_APP_BRAND.icons.prod);
   });
 
   it("names the packaged app without a stage label and the others with one", () => {

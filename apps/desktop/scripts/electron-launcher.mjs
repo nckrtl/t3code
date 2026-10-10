@@ -46,14 +46,9 @@ export function withDevRendererAllowedOrigin(environment) {
     T3CODE_DEV_ALLOWED_ORIGINS: [...new Set([...existing, origin])].join(","),
   };
 }
-const LAUNCHER_VERSION = 19;
-const developmentMacIconPngPath = NodePath.join(
-  repoRoot,
-  "assets",
-  "dev",
-  "blueprint-macos-1024.png",
-);
-const productionMacIconPngPath = NodePath.join(repoRoot, "assets", "prod", "black-macos-1024.png");
+const LAUNCHER_VERSION = 20;
+const developmentMacIconPngPath = NodePath.join(repoRoot, brand.icons.dev.macPng);
+const productionMacIconPngPath = NodePath.join(repoRoot, brand.icons.prod.macPng);
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
 
