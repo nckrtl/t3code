@@ -29,8 +29,7 @@ const PROVIDER_OPTIONS: ReadonlyArray<{
   {
     provider: "orbit",
     label: "Orbit",
-    description:
-      "The T3 servers on the Orbit Gateway, paired automatically, with your profile's workspaces. Environments added here are switched off until you choose Default again.",
+    description: "Servers from the Orbit Gateway, with your profile's workspaces.",
   },
 ];
 
