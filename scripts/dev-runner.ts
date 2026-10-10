@@ -20,6 +20,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli";
 import { ChildProcess } from "effect/unstable/process";
 
 import { type DevShareError, shareDevServer, unshareDevServer } from "./lib/dev-share.ts";
+import { stopDescendants } from "./lib/process-tree.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 
 Object.assign(process.env, loadRepoEnv());
@@ -620,6 +621,15 @@ interface DevRunnerCliInput {
   readonly runArgs: ReadonlyArray<string>;
 }
 
+/** Completes with the conventional exit code (128 + SIGHUP) when this process gets SIGHUP. */
+const waitForSighup = Effect.callback<number>((resume) => {
+  const onSighup = () => resume(Effect.succeed(129));
+  process.once("SIGHUP", onSighup);
+  return Effect.sync(() => {
+    process.removeListener("SIGHUP", onSighup);
+  });
+});
+
 export function runDevRunnerWithInput(input: DevRunnerCliInput) {
   return Effect.gen(function* () {
     const { portOffset, devInstance } = yield* OffsetConfig.pipe(
@@ -834,6 +844,12 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
             cause,
           }),
       ),
+      // runMain interrupts the wait on SIGINT/SIGTERM. SIGHUP is not handled there, and
+      // `nohup` makes the runner ignore it by default, so treat it as a stop request too.
+      Effect.raceFirst(waitForSighup),
+      // Killing only the direct child would leave Vite+'s tasks, the desktop watcher and
+      // Electron running, so stop the whole tree below it first.
+      Effect.onExit(() => Effect.promise(() => stopDescendants(child.pid, 5_000))),
     );
     if (exitCode !== 0) {
       return yield* new DevRunnerProcessExitError({

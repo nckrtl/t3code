@@ -9,6 +9,12 @@ import {
   resolveElectronLaunchCommand,
   withDevRendererAllowedOrigin,
 } from "./electron-launcher.mjs";
+import {
+  buildElectronLaunchArgs,
+  isParentGone,
+  parseDebugPort,
+  waitForPortFree,
+} from "./dev-electron-lifecycle.mjs";
 import { waitForResources } from "./wait-for-resources.mjs";
 
 const devServerUrl = process.env.VITE_DEV_SERVER_URL?.trim();
@@ -51,6 +57,12 @@ const forcedShutdownTimeoutMs = 1_500;
 const restartDebounceMs = 120;
 const childTreeGracePeriodMs = 1_200;
 const remoteDebuggingPort = process.env.T3CODE_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
+const remoteDebuggingPortNumber = parseDebugPort(remoteDebuggingPort);
+const portReleaseTimeoutMs = 10_000;
+const parentCheckIntervalMs = 2_000;
+// The process that started this script. tsdown (`onSuccess`) kills and restarts this script on
+// every rebuild, and a stopped dev runner takes it away too; either way the parent changes.
+const initialParentPid = process.ppid;
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone dev script has no Effect runtime.
 const hostPlatform = NodeOS.platform();
 
@@ -100,17 +112,45 @@ function cleanupStaleDevApps() {
   });
 }
 
+/** Starts shutting down when the parent process is gone. Returns true while shutting down. */
+function shutdownIfOrphaned() {
+  if (!shuttingDown && isParentGone(initialParentPid, process.ppid)) {
+    console.warn("[dev-electron] parent process is gone; shutting down.");
+    void shutdown(0);
+  }
+  return shuttingDown;
+}
+
+/**
+ * Starts Electron once the debug port is free. The previous Electron may still be quitting (a
+ * rebuild kills it from outside, and its replacement script starts at once), and a Chromium that
+ * cannot bind the port runs without DevTools for its whole life.
+ */
+async function launchApp() {
+  if (remoteDebuggingPortNumber !== null) {
+    const free = await waitForPortFree({
+      port: remoteDebuggingPortNumber,
+      timeoutMs: portReleaseTimeoutMs,
+    });
+    if (!free) {
+      console.warn(
+        `[dev-electron] debug port ${remoteDebuggingPortNumber} is still in use after ${portReleaseTimeoutMs}ms; launching anyway.`,
+      );
+    }
+  }
+  startApp();
+}
+
 function startApp() {
-  if (shuttingDown || currentApp !== null) {
+  if (shuttingDown || currentApp !== null || shutdownIfOrphaned()) {
     return;
   }
 
-  const electronArgs = remoteDebuggingPort
-    ? [`--remote-debugging-port=${remoteDebuggingPort}`]
-    : [];
-  const launchArgs = devProtocolClient
-    ? electronArgs
-    : [...electronArgs, `--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"];
+  const launchArgs = buildElectronLaunchArgs({
+    remoteDebuggingPort,
+    devProtocolClient,
+    desktopDir,
+  });
   const electronCommand = resolveElectronLaunchCommand(launchArgs);
   const app = NodeChildProcess.spawn(electronCommand.electronPath, electronCommand.args, {
     cwd: desktopDir,
@@ -182,7 +222,7 @@ async function stopApp() {
 }
 
 function scheduleRestart() {
-  if (shuttingDown) {
+  if (shuttingDown || shutdownIfOrphaned()) {
     return;
   }
 
@@ -197,7 +237,7 @@ function scheduleRestart() {
       .then(async () => {
         await stopApp();
         if (!shuttingDown) {
-          startApp();
+          await launchApp();
         }
       });
   }, restartDebounceMs);
@@ -255,10 +295,6 @@ async function shutdown(exitCode) {
   process.exit(exitCode);
 }
 
-startWatchers();
-cleanupStaleDevApps();
-startApp();
-
 process.once("SIGINT", () => {
   void shutdown(130);
 });
@@ -268,3 +304,8 @@ process.once("SIGTERM", () => {
 process.once("SIGHUP", () => {
   void shutdown(129);
 });
+setInterval(shutdownIfOrphaned, parentCheckIntervalMs).unref();
+
+startWatchers();
+cleanupStaleDevApps();
+await launchApp();
