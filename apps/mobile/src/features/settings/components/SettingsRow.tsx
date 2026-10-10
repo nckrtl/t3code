@@ -1,6 +1,6 @@
 import { MaterialListRow } from "../../../components/MaterialListRow";
 import { useNavigation } from "@react-navigation/native";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Platform, Pressable, View } from "react-native";
 
 import { SymbolView } from "../../../components/AppSymbol";
@@ -13,6 +13,8 @@ type SymbolName = ComponentProps<typeof SymbolView>["name"];
 export function SettingsRow(props: {
   readonly disabled?: boolean;
   readonly icon: SymbolName;
+  /** Drawn in place of `icon`, for a mark that is not a symbol. */
+  readonly leading?: ReactNode;
   readonly label: string;
   readonly value?: string;
   readonly valuePosition?: "below" | "trailing";
@@ -38,13 +40,15 @@ export function SettingsRow(props: {
         }
         disabled={props.disabled}
         leading={
-          <SymbolView
-            name={props.icon}
-            size={24}
-            tintColorClassName="accent-icon"
-            type="monochrome"
-            weight="regular"
-          />
+          props.leading ?? (
+            <SymbolView
+              name={props.icon}
+              size={24}
+              tintColorClassName="accent-icon"
+              type="monochrome"
+              weight="regular"
+            />
+          )
         }
         onPress={() => {
           if (props.target)
@@ -60,13 +64,15 @@ export function SettingsRow(props: {
   }
   const content = (
     <View className={cn("flex-row items-center gap-4 p-4", props.disabled && "opacity-[0.45]")}>
-      <SymbolView
-        name={props.icon}
-        size={22}
-        tintColorClassName="accent-icon"
-        type="monochrome"
-        weight="regular"
-      />
+      {props.leading ?? (
+        <SymbolView
+          name={props.icon}
+          size={22}
+          tintColorClassName="accent-icon"
+          type="monochrome"
+          weight="regular"
+        />
+      )}
       <>
         <Text className="shrink-0 text-lg text-foreground" numberOfLines={1}>
           {props.label}

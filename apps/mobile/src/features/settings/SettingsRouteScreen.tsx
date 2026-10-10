@@ -17,6 +17,7 @@ import {
   SettingsEnvironmentFilterHeader,
 } from "./components/SettingsEnvironmentFilterHeader";
 import { useSettingsEnvironmentFilter } from "./settings-environment-filter";
+import { OrbitLogo } from "../orbit/OrbitLogo";
 import { useOrbitGateway } from "../orbit/orbitGatewayStore";
 
 export function SettingsRouteScreen() {
@@ -83,6 +84,7 @@ function ConfiguredSettingsRouteScreen() {
           />
           <SettingsRow
             icon="globe"
+            leading={<OrbitLogo size={Platform.OS === "android" ? 24 : 22} />}
             label="Orbit"
             value={orbitLabel}
             valuePosition="trailing"
@@ -124,6 +126,7 @@ function LocalSettingsRouteScreen() {
         <SettingsSection title="Connections">
           <SettingsRow
             icon="globe"
+            leading={<OrbitLogo size={Platform.OS === "android" ? 24 : 22} />}
             label="Orbit"
             value={orbitLabel}
             valuePosition="trailing"
