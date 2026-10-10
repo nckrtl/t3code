@@ -73,6 +73,7 @@ import { buildProviderInstanceUpdatePatch } from "../settings/SettingsPanels.log
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectList";
 import { ClaudeAI, OpenAI } from "../Icons";
+import { APP_BASE_NAME } from "../../branding";
 import { T3Wordmark } from "../T3Wordmark";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -217,13 +218,22 @@ export function WelcomeWizard({
         initialFocus={() => document.getElementById("onboarding-pairing-url") ?? true}
       >
         <WizardHeader
-          title="Set up T3 Code"
+          title={`Set up ${APP_BASE_NAME}`}
           identity={
-            <div className="flex items-baseline gap-1.5" role="img" aria-label="T3 Code">
-              <T3Wordmark className="h-4 w-auto shrink-0" aria-hidden />
-              <span className="text-2xl font-medium tracking-tight text-muted-foreground">
-                Code
-              </span>
+            <div className="flex items-baseline gap-1.5" role="img" aria-label={APP_BASE_NAME}>
+              {APP_BASE_NAME === "T3 Code" ? (
+                <>
+                  <T3Wordmark className="h-4 w-auto shrink-0" aria-hidden />
+                  <span className="text-2xl font-medium tracking-tight text-muted-foreground">
+                    Code
+                  </span>
+                </>
+              ) : (
+                // A renamed app has no wordmark artwork, so its name is the wordmark.
+                <span className="text-2xl font-medium tracking-tight text-muted-foreground">
+                  {APP_BASE_NAME}
+                </span>
+              )}
             </div>
           }
         >

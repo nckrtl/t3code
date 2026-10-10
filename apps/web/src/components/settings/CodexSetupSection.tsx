@@ -36,6 +36,7 @@ import { SettingsRow } from "./settingsLayout";
 import { AddCodexAccountDialog } from "./AddCodexAccountDialog";
 import { getOnboardingProviderState } from "../../onboarding/providerReadiness.logic";
 import { getProviderSummary } from "./providerStatus";
+import { serverReturnHref } from "../../lib/serverReturnHref";
 
 const noop = () => undefined;
 
@@ -256,7 +257,7 @@ function ManagedCodexSetup({
     (window.desktopBridge !== undefined || isLoopbackHost(window.location.hostname))
       ? primaryEnvironmentId
       : null;
-  const returnUrl = new URL(window.location.href);
+  const returnUrl = new URL(serverReturnHref(window.location.href));
   if (returnUrl.pathname === "/welcome") returnUrl.hash = `agents:${environmentId}`;
   if (returnUrl.pathname === "/settings/providers")
     returnUrl.searchParams.set("instanceId", instanceId);
@@ -400,7 +401,7 @@ function ManagedCodexSetup({
       openRequested.current = true;
       setTransferFailed(false);
       setRequestedMethodId(methodId);
-      const returnUrl = new URL(window.location.href);
+      const returnUrl = new URL(serverReturnHref(window.location.href));
       if (returnUrl.pathname === "/welcome") returnUrl.hash = `agents:${environmentId}`;
       if (returnUrl.pathname === "/settings/providers")
         returnUrl.searchParams.set("instanceId", instanceId);
