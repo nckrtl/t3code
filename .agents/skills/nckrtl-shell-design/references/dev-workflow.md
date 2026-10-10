@@ -28,7 +28,7 @@ before you complete: a complete on an unclaimed record does not stick.
 ## 2. Web dev server (shared components, measuring)
 
 ```bash
-cd ~/apps/t3code && vp run dev     # web on 5733 against ~/.t3/dev
+cd ~/apps/conn && vp run dev     # web on 5733 against ~/.t3/dev
 ```
 
 The web view is where an agent can measure: the Browser pane tools run
@@ -42,7 +42,7 @@ own home seeded from the web dev state:
 
 ```bash
 D=~/.t3/desktop-dev/userdata; mkdir -p "$D"; rm -f "$D"/state.sqlite*
-cd ~/apps/t3code
+cd ~/apps/conn
 bun -e "new (require('bun:sqlite').Database)(process.env.HOME + '/.t3/dev/state.sqlite', { readonly: true }).run(\"VACUUM INTO '$D/state.sqlite'\")"
 cp ~/.t3/dev/settings.json ~/.t3/dev/keybindings.json "$D"/ && cp -R ~/.t3/dev/themes "$D"/
 vp run dev:desktop --home-dir ~/.t3/desktop-dev

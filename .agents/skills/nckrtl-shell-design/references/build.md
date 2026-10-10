@@ -2,7 +2,7 @@
 
 `nckrtl` is the fork's one customizations branch (it replaced the
 `rooms-patches-*` branches). It lives on GitHub at `nckrtl/t3code` and is
-checked out on both machines: this MacBook (`~/apps/t3code`) and the mini
+checked out on both machines: this MacBook (`~/apps/conn`) and the mini
 (worktree `/Volumes/Data/nckrtl/.cache/t3-patches-045`). Both track
 `origin/nckrtl`. Rebase it on `upstream/main` to take upstream changes, then
 run the sync procedure in [SKILL.md](../SKILL.md).
