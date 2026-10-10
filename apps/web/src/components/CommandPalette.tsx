@@ -209,7 +209,7 @@ import {
 import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
-import { useActiveWorkspaceProjectRefs } from "../workspaceStore";
+import { useActiveWorkspaceProjectRefs, useWorkspaceStore } from "../workspaceStore";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -720,6 +720,9 @@ function OpenCommandPaletteDialog(props: {
   const isActionsOnly = deferredQuery.startsWith(">");
   const [highlightedItemValue, setHighlightedItemValue] = useState<string | null>(null);
   const clientSettings = useClientSettings();
+  const addProjectToActiveWorkspace = useWorkspaceStore(
+    (state) => state.addProjectToActiveWorkspace,
+  );
   const createProject = useAtomCommand(projectEnvironment.create, {
     reportFailure: false,
   });
@@ -2406,6 +2409,7 @@ function OpenCommandPaletteDialog(props: {
         cwd,
       );
       if (existing) {
+        addProjectToActiveWorkspace(`${existing.environmentId}:${existing.id}`);
         const latestThread = getLatestThreadForProject(
           threads.filter((thread) => thread.environmentId === existing.environmentId),
           existing.id,
@@ -2462,6 +2466,7 @@ function OpenCommandPaletteDialog(props: {
         }
         return;
       }
+      addProjectToActiveWorkspace(`${input.environmentId}:${projectId}`);
 
       const navigationResult = await settlePromise(() =>
         handleNewThread(scopeProjectRef(input.environmentId, projectId)),
@@ -2480,6 +2485,7 @@ function OpenCommandPaletteDialog(props: {
       setOpen(false);
     },
     [
+      addProjectToActiveWorkspace,
       handleNewThread,
       createProject,
       environments,
@@ -2719,6 +2725,7 @@ function OpenCommandPaletteDialog(props: {
       return;
     }
     setOpen(false);
+    addProjectToActiveWorkspace(`${addProjectCloneFlow.environmentId}:${projectId}`);
     const projectRef = scopeProjectRef(addProjectCloneFlow.environmentId, projectId);
     // The create event usually lands before this call returns; give the shell
     // stream a moment so the draft opens with its project resolved instead of

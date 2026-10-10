@@ -38,6 +38,8 @@ interface WorkspaceStoreState {
   createWorkspace: (draft: WorkspaceDraft) => Workspace;
   updateWorkspace: (id: string, draft: WorkspaceDraft) => void;
   deleteWorkspace: (id: string) => void;
+  /** Adds a project ref ("<environmentId>:<projectId>") to the selected workspace, if any. */
+  addProjectToActiveWorkspace: (projectRef: string) => void;
   moveWorkspace: (id: string, targetId: string) => void;
 }
 
@@ -154,6 +156,20 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         const next = reorderWorkspaces(current, id, targetId);
         if (next !== current) set({ workspaces: [...next] });
       },
+      addProjectToActiveWorkspace: (projectRef) =>
+        set((state) => {
+          const active = state.workspaces.find(
+            (workspace) => workspace.id === state.activeWorkspaceId,
+          );
+          if (!active || active.projectRefs?.includes(projectRef)) return state;
+          return {
+            workspaces: state.workspaces.map((workspace) =>
+              workspace === active
+                ? { ...workspace, projectRefs: [...(workspace.projectRefs ?? []), projectRef] }
+                : workspace,
+            ),
+          };
+        }),
       deleteWorkspace: (id) =>
         set((state) => ({
           workspaces: state.workspaces.filter((workspace) => workspace.id !== id),
