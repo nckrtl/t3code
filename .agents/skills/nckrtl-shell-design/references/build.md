@@ -11,9 +11,7 @@ run the sync procedure in [SKILL.md](../SKILL.md).
 
 - No update feed: every build sets `publish: null`, so the app never replaces
   itself with an upstream release (`scripts/build-desktop-artifact.ts`).
-- The dev annotator is dev-only: `@nckrtl/annotator` is a dev dependency and
-  `apps/web/vite/annotator.ts` applies only to `vite serve`. The production
-  bundle must not contain `__annotator/inject`. The browser panel's own
+- T3 Code has no in-page annotator of its own. The browser panel's
   "Annotate preview" feature (`apps/web/src/annotations/`) is product code: it
   loads the overlay into the previewed page from an annotation server the user
   configures, and it does ship.
@@ -33,12 +31,6 @@ node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch arm64 
 
 Version: the upstream desktop version it is based on, then `-nckrtl.` and the
 build date (earlier builds used `-rooms.`). Artifacts land in `release/`.
-
-## Check the annotator is not bundled
-
-```bash
-grep -rl "__annotator/inject" apps/web/dist apps/server/dist   # must print nothing
-```
 
 ## Sign and install
 

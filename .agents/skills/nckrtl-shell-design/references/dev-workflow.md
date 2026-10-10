@@ -7,16 +7,18 @@ only the web dev server) is what made the integrated browser tweakable: the
 browser panel's page, its chrome row and the Laravel toolbar only exist in
 Electron, because the web build has no `desktopBridge.preview`.
 
-The annotator is `@nckrtl/annotator`, a dev dependency of `apps/web`. It is
-independent of T3, Orbit and Commander.
+The annotator is the native `@nckrtl/annotator` app. It lives outside this
+repo and is independent of T3, Orbit and Commander. T3 Code has no in-page
+annotator of its own: the dev window loads no annotation script and shows no
+annotation pill.
 
 ## 1. Start the annotation server
 
-One local store that both the web and desktop dev apps post to:
+One local store that both the web and desktop dev apps post to. The native
+annotator app posts to it; to run the server by hand:
 
 ```bash
-cd ~/apps/t3code/apps/web
-node node_modules/@nckrtl/annotator/bin/serve.mjs serve --port 29703 --store ~/.t3/dev/annotations
+npx @nckrtl/annotator serve --port 29703 --store ~/.t3/dev/annotations
 ```
 
 API on `http://127.0.0.1:29703/annotations`: `GET` lists records, `POST
@@ -28,14 +30,6 @@ before you complete: a complete on an unclaimed record does not stick.
 ```bash
 cd ~/apps/t3code && vp run dev     # web on 5733 against ~/.t3/dev
 ```
-
-`apps/web/vite/annotator.ts` mounts the toolbar only under `vite serve`
-(`apply: "serve"`). It serves `inject.js` from the package on each request, sets
-dictation to Drift Dev's local API (`http://127.0.0.1:12322/dictate` and
-`/dictate-stop`; Drift must allow the page origin under Settings → Local API),
-and seeds the server URL in `sessionStorage` (`annotate:service`). Env:
-`T3CODE_ANNOTATOR=0` turns it off, `T3CODE_ANNOTATOR_URL` and
-`T3CODE_ANNOTATOR_DICTATION_URL` override the URLs.
 
 The web view is where an agent can measure: the Browser pane tools run
 JavaScript against it, so compare computed colors, radii and positions there
@@ -56,9 +50,9 @@ vp run dev:desktop --home-dir ~/.t3/desktop-dev
 
 Do not copy `environment-id`, `secrets` or `server-runtime.json`: the desktop
 dev app keeps its own server identity. The runner picks shifted ports (web
-5734, server 13774) and opens **T3 Code (Dev)**. It uses the same Vite config,
-so the annotator appears inside the Electron window and posts to the same
-store; its records show `t3code-dev://app/...` URLs.
+5734, server 13774) and opens **T3 Code (Dev)**. Annotations from
+its window go to the same store; their records show `t3code-dev://app/...`
+URLs.
 
 ## 4. Process the queue
 
@@ -90,4 +84,3 @@ store; its records show `t3code-dev://app/...` URLs.
   `Invalid guestInstanceId`), which also hides the Laravel toolbar; reload the
   tab.
 - Stop only processes you started, by PID.
-- The annotator never ships: see [build.md](build.md) for the check.
