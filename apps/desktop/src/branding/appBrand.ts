@@ -20,6 +20,8 @@ export interface AppBrandIconSet {
   readonly macPng: string;
   readonly universalPng: string;
   readonly windowsIco: string;
+  /** The web client's splash logo in a packaged build (the stable channel only). */
+  readonly appleTouchPng: string;
 }
 
 export interface AppBrandIcons {
@@ -80,11 +82,13 @@ export const UPSTREAM_APP_BRAND: AppBrand = {
       macPng: "assets/dev/blueprint-macos-1024.png",
       universalPng: "assets/dev/blueprint-universal-1024.png",
       windowsIco: "assets/dev/blueprint-windows.ico",
+      appleTouchPng: "assets/dev/blueprint-web-apple-touch-180.png",
     },
     prod: {
       macPng: "assets/prod/black-macos-1024.png",
       universalPng: "assets/prod/black-universal-1024.png",
       windowsIco: "assets/prod/t3-black-windows.ico",
+      appleTouchPng: "assets/prod/t3-black-web-apple-touch-180.png",
     },
   },
   previous: null,

@@ -38,11 +38,13 @@ describe("app brand", () => {
           macPng: "assets/conn/dev/conn-dev-macos-1024.png",
           universalPng: "assets/conn/dev/conn-dev-universal-1024.png",
           windowsIco: "assets/conn/dev/conn-dev-windows.ico",
+          appleTouchPng: "assets/conn/dev/conn-dev-web-apple-touch-180.png",
         },
         prod: {
           macPng: "assets/conn/prod/conn-prod-macos-1024.png",
           universalPng: "assets/conn/prod/conn-prod-universal-1024.png",
           windowsIco: "assets/conn/prod/conn-prod-windows.ico",
+          appleTouchPng: "assets/conn/prod/conn-prod-web-apple-touch-180.png",
         },
       },
       previous: {

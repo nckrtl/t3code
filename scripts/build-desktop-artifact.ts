@@ -26,6 +26,7 @@ import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
 import {
   BRAND_ASSET_PATHS,
   resolveWebAssetBrandForChannel,
+  type IconOverride,
   type WebAssetBrand,
 } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
@@ -2586,6 +2587,24 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
   return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
 }
 
+/**
+ * The splash logo a brand replaces in the packaged web client, or undefined to keep upstream's.
+ * Only the stable channel: nightly keeps its own artwork.
+ */
+export function resolveDesktopWebIconOverride(
+  webAssetBrand: WebAssetBrand,
+  brand: AppBrand = UPSTREAM_APP_BRAND,
+): IconOverride | undefined {
+  const source = brand.icons.prod.appleTouchPng;
+  if (webAssetBrand !== "production" || source === UPSTREAM_APP_BRAND.icons.prod.appleTouchPng) {
+    return undefined;
+  }
+  return {
+    sourceRelativePath: source,
+    targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
+  };
+}
+
 export function resolveDesktopBuildIconAssets(
   version: string,
   brand: AppBrand = UPSTREAM_APP_BRAND,
@@ -3562,6 +3581,19 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const webAssetBrand = resolveDesktopWebAssetBrand(appVersion);
   yield* applyWebBrandAssets(webAssetBrand, "apps/server/dist/client");
   yield* Effect.log(`[desktop-artifact] Applied ${webAssetBrand} web client branding.`);
+  const webIconOverride = resolveDesktopWebIconOverride(
+    webAssetBrand,
+    resolveForkBrand(loadRepoEnv({ repoRoot })),
+  );
+  if (webIconOverride !== undefined) {
+    yield* fs.copyFile(
+      path.join(repoRoot, webIconOverride.sourceRelativePath),
+      path.join(repoRoot, webIconOverride.targetRelativePath),
+    );
+    yield* Effect.log(
+      `[desktop-artifact] Applied ${webIconOverride.sourceRelativePath} splash logo.`,
+    );
+  }
   yield* validateBundledClientAssets(path.dirname(bundledClientEntry));
 
   yield* fs.makeDirectory(path.join(stageAppDir, "apps/desktop"), { recursive: true });

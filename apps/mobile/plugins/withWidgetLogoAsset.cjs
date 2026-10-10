@@ -40,17 +40,21 @@ const IMAGE_SET_CONTENTS =
     2,
   ) + "\n";
 
-function withAssetFiles(config) {
+function withAssetFiles(config, source) {
   return withDangerousMod(config, [
     "ios",
     (cfg) => {
-      const source = path.join(cfg.modRequest.projectRoot, "assets", "widget", SVG_NAME);
+      // nckrtl fork: a `source` option (relative to the app root) swaps in another mark with the
+      // same 3:2 canvas, so the widget code and the image set name stay as they are.
+      const sourcePath = source
+        ? path.resolve(cfg.modRequest.projectRoot, source)
+        : path.join(cfg.modRequest.projectRoot, "assets", "widget", SVG_NAME);
       const catalogDir = path.join(cfg.modRequest.platformProjectRoot, TARGET_NAME, CATALOG_NAME);
       const imageSetDir = path.join(catalogDir, IMAGE_SET);
       fs.mkdirSync(imageSetDir, { recursive: true });
       fs.writeFileSync(path.join(catalogDir, "Contents.json"), CATALOG_CONTENTS);
       fs.writeFileSync(path.join(imageSetDir, "Contents.json"), IMAGE_SET_CONTENTS);
-      fs.copyFileSync(source, path.join(imageSetDir, SVG_NAME));
+      fs.copyFileSync(sourcePath, path.join(imageSetDir, SVG_NAME));
       return cfg;
     },
   ]);
@@ -63,6 +67,6 @@ function withAssetWiring(config) {
   });
 }
 
-module.exports = function withWidgetLogoAsset(config) {
-  return withAssetWiring(withAssetFiles(config));
+module.exports = function withWidgetLogoAsset(config, props = {}) {
+  return withAssetWiring(withAssetFiles(config, props.source));
 };

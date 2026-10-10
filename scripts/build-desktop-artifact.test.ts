@@ -51,6 +51,7 @@ import {
   resolveFffNativeDependencies,
   resolveBuildOptions,
   resolveDesktopBuildIconAssets,
+  resolveDesktopWebIconOverride,
   resolveDesktopProductName,
   resolveDesktopUpdateChannel,
   resolveDesktopWebAssetBrand,
@@ -290,6 +291,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
             macPng: "assets/fork/mac.png",
             universalPng: "assets/fork/universal.png",
             windowsIco: "assets/fork/windows.ico",
+            appleTouchPng: "assets/fork/touch.png",
           },
         },
       },
@@ -304,6 +306,19 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42", brand).macIconPng,
       BRAND_ASSET_PATHS.nightlyMacIconPng,
     );
+  });
+
+  it("swaps the splash logo only for a brand's stable build", () => {
+    const brand = resolveAppBrand(
+      { icons: { prod: { appleTouchPng: "assets/fork/touch.png" } } },
+      {},
+    );
+    assert.deepStrictEqual(resolveDesktopWebIconOverride("production", brand), {
+      sourceRelativePath: "assets/fork/touch.png",
+      targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
+    });
+    assert.isUndefined(resolveDesktopWebIconOverride("nightly", brand));
+    assert.isUndefined(resolveDesktopWebIconOverride("production"));
   });
 
   it("switches the bundled splash and favicon branding for nightly versions", () => {
