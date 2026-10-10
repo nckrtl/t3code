@@ -158,7 +158,7 @@ export function createProfileSync(ports: ProfileSyncPorts) {
     return { ...emptyProfileSyncState(profileId), ignored: saved?.ignored ?? {} };
   };
 
-  async function run(
+  async function runOnce(
     me: OrbitGatewayNode,
     options: ProfileSyncRunOptions = {},
   ): Promise<ProfileSyncResult> {
@@ -401,6 +401,21 @@ export function createProfileSync(ports: ProfileSyncPorts) {
       const current = ports.loadState() ?? emptyProfileSyncState();
       ports.saveState({ ...current, ignored: { ...current.ignored, [name]: after } });
     };
+  }
+
+  /**
+   * One run at a time. Two runs side by side would both read the same section versions and
+   * PATCH them; the second would be refused as stale. A run that starts while another is in
+   * flight waits for it and then reads the state it saved, so it sends only what is still dirty.
+   */
+  let lastRun: Promise<unknown> = Promise.resolve();
+  function run(
+    me: OrbitGatewayNode,
+    options: ProfileSyncRunOptions = {},
+  ): Promise<ProfileSyncResult> {
+    const result = lastRun.then(() => runOnce(me, options));
+    lastRun = result.catch(() => undefined);
+    return result;
   }
 
   return { run, beginNonUserChange };

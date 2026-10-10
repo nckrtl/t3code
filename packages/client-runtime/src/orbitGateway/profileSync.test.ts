@@ -459,6 +459,44 @@ describe("profile sync engine", () => {
   });
 });
 
+describe("overlapping runs", () => {
+  it("sends one PATCH when two runs start back to back", async () => {
+    const fake = fakeGateway();
+    const mac = makeDevice(fake, { settings: { font: "Inter", size: 15 } });
+    fake.gateway.caller = "device";
+    const me = fake.me();
+    // Both triggers fire before either run has read the profile, as when an effect mounts twice.
+    const [first, second] = await Promise.all([mac.engine.run(me), mac.engine.run(me)]);
+    expect(fake.gateway.patches).toHaveLength(1);
+    expect(Object.keys(fake.gateway.patches[0]!).sort()).toEqual(["appearance", "devices.desktop"]);
+    expect(first).toMatchObject({ outcomes: { "devices.desktop": "seeded" } });
+    // The second run waited, found nothing dirty and sent nothing; it did not meet a 409.
+    expect(second).toMatchObject({ kind: "synced", outcomes: {} });
+  });
+
+  it("runs one at a time even when a run is slow", async () => {
+    const fake = fakeGateway();
+    const mac = makeDevice(fake);
+    let inFlight = 0;
+    let overlapped = false;
+    const settings = fake.client.settings;
+    fake.client.settings = async () => {
+      inFlight += 1;
+      overlapped ||= inFlight > 1;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      try {
+        return await settings();
+      } finally {
+        inFlight -= 1;
+      }
+    };
+    const me = fake.me();
+    await Promise.all([mac.engine.run(me), mac.engine.run(me), mac.engine.run(me)]);
+    expect(overlapped).toBe(false);
+    expect(fake.gateway.patches).toHaveLength(1);
+  });
+});
+
 describe("what the Gateway does to a section", () => {
   it("never sends an empty map, and still syncs the rest of the section", async () => {
     const fake = fakeGateway();

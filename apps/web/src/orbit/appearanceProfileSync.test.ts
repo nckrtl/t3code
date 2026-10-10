@@ -152,6 +152,38 @@ describe("serializing the appearance", () => {
     });
   });
 
+  it("keeps a dark-only theme out of the light slot", async () => {
+    setEnvironmentThemes([customTheme("dark-ocean", "Dark Ocean")]);
+    await act(async () => {
+      themeNow().setTheme("dark-ocean");
+      themeNow().setAppearanceMode("dark");
+    });
+    const local = readLocalAppearance(host)!;
+    expect(local.themes).toMatchObject({
+      light: { id: "t3-code", source: "stock" },
+      dark: { id: "dark-ocean", source: "published", appearance: "dark" },
+    });
+
+    // The device already wears that: applying it back changes nothing, so the user's pick
+    // is not rewritten into a different arrangement.
+    const before = { ...window.localStorage };
+    await apply(local, local);
+    expect({ ...window.localStorage }).toEqual(before);
+    expect(themeNow().theme).toBe("dark-ocean");
+    expect(themeNow().themeHalves).toBeNull();
+  });
+
+  it("keeps a dark-only mix half out of the light slot too", async () => {
+    installCustomTheme(customTheme("night"));
+    await act(async () => {
+      themeNow().setTheme("ocean");
+      themeNow().setThemeHalf("dark", "night");
+    });
+    const themes = readLocalAppearance(host)!.themes as JsonObject;
+    expect(themes.light).toMatchObject({ id: "ocean", source: "builtin" });
+    expect(themes.dark).toMatchObject({ id: "night", source: "custom", appearance: "dark" });
+  });
+
   it("leaves empty maps out, because the Gateway rejects them", async () => {
     const withoutColors = { ...customTheme("no-colors"), colors: {} } as unknown as ThemeDefinition;
     const withEmptyVariant = {

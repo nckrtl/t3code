@@ -24,6 +24,7 @@ import {
   saveSectionBackup,
   saveSectionState,
 } from "./profileSyncStorage";
+import { createSerialRunner } from "./serialRunner";
 import { trackNonUserThemeChanges } from "./themeOrigin";
 import {
   syncWorkspaceProfile,
@@ -147,109 +148,112 @@ function writeLocal(workspaces: readonly OrbitGatewayWorkspace[]): void {
   }));
 }
 
+interface ProfileSyncController {
+  readonly trigger: (options?: ProfileSyncRunOptions) => void;
+  readonly beginNonUserChange: (name: ProfileSectionName) => () => void;
+}
+
+let controller: ProfileSyncController | null = null;
+
+/**
+ * The one sync for this window. It lives outside the component on purpose: a component that
+ * mounts twice (React StrictMode in dev, a remount) must not start a second engine or a second
+ * run loop, because two runs in flight would both PATCH the same section versions.
+ */
+function profileSyncController(): ProfileSyncController | null {
+  if (controller) return controller;
+  const client = desktopOrbitGatewayClient();
+  if (!client) return null;
+  const ports: WorkspaceProfileSyncPorts = {
+    client,
+    readLocal: () => useWorkspaceStore.getState().workspaces.map(toGateway),
+    writeLocal,
+    loadState,
+    saveState,
+  };
+  const sections = createProfileSync({
+    client,
+    channels: getProfileSyncChannels,
+    loadState: loadSectionState,
+    saveState: saveSectionState,
+    isEnabled: isSectionSyncEnabled,
+    onAdopt: saveSectionBackup,
+  });
+
+  const runOnce = async (options: ProfileSyncRunOptions | undefined): Promise<void> => {
+    try {
+      await reconcileEnvironmentProvider(client);
+      // Everything syncs only while Orbit provides the environments.
+      if (useEnvironmentProvider.getState().provider !== "orbit") {
+        useOrbitProfileSyncStatus.setState(INITIAL_STATUS);
+        return;
+      }
+      const me = await client.me();
+      const result = await syncWorkspaceProfile(ports, me);
+      useOrbitProfileSyncStatus.setState(
+        result.kind === "unbound"
+          ? { phase: "unbound", profileName: null, error: null, syncedAt: Date.now() }
+          : {
+              phase: "synced",
+              profileName: result.profileName,
+              error: null,
+              syncedAt: Date.now(),
+            },
+      );
+      if (result.kind === "unbound") return;
+      // A failure in the sections must not hide that the workspaces synced.
+      try {
+        const synced = await sections.run(me, options);
+        if (synced.kind === "unsupported") {
+          useOrbitProfileSyncStatus.setState({ sections: "unsupported", sectionsError: null });
+        } else if (synced.kind === "synced") {
+          useOrbitProfileSyncStatus.setState((status) => ({
+            sections: "supported",
+            sectionsError: null,
+            sectionChanges: synced.sections ?? status.sectionChanges,
+          }));
+        }
+      } catch (error) {
+        useOrbitProfileSyncStatus.setState({
+          sectionsError:
+            error instanceof OrbitGatewayError || error instanceof Error
+              ? error.message
+              : String(error),
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof OrbitGatewayError || error instanceof Error
+          ? error.message
+          : String(error);
+      useOrbitProfileSyncStatus.setState((status) => ({
+        ...status,
+        phase: "error",
+        error: message,
+      }));
+    }
+  };
+
+  controller = {
+    trigger: createSerialRunner(runOnce),
+    beginNonUserChange: sections.beginNonUserChange,
+  };
+  return controller;
+}
+
 /**
  * Applies the environment provider and, in Orbit mode, syncs this device with its Orbit profile:
  * the workspace list, and through OrbitAppearanceSync the appearance and this desktop's settings.
  * Mounted once, in the main window of the desktop app; extra windows follow the main window
- * through the workspace and catalog storage.
+ * through the workspace and catalog storage. The sync itself is a module-level singleton, so
+ * mounting this twice only adds triggers, never a second engine.
  */
 export function OrbitProfileSync() {
   const available = useMemo(() => desktopOrbitGatewayClient() !== null, []);
   useEffect(() => {
-    const client = desktopOrbitGatewayClient();
-    if (!client) return;
-    const ports: WorkspaceProfileSyncPorts = {
-      client,
-      readLocal: () => useWorkspaceStore.getState().workspaces.map(toGateway),
-      writeLocal,
-      loadState,
-      saveState,
-    };
-    const sections = createProfileSync({
-      client,
-      channels: getProfileSyncChannels,
-      loadState: loadSectionState,
-      saveState: saveSectionState,
-      isEnabled: isSectionSyncEnabled,
-      onAdopt: saveSectionBackup,
-    });
-
-    let disposed = false;
-    let running: Promise<void> | null = null;
-    let again = false;
-    let queuedForce: ProfileSyncRunOptions | undefined;
-    const run = (options?: ProfileSyncRunOptions): void => {
-      if (disposed) return;
-      if (running) {
-        again = true;
-        if (options?.force) queuedForce = options;
-        return;
-      }
-      running = reconcileEnvironmentProvider(client)
-        .then(async () => {
-          // Everything syncs only while Orbit provides the environments.
-          if (useEnvironmentProvider.getState().provider !== "orbit") {
-            useOrbitProfileSyncStatus.setState(INITIAL_STATUS);
-            return;
-          }
-          const me = await client.me();
-          const result = await syncWorkspaceProfile(ports, me);
-          useOrbitProfileSyncStatus.setState(
-            result.kind === "unbound"
-              ? { phase: "unbound", profileName: null, error: null, syncedAt: Date.now() }
-              : {
-                  phase: "synced",
-                  profileName: result.profileName,
-                  error: null,
-                  syncedAt: Date.now(),
-                },
-          );
-          if (result.kind === "unbound") return;
-          // A failure in the sections must not hide that the workspaces synced.
-          try {
-            const synced = await sections.run(me, options);
-            if (synced.kind === "unsupported") {
-              useOrbitProfileSyncStatus.setState({
-                sections: "unsupported",
-                sectionsError: null,
-              });
-            } else if (synced.kind === "synced") {
-              useOrbitProfileSyncStatus.setState((status) => ({
-                sections: "supported",
-                sectionsError: null,
-                sectionChanges: synced.sections ?? status.sectionChanges,
-              }));
-            }
-          } catch (error) {
-            useOrbitProfileSyncStatus.setState({
-              sectionsError:
-                error instanceof OrbitGatewayError || error instanceof Error
-                  ? error.message
-                  : String(error),
-            });
-          }
-        })
-        .catch((error: unknown) => {
-          const message =
-            error instanceof OrbitGatewayError || error instanceof Error
-              ? error.message
-              : String(error);
-          useOrbitProfileSyncStatus.setState((status) => ({
-            ...status,
-            phase: "error",
-            error: message,
-          }));
-        })
-        .finally(() => {
-          running = null;
-          if (again) {
-            again = false;
-            const next = queuedForce;
-            queuedForce = undefined;
-            run(next);
-          }
-        });
-    };
+    const sync = profileSyncController();
+    if (!sync) return;
+    const run = (): void => sync.trigger();
 
     const unsubscribeProvider = useEnvironmentProvider.subscribe((state, previous) => {
       if (state.provider !== previous.provider) run();
@@ -257,7 +261,7 @@ export function OrbitProfileSync() {
     let editTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleEditSync = (): void => {
       if (editTimer) clearTimeout(editTimer);
-      editTimer = setTimeout(() => run(), LOCAL_EDIT_DEBOUNCE_MS);
+      editTimer = setTimeout(run, LOCAL_EDIT_DEBOUNCE_MS);
     };
     const unsubscribe = useWorkspaceStore.subscribe((state, previous) => {
       if (state.workspaces !== previous.workspaces) scheduleEditSync();
@@ -265,20 +269,18 @@ export function OrbitProfileSync() {
     const unsubscribeLocalChange = onLocalProfileChange(scheduleEditSync);
     // A theme the environment pushed is not the user's pick: it stays on this device.
     const unsubscribeDefaultTheme = trackNonUserThemeChanges(() =>
-      sections.beginNonUserChange(APPEARANCE_SECTION),
+      sync.beginNonUserChange(APPEARANCE_SECTION),
     );
-    requestSync = (options) => run(options);
+    requestSync = sync.trigger;
     let ticks = 0;
     const interval = setInterval(() => {
       ticks += 1;
       if (document.hasFocus() || ticks % (BACKGROUND_PROBE_MS / FOCUSED_PROBE_MS) === 0) run();
     }, FOCUSED_PROBE_MS);
-    const runOnFocus = (): void => run();
-    window.addEventListener("focus", runOnFocus);
+    window.addEventListener("focus", run);
     run();
 
     return () => {
-      disposed = true;
       requestSync = null;
       unsubscribeProvider();
       unsubscribe();
@@ -286,7 +288,7 @@ export function OrbitProfileSync() {
       unsubscribeDefaultTheme();
       clearInterval(interval);
       if (editTimer) clearTimeout(editTimer);
-      window.removeEventListener("focus", runOnFocus);
+      window.removeEventListener("focus", run);
     };
   }, []);
   return available ? <OrbitAppearanceSync /> : null;

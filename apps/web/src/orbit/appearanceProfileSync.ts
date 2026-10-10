@@ -98,11 +98,14 @@ function slotFor(
     if (STOCK_THEME_IDS.has(id)) return STOCK_SLOT;
     return last !== null && last.id === id ? last : null;
   }
-  if (builtInIds.has(definition.id)) return { id: definition.id, source: "builtin" };
-  // What this slot renders: the theme's palette for the appearance, or its only one.
+  // A theme that cannot render this appearance (a dark-only theme in the light slot) does not
+  // belong in the slot: the profile would hand the other devices a dark palette to wear in
+  // light mode. The slot reads as the stock look, as it does for a device that has no pick.
   const forSlot = getThemeColorsForMode(definition, appearance);
+  if (forSlot === null) return STOCK_SLOT;
+  if (builtInIds.has(definition.id)) return { id: definition.id, source: "builtin" };
   // The Gateway rejects an empty palette; a theme without colors reads as the stock look.
-  if (Object.keys(forSlot ?? definition.colors).length === 0) return STOCK_SLOT;
+  if (Object.keys(forSlot).length === 0) return STOCK_SLOT;
   const inLibrary = getCustomThemes().some(
     (theme) => theme.id === definition.id && !isProfileCopy(theme),
   );
@@ -110,8 +113,8 @@ function slotFor(
     id: definition.id,
     name: definition.label,
     source: inLibrary ? "custom" : "published",
-    appearance: forSlot ? appearance : definition.appearance,
-    colors: colorsJson(forSlot ?? definition.colors),
+    appearance,
+    colors: colorsJson(forSlot),
   };
 }
 
@@ -274,8 +277,12 @@ function localSlotIds(): readonly [string | null, string | null] | null {
     const theme = readRawTheme();
     const halves = readThemeHalvesRaw();
     const idOf = (appearance: ThemeAppearance) => {
+      // The same reading as slotFor, so a device that already wears what the profile says is
+      // left alone: a dark-only theme in the light slot is the stock slot there too.
       const id = resolveThemeHalf(theme, halves, appearance);
-      return getThemeDefinition(id)?.id ?? (STOCK_THEME_IDS.has(id) ? null : id);
+      const definition = getThemeDefinition(id);
+      if (definition === null) return STOCK_THEME_IDS.has(id) ? null : id;
+      return getThemeColorsForMode(definition, appearance) === null ? null : definition.id;
     };
     return [idOf("light"), idOf("dark")];
   } catch {
