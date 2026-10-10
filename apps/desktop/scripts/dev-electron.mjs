@@ -7,6 +7,7 @@ import {
   desktopDir,
   resolveDevProtocolClient,
   resolveElectronLaunchCommand,
+  withDevRendererAllowedOrigin,
 } from "./electron-launcher.mjs";
 import { waitForResources } from "./wait-for-resources.mjs";
 
@@ -66,7 +67,7 @@ await waitForResources({
   tcpPort: port,
 });
 
-const childEnv = { ...process.env };
+const childEnv = withDevRendererAllowedOrigin({ ...process.env });
 delete childEnv.ELECTRON_RUN_AS_NODE;
 const devProtocolClient = resolveDevProtocolClient();
 if (devProtocolClient) {

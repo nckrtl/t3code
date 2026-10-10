@@ -3,6 +3,7 @@ import { defineConfig } from "vite-plus";
 
 import { isDesktopRuntimeExternalDependency } from "../../scripts/lib/desktop-external-packages.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
+import { resolveForkBrand } from "./src/branding/forkBrand.ts";
 
 const repoEnv = loadRepoEnv();
 
@@ -15,6 +16,8 @@ const isMainProcessExternal = (id: string) =>
   id === "electron" || id.startsWith("electron/") || isDesktopRuntimeExternalDependency(id);
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
 const publicConfigDefine = {
+  // The app's name, id and link scheme, baked into the bundle (src/branding/appBrand.ts).
+  __T3CODE_APP_BRAND__: JSON.stringify(resolveForkBrand(repoEnv)),
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
     repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
   ),

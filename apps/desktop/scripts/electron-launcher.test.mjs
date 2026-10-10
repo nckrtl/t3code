@@ -5,6 +5,7 @@ import * as NodePath from "node:path";
 import { assert, describe, it } from "vite-plus/test";
 
 import {
+  APP_BRAND_NAME,
   makeDevelopmentEnvironmentScript,
   makeDevelopmentLauncherScript,
   resolveElectronBinaryPath,
@@ -108,11 +109,11 @@ describe("electron development launcher", () => {
 
     assert.equal(
       values.NSScreenCaptureUsageDescription,
-      "T3 Code captures the active window when you use the snapshot shortcut.",
+      `${APP_BRAND_NAME} captures the active window when you use the snapshot shortcut.`,
     );
     assert.equal(
       values.NSDocumentsFolderUsageDescription,
-      "T3 Code reads project files you open in the desktop app.",
+      `${APP_BRAND_NAME} reads project files you open in the desktop app.`,
     );
   });
 

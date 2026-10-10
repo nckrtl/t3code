@@ -6,6 +6,8 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 
+import { appBrand } from "../branding/appBrand.ts";
+import { copyPreviousUserData } from "../branding/AppRenameUserData.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as DesktopAssets from "./DesktopAssets.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
@@ -48,6 +50,18 @@ const normalizeCommitHash = (value: string): Option.Option<string> => {
 export const resolveUserDataPath = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const fileSystem = yield* FileSystem.FileSystem;
+  // A renamed app starts from a copy of the old app's folder (branding/AppRenameUserData.ts).
+  const copy = copyPreviousUserData({
+    appDataDirectory: environment.appDataDirectory,
+    brand: appBrand,
+    isDevelopment: environment.isDevelopment,
+  });
+  if (copy.status === "failed") {
+    yield* Effect.logWarning("Could not copy the previous app's user data.", {
+      source: copy.source,
+      cause: copy.cause,
+    });
+  }
   const legacyPath = environment.path.join(
     environment.appDataDirectory,
     environment.legacyUserDataDirName,

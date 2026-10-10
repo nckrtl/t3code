@@ -13,6 +13,7 @@ import * as ElectronShell from "../electron/ElectronShell.ts";
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
 import { HostProcessArguments } from "@t3tools/shared/hostProcess";
 import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/relayAuth";
+import { appBrand, appBrandRewritePreviousScheme } from "../branding/appBrand.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
@@ -169,7 +170,13 @@ export const make = Effect.gen(function* () {
         return true;
       };
       const resumeProviderAuth = (value: string | undefined) => {
-        const destination = providerAuthReturnUrl(value);
+        // The server only accepts upstream's scheme in a return link, so a renamed app
+        // gets those links back and moves them to its own scheme.
+        const returned = providerAuthReturnUrl(value);
+        const destination =
+          returned === undefined
+            ? undefined
+            : appBrandRewritePreviousScheme(appBrand, environment.isDevelopment, returned);
         const expectedOrigin = `${ElectronProtocol.getDesktopScheme(environment.isDevelopment)}://app`;
         if (!destination?.startsWith(`${expectedOrigin}/`)) return false;
         void runPromise(

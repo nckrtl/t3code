@@ -7,6 +7,8 @@ import * as Schema from "effect/Schema";
 
 import * as NetService from "@t3tools/shared/Net";
 import * as Crypto from "effect/Crypto";
+import { migrateRenamedApp } from "../branding/AppRenameStartup.ts";
+import { appBrand } from "../branding/appBrand.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronDialog from "../electron/ElectronDialog.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
@@ -132,7 +134,7 @@ const handleFatalStartupError = Effect.fn("desktop.startup.handleFatalStartupErr
   const wasQuitting = yield* Ref.getAndSet(state.quitting, true);
   if (!wasQuitting) {
     yield* electronDialog.showErrorBox(
-      "T3 Code failed to start",
+      `${appBrand.name} failed to start`,
       `Stage: ${stage}\n${message}${detail}`,
     );
   }
@@ -323,6 +325,8 @@ const startup = Effect.gen(function* () {
     });
   }
   yield* appIdentity.configure;
+  // A renamed app brings the old app's localStorage and saved secrets along, before any window opens.
+  yield* migrateRenamedApp;
   yield* applicationMenu.configure;
   yield* updates.configure;
   yield* DesktopRemoteUpdates.listen;

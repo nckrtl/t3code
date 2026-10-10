@@ -34,6 +34,12 @@ import {
   selectCliRuntimeExternalDependencies,
 } from "./lib/cli-external-packages.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
+import {
+  UPSTREAM_APP_BRAND,
+  appBrandDisplayName,
+  type AppBrand,
+} from "../apps/desktop/src/branding/appBrand.ts";
+import { resolveForkBrand } from "../apps/desktop/src/branding/forkBrand.ts";
 import { selectDesktopRuntimeExternalDependencies } from "./lib/desktop-external-packages.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
 
@@ -2613,10 +2619,16 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
   return `${trimmed.slice(0, versionSeparator)}/${trimmed.slice(versionSeparator + 1)}`;
 }
 
-export function resolveDesktopProductName(version: string): string {
-  return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code (Nightly)"
-    : (desktopPackageJson.productName ?? "T3 Code");
+export function resolveDesktopProductName(
+  version: string,
+  brand: AppBrand = UPSTREAM_APP_BRAND,
+): string {
+  const nightly = resolveDesktopUpdateChannel(version) === "nightly";
+  // A renamed fork app ("Conn") names itself; the nightly label stays.
+  if (brand.name !== UPSTREAM_APP_BRAND.name) {
+    return appBrandDisplayName(brand, nightly ? "Nightly" : "Alpha");
+  }
+  return nightly ? "T3 Code (Nightly)" : (desktopPackageJson.productName ?? "T3 Code");
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
@@ -2637,11 +2649,20 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   // source file was never written fails the electron-builder step.
   wslRuntimeBundled = false,
   arch?: typeof BuildArch.Type,
+  // The app's name, id and link schemes; upstream's unless the fork passes its own.
+  brand: AppBrand = UPSTREAM_APP_BRAND,
 ) {
+  const brandSchemes = [
+    ...new Set([
+      brand.scheme,
+      brand.devScheme,
+      ...(brand.previous === null ? [] : [brand.previous.scheme, brand.previous.devScheme]),
+    ]),
+  ];
   const buildConfig: Record<string, unknown> = {
-    appId: DESKTOP_APP_ID,
-    productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    appId: brand.appId,
+    productName: resolveDesktopProductName(version, brand),
+    artifactName: `${brand.name.replaceAll(/\s+/g, "-")}-\${version}-\${arch}.\${ext}`,
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [
       ...DESKTOP_FILE_EXCLUSIONS,
@@ -2686,13 +2707,12 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       icon: "icon.icns",
       category: "public.app-category.developer-tools",
       extendInfo: {
-        NSScreenCaptureUsageDescription:
-          "T3 Code captures the active window when you use the window capture shortcut.",
+        NSScreenCaptureUsageDescription: `${brand.name} captures the active window when you use the window capture shortcut.`,
       },
       protocols: [
         {
-          name: "T3 Code",
-          schemes: ["t3code", "t3code-dev"],
+          name: brand.name,
+          schemes: brandSchemes,
         },
       ],
       ...(signed ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") } : {}),
@@ -2710,7 +2730,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       // Give the themed installer its own Finder volume name. Finder caches
       // DMG window backgrounds by volume name, so reusing a generic name can
       // make a newly built background look unchanged during testing.
-      title: `${resolveDesktopProductName(version)} ${version} Installer`,
+      title: `${resolveDesktopProductName(version, brand)} ${version} Installer`,
       background: `dmg/dmg-background-${updateChannel}.png`,
       window: {
         width: 640,
@@ -2745,8 +2765,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       // t3code:// OAuth callbacks to the app.
       protocols: [
         {
-          name: "T3 Code",
-          schemes: ["t3code", "t3code-dev"],
+          name: brand.name,
+          schemes: brandSchemes,
         },
       ],
       desktop: {
@@ -3684,6 +3704,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         : undefined,
       bundlesWslRuntime({ platform: options.platform, runtimeArchivePath: options.wslRuntime }),
       options.arch,
+      resolveForkBrand(loadRepoEnv({ repoRoot })),
     ),
     dependencies: stageDependencies,
     devDependencies: {
@@ -3848,7 +3869,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   if (options.platform === "win") {
     yield* validateWindowsPackagedPayload({
       stageDistDir,
-      appExecutableName: `${resolveDesktopProductName(appVersion)}.exe`,
+      appExecutableName: `${resolveDesktopProductName(appVersion, resolveForkBrand(loadRepoEnv({ repoRoot })))}.exe`,
       targetArch: options.arch,
       appVersion,
       expectWslRuntime: bundlesWslRuntime({

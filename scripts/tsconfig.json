@@ -5,5 +5,10 @@
     "types": ["node"],
     "lib": ["ESNext", "esnext.disposable"]
   },
-  "include": ["**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../apps/desktop/src/branding/appBrand.ts",
+    "../apps/desktop/src/branding/forkBrand.ts",
+    "../apps/desktop/src/branding/forkBrand.json"
+  ]
 }

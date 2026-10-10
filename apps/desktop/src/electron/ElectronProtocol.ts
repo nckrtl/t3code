@@ -12,9 +12,11 @@ import * as Scope from "effect/Scope";
 
 import * as Electron from "electron";
 
+import { appBrand } from "../branding/appBrand.ts";
+
 export const DESKTOP_HOST = "app";
-const DESKTOP_PRODUCTION_SCHEME = "t3code";
-const DESKTOP_DEVELOPMENT_SCHEME = "t3code-dev";
+const DESKTOP_PRODUCTION_SCHEME = appBrand.scheme;
+const DESKTOP_DEVELOPMENT_SCHEME = appBrand.devScheme;
 
 export function getDesktopScheme(isDevelopment: boolean): string {
   return isDevelopment ? DESKTOP_DEVELOPMENT_SCHEME : DESKTOP_PRODUCTION_SCHEME;
@@ -141,6 +143,15 @@ function registerDesktopSchemePrivilegesSync(): void {
         stream: true,
       },
     },
+    // The schemes an app rename took over from. Their renderer origins hold the
+    // old localStorage until the first launch copies it over (see
+    // branding/AppRenameMigration.ts), which needs them to be standard and secure.
+    ...(appBrand.previous === null
+      ? []
+      : [appBrand.previous.scheme, appBrand.previous.devScheme].map((scheme) => ({
+          scheme,
+          privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+        }))),
   ]);
 }
 

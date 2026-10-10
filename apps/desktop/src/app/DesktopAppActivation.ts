@@ -23,6 +23,7 @@ import * as Scope from "effect/Scope";
 
 import type * as Electron from "electron";
 
+import { appBrand } from "../branding/appBrand.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import { DESKTOP_APP_ACTIVATION_REQUEST_CHANNEL } from "../ipc/channels.ts";
@@ -75,7 +76,9 @@ export function workspaceFromLink(link: string): string | null {
   } catch {
     return null;
   }
-  if (!["t3code:", "t3code-dev:"].includes(url.protocol) || url.host !== "workspace") return null;
+  // The app's own scheme, and upstream's, which links made before a rename still use.
+  const protocols = ["t3code:", "t3code-dev:", `${appBrand.scheme}:`, `${appBrand.devScheme}:`];
+  if (!protocols.includes(url.protocol) || url.host !== "workspace") return null;
   try {
     return decodeURIComponent(url.pathname.replace(/^\/+|\/+$/g, "")) || "all";
   } catch {

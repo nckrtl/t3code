@@ -1,4 +1,5 @@
-// This file mostly exists because we want dev mode to say "T3 Code (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to say "T3 Code (Dev)" (or the fork's name, see
+// src/branding) instead of "electron"
 
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -6,6 +7,8 @@ import * as NodeModule from "node:module";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
+import { appBrandDisplayName } from "../src/branding/appBrand.ts";
+import { resolveForkBrand } from "../src/branding/forkBrand.ts";
 import { ensureElectronRuntime } from "./ensure-electron-runtime.mjs";
 
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -15,11 +18,34 @@ const repoRoot = NodePath.resolve(desktopDir, "..", "..");
 const devBundleIdSuffix = NodePath.basename(repoRoot)
   .toLowerCase()
   .replaceAll(/[^a-z0-9]+/g, "");
-const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+// The fork's identity, with upstream's as the default (src/branding/appBrand.ts).
+const brand = resolveForkBrand(process.env);
+const APP_DISPLAY_NAME = appBrandDisplayName(brand, isDevelopment ? "Dev" : "Alpha");
 const APP_BUNDLE_ID = isDevelopment
-  ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
-  : "com.t3tools.t3code";
-const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
+  ? `${brand.devAppId}.${devBundleIdSuffix || "local"}`
+  : brand.appId;
+// Only the app's own scheme: the development launcher makes this bundle the default handler
+// for it, which must not take upstream's scheme away from a T3 Code app that still uses it.
+const APP_PROTOCOL_SCHEMES = [isDevelopment ? brand.devScheme : brand.scheme];
+export const APP_BRAND_NAME = brand.name;
+
+/**
+ * Upstream's server (unchanged) lets only upstream's desktop origins through CORS in
+ * development. A renamed dev app adds its own origin through the variable the server reads for
+ * that, `T3CODE_DEV_ALLOWED_ORIGINS`.
+ */
+export function withDevRendererAllowedOrigin(environment) {
+  if (!isDevelopment || brand.previous === null) return environment;
+  const origin = `${brand.devScheme}://app`;
+  const existing = (environment.T3CODE_DEV_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return {
+    ...environment,
+    T3CODE_DEV_ALLOWED_ORIGINS: [...new Set([...existing, origin])].join(","),
+  };
+}
 const LAUNCHER_VERSION = 19;
 const developmentMacIconPngPath = NodePath.join(
   repoRoot,
@@ -118,6 +144,7 @@ export function makeDevelopmentEnvironmentScript(environment) {
     ["T3CODE_OTLP_EXPORT_INTERVAL_MS", environment.T3CODE_OTLP_EXPORT_INTERVAL_MS],
     ["T3CODE_OTLP_HEADERS", environment.T3CODE_OTLP_HEADERS],
     ["T3CODE_OTLP_PROTOCOL", environment.T3CODE_OTLP_PROTOCOL],
+    ["T3CODE_DEV_ALLOWED_ORIGINS", environment.T3CODE_DEV_ALLOWED_ORIGINS],
     ["T3CODE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
   ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
   return [
@@ -153,7 +180,7 @@ function writeDevelopmentEnvironmentScript() {
   NodeFS.mkdirSync(NodePath.dirname(developmentEnvironmentFilePath), { recursive: true });
   NodeFS.writeFileSync(
     developmentEnvironmentFilePath,
-    makeDevelopmentEnvironmentScript(process.env),
+    makeDevelopmentEnvironmentScript(withDevRendererAllowedOrigin(process.env)),
   );
 }
 
@@ -269,9 +296,8 @@ export function resolveMacBundleInfoPlistStrings(executableName) {
     CFBundleIdentifier: APP_BUNDLE_ID,
     CFBundleExecutable: executableName,
     CFBundleIconFile: "icon.icns",
-    NSScreenCaptureUsageDescription:
-      "T3 Code captures the active window when you use the snapshot shortcut.",
-    NSDocumentsFolderUsageDescription: "T3 Code reads project files you open in the desktop app.",
+    NSScreenCaptureUsageDescription: `${brand.name} captures the active window when you use the snapshot shortcut.`,
+    NSDocumentsFolderUsageDescription: `${brand.name} reads project files you open in the desktop app.`,
   };
 }
 
@@ -402,7 +428,7 @@ function buildMacLauncher(electronBinaryPath) {
   if (isDevelopment) {
     // Keep Electron's native executable inside the branded bundle. Launching the
     // node_modules copy makes macOS associate the process (and Dock label) with
-    // Electron.app even though this bundle's Info.plist has the T3 Code name.
+    // Electron.app even though this bundle's Info.plist has the app's name.
     // Its conventional executable name also keeps Electron's default-app runtime
     // in development mode instead of making app.isPackaged report true.
     writeDevelopmentEnvironmentScript();
