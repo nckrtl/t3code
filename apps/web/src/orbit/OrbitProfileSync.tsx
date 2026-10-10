@@ -35,6 +35,13 @@ export const useOrbitProfileSyncStatus = create<OrbitProfileSyncStatus>(() => ({
   syncedAt: null,
 }));
 
+let requestSync: (() => void) | null = null;
+
+/** Runs the profile sync now, as after a profile change in Settings. A no-op outside the desktop app. */
+export function syncOrbitProfileNow(): void {
+  requestSync?.();
+}
+
 /** The Gateway client over the desktop main process, or null outside the desktop app. */
 export function desktopOrbitGatewayClient(): OrbitGatewayClient | null {
   const send = window.desktopBridge?.orbitGatewaySend;
@@ -166,12 +173,14 @@ export function OrbitProfileSync() {
       if (editTimer) clearTimeout(editTimer);
       editTimer = setTimeout(run, LOCAL_EDIT_DEBOUNCE_MS);
     });
+    requestSync = run;
     const interval = setInterval(run, POLL_MS);
     window.addEventListener("focus", run);
     run();
 
     return () => {
       disposed = true;
+      requestSync = null;
       unsubscribe();
       clearInterval(interval);
       if (editTimer) clearTimeout(editTimer);

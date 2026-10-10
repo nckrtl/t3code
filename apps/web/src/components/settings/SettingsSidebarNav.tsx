@@ -51,6 +51,11 @@ import {
 import { useAvailableSettingsSearchItems } from "./useAvailableSettingsSearchItems";
 import { validateSettingsScopeSearch } from "./settingsScope";
 
+// Orbit's ring mark, drawn in lucide's stroke style beside the other section icons.
+const OrbitRingIcon = createLucideIcon("orbit-ring", [
+  ["ellipse", { cx: "12", cy: "12", rx: "10", ry: "5.5", key: "ring" }],
+]);
+
 const SnapShotIcon = createLucideIcon("snap-shot", [
   [
     "path",
@@ -88,6 +93,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/source-control": GitBranchIcon,
   "/settings/storage": HardDriveIcon,
   "/settings/connections": Link2Icon,
+  "/settings/orbit": OrbitRingIcon,
   "/settings/archived": ArchiveIcon,
 };
 
