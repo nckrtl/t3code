@@ -1,6 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useEffect } from "react";
 
+import { asDefaultThemeAdoption } from "../orbit/themeOrigin";
 import { primaryEnvironmentIdAtom } from "../state/primaryEnvironment";
 import { primaryServerSettingsAtom } from "../state/server";
 import { getThemeDefinition, singleAppearanceOf } from "../themePalette";
@@ -97,12 +98,12 @@ export function useDefaultThemeAdoption(): void {
     // client opens on, so it takes the base preference and, for a
     // single-appearance theme, the matching mode -- otherwise a dark-only
     // theme on a light client is recorded as applied while nothing changes.
-    if (!setTheme(defaultTheme)) return;
+    if (!asDefaultThemeAdoption(() => setTheme(defaultTheme))) return;
     const half = singleAppearanceOf(definition);
     // Recorded only once both land: marking the generation applied while the
     // appearance switch failed would leave a dark-only theme rendering its
     // light half with no retry.
-    if (half !== null && !setAppearanceMode(half)) return;
+    if (half !== null && !asDefaultThemeAdoption(() => setAppearanceMode(half))) return;
     writeAppliedGeneration(storageKey, generation);
   }, [
     environmentId,

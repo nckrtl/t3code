@@ -13,7 +13,7 @@ import { ORBIT_GATEWAY_SEND_CHANNEL } from "../channels.ts";
 const TIMEOUT_MS = 15_000;
 
 const OrbitGatewayRequest = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PUT"]),
+  method: Schema.Literals(["GET", "POST", "PUT", "PATCH"]),
   path: Schema.String.check(Schema.isPattern(/^\/[A-Za-z0-9/_.%-]{0,512}$/)),
   body: Schema.NullOr(Schema.String.check(Schema.isMaxLength(2_000_000))),
 });

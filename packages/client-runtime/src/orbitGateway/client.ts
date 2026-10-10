@@ -9,7 +9,7 @@
 export const DEFAULT_ORBIT_GATEWAY_URL = "https://gateway.orbit";
 
 export interface OrbitGatewayRequest {
-  readonly method: "GET" | "POST" | "PUT";
+  readonly method: "GET" | "POST" | "PUT" | "PATCH";
   /** A path below `/api/v1/conn`, such as `/me`. */
   readonly path: string;
   readonly body?: unknown;
@@ -67,11 +67,31 @@ export interface OrbitGatewayWorkspace {
   readonly projectKeys?: readonly string[];
 }
 
+/** Who changed one section of a profile, and when. */
+export interface OrbitGatewaySectionMeta {
+  readonly version: number;
+  readonly updatedAt: string | null;
+  readonly updatedBy: string | null;
+}
+
 export interface OrbitGatewaySettings {
   readonly profileId: number;
   readonly version: number;
   readonly workspaces: readonly OrbitGatewayWorkspace[];
   readonly updatedAt: string;
+  /** The whole settings document as sent, so sections this client does not know stay readable. */
+  readonly document: Readonly<Record<string, unknown>>;
+  /**
+   * Version, time and author of each section the Gateway has written, or null from a Gateway
+   * that predates sections (it also cannot PATCH).
+   */
+  readonly sections: Readonly<Record<string, OrbitGatewaySectionMeta>> | null;
+}
+
+/** One section in a PATCH: the version this device last read (0 = never written) and the new value (null clears it). */
+export interface OrbitGatewaySectionPatch {
+  readonly version: number;
+  readonly value: Readonly<Record<string, unknown>> | null;
 }
 
 export interface OrbitGatewayEnvironment {
@@ -100,6 +120,14 @@ export interface OrbitGatewayClient {
     profileId: number,
     version: number,
     workspaces: readonly OrbitGatewayWorkspace[],
+  ) => Promise<OrbitGatewaySettings>;
+  /**
+   * Writes the given sections in one all-or-nothing request. A stale section version fails the
+   * whole request with `conn.settings_version_conflict`; an older Gateway answers 404 or 405.
+   */
+  readonly patchSections: (
+    profileId: number,
+    sections: Readonly<Record<string, OrbitGatewaySectionPatch>>,
   ) => Promise<OrbitGatewaySettings>;
   readonly environments: () => Promise<readonly OrbitGatewayEnvironment[]>;
   /** Mints a one-time pairing link to the server for this device. */
@@ -161,6 +189,15 @@ export function createOrbitGatewayClient(transport: OrbitGatewayTransport): Orbi
           method: "PUT",
           path: `/profiles/${profileId}/settings`,
           body: { version, settings: { workspaces: workspaces.map(toWire) } },
+        }),
+        "/profiles/settings",
+      ),
+    patchSections: async (profileId, sections) =>
+      settings(
+        await call({
+          method: "PATCH",
+          path: `/profiles/${profileId}/settings`,
+          body: { sections },
         }),
         "/profiles/settings",
       ),
@@ -264,8 +301,10 @@ function node(value: unknown, path: string): OrbitGatewayNode {
 
 function settings(value: unknown, path: string): OrbitGatewaySettings {
   const data = record(value);
-  const workspaces = record(data?.settings)?.workspaces;
+  const document = record(data?.settings);
+  const workspaces = document?.workspaces;
   if (
+    document === null ||
     typeof data?.profile_id !== "number" ||
     typeof data.version !== "number" ||
     typeof data.updated_at !== "string" ||
@@ -278,7 +317,31 @@ function settings(value: unknown, path: string): OrbitGatewaySettings {
     version: data.version,
     updatedAt: data.updated_at,
     workspaces: workspaces.map((entry) => workspace(entry, path)),
+    document,
+    sections: sectionMetas(data.sections),
   };
+}
+
+function sectionMetas(value: unknown): Record<string, OrbitGatewaySectionMeta> | null {
+  const data = record(value);
+  if (data === null) return null;
+  const sections: Record<string, OrbitGatewaySectionMeta> = {};
+  for (const [name, entry] of Object.entries(data)) {
+    const meta = record(entry);
+    if (typeof meta?.version !== "number") continue;
+    const by = meta.updated_by;
+    sections[name] = {
+      version: meta.version,
+      updatedAt: typeof meta.updated_at === "string" ? meta.updated_at : null,
+      updatedBy:
+        typeof by === "string"
+          ? by
+          : typeof record(by)?.name === "string"
+            ? (record(by)!.name as string)
+            : null,
+    };
+  }
+  return sections;
 }
 
 function strings(value: unknown, path: string): string[] | undefined {

@@ -1173,7 +1173,7 @@ export interface DesktopApiResponse {
 
 /** One call to the Orbit Gateway's Conn layer; `path` is below `/api/v1/conn`. */
 export interface DesktopOrbitGatewayRequest {
-  readonly method: "GET" | "POST" | "PUT";
+  readonly method: "GET" | "POST" | "PUT" | "PATCH";
   readonly path: string;
   /** A JSON body, or null. */
   readonly body: string | null;

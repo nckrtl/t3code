@@ -1,3 +1,6 @@
 export * from "./client.ts";
 export * from "./workspaceMerge.ts";
 export * from "./environmentProvider.ts";
+export * from "./profileDocument.ts";
+export * from "./sectionMerge.ts";
+export * from "./profileSync.ts";

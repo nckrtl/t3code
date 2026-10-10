@@ -134,6 +134,83 @@ describe("createOrbitGatewayClient", () => {
     });
   });
 
+  it("reads the section versions and who changed them, and tolerates a Gateway without them", async () => {
+    const withSections = createOrbitGatewayClient(
+      respond(200, {
+        data: {
+          profile_id: 1,
+          version: 4,
+          updated_at: "now",
+          settings: { workspaces: [], appearance: { schema: 1 } },
+          sections: {
+            appearance: { version: 3, updated_at: "2026-10-10T10:00:00Z", updated_by: "phone" },
+            "devices.desktop": { version: 1, updated_at: "later", updated_by: { name: "mac" } },
+          },
+        },
+      }),
+    );
+    const read = await withSections.settings(1);
+    expect(read.document.appearance).toEqual({ schema: 1 });
+    expect(read.sections).toEqual({
+      appearance: { version: 3, updatedAt: "2026-10-10T10:00:00Z", updatedBy: "phone" },
+      "devices.desktop": { version: 1, updatedAt: "later", updatedBy: "mac" },
+    });
+
+    const legacy = createOrbitGatewayClient(
+      respond(200, {
+        data: { profile_id: 1, version: 4, updated_at: "now", settings: { workspaces: [] } },
+      }),
+    );
+    expect((await legacy.settings(1)).sections).toBeNull();
+  });
+
+  it("patches sections with the versions it read and reports a stale one as a conflict", async () => {
+    const sent: OrbitGatewayRequest[] = [];
+    const client = createOrbitGatewayClient(async (request) => {
+      sent.push(request);
+      return {
+        status: 200,
+        body: JSON.stringify({
+          data: {
+            profile_id: 1,
+            version: 5,
+            settings: { workspaces: [] },
+            updated_at: "now",
+            sections: {},
+          },
+        }),
+      };
+    });
+    await client.patchSections(1, {
+      appearance: { version: 2, value: { schema: 1 } },
+      "devices.desktop": { version: 0, value: null },
+    });
+    expect(sent[0]).toEqual({
+      method: "PATCH",
+      path: "/profiles/1/settings",
+      body: {
+        sections: {
+          appearance: { version: 2, value: { schema: 1 } },
+          "devices.desktop": { version: 0, value: null },
+        },
+      },
+    });
+
+    const stale = createOrbitGatewayClient(
+      respond(409, {
+        error: {
+          code: "conn.settings_version_conflict",
+          message: "stale",
+          details: { current_version: 6, sections: { appearance: 3 } },
+        },
+      }),
+    );
+    await expect(stale.patchSections(1, {})).rejects.toMatchObject({
+      status: 409,
+      details: { sections: { appearance: 3 } },
+    });
+  });
+
   it("turns the Gateway's error envelope into an OrbitGatewayError", async () => {
     const client = createOrbitGatewayClient(
       respond(409, {

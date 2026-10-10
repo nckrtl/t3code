@@ -567,11 +567,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["profile share workspaces phone desktop devices"],
   },
   {
-    id: "orbit-workspace-sync",
-    title: "Workspace sync",
+    id: "orbit-profile-sync",
+    title: "Profile sync",
     to: "/settings/connections",
     desktopOnly: true,
-    searchTerms: ["sync workspaces orbit profile gateway"],
+    searchTerms: [
+      "sync workspaces appearance theme fonts settings orbit profile gateway restore previous",
+    ],
   },
   {
     id: "orbit-servers",

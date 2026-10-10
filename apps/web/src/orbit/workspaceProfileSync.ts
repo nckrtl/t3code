@@ -4,6 +4,7 @@ import {
   sameWorkspaces,
   SETTINGS_VERSION_CONFLICT,
   type OrbitGatewayClient,
+  type OrbitGatewayNode,
   type OrbitGatewayWorkspace,
 } from "@t3tools/client-runtime/orbit-gateway";
 
@@ -41,10 +42,12 @@ export type WorkspaceProfileSyncResult =
 /** Attempts at a replace before giving up on a run, when other devices keep writing in between. */
 const MAX_REPLACE_ATTEMPTS = 3;
 
+/** `knownMe` is the caller's node when the caller just read it, so one run probes the Gateway once. */
 export async function syncWorkspaceProfile(
   ports: WorkspaceProfileSyncPorts,
+  knownMe?: OrbitGatewayNode,
 ): Promise<WorkspaceProfileSyncResult> {
-  const me = await ports.client.me();
+  const me = knownMe ?? (await ports.client.me());
   if (me.profile === null) {
     ports.saveState(null);
     return { kind: "unbound" };
