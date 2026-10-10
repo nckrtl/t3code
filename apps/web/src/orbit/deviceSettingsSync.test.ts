@@ -1,4 +1,13 @@
-import { mergeDeviceSection, type JsonObject } from "@t3tools/client-runtime/orbit-gateway";
+import {
+  createProfileSync,
+  mergeDeviceSection,
+  toGatewayForm,
+  type JsonObject,
+  type OrbitGatewayNode,
+  type OrbitGatewaySectionPatch,
+  type OrbitGatewaySettings,
+  type ProfileSyncState,
+} from "@t3tools/client-runtime/orbit-gateway";
 import { DEFAULT_CLIENT_SETTINGS, type ClientSettings } from "@t3tools/contracts/settings";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -101,5 +110,76 @@ describe("desktop device settings", () => {
     expect(mergeDeviceSection(base, local, remote)).toEqual(
       section({ chatWidth: "full", wordWrap: false, iphoneOnly: 3 }),
     );
+  });
+});
+
+describe("text settings and the Gateway's string handling", () => {
+  it("reads null as an unset text setting, so a reset on another desktop arrives", () => {
+    expect(desktopSettingsPatch(section({ fontFamilySans: null, chatWidth: null }))).toEqual({
+      fontFamilySans: "",
+    });
+  });
+
+  it("settles after one push when the Gateway trims text and stores an empty string as null", async () => {
+    let settings: ClientSettings = {
+      ...DEFAULT_CLIENT_SETTINGS,
+      fontFamilySans: "  Inter ",
+      fontFamilyCode: "",
+    };
+    const channel = createDesktopDeviceChannel({
+      read: () => settings,
+      update: (patch) => {
+        settings = { ...settings, ...patch };
+      },
+    });
+    const stored: { version: number; value: JsonObject | null } = { version: 0, value: null };
+    const patches: Record<string, OrbitGatewaySectionPatch>[] = [];
+    const gatewaySettings = (): OrbitGatewaySettings => ({
+      profileId: 1,
+      version: stored.version,
+      workspaces: [],
+      updatedAt: "",
+      document: stored.value
+        ? { workspaces: [], devices: { desktop: stored.value } }
+        : { workspaces: [] },
+      sections: stored.value
+        ? { "devices.desktop": { version: stored.version, updatedAt: null, updatedBy: null } }
+        : {},
+    });
+    let state: ProfileSyncState | null = null;
+    const engine = createProfileSync({
+      client: {
+        settings: async () => gatewaySettings(),
+        patchSections: async (_id, patch) => {
+          patches.push(patch);
+          stored.version += 1;
+          // What the Gateway keeps: the form a client is expected to send.
+          stored.value = toGatewayForm(patch["devices.desktop"]!.value as JsonObject);
+          return gatewaySettings();
+        },
+      },
+      channels: () => [channel],
+      loadState: () => state,
+      saveState: (next) => {
+        state = next;
+      },
+    });
+    const me = (): OrbitGatewayNode => ({
+      id: 1,
+      name: "mac",
+      wireguardIp: "10.44.0.6",
+      profile: { id: 1, name: "Nick", settingsVersion: stored.version, updatedAt: "" },
+    });
+
+    await engine.run(me());
+    expect((patches[0]!["devices.desktop"]!.value as JsonObject).values).toMatchObject({
+      fontFamilySans: "Inter",
+      fontFamilyCode: null,
+    });
+    await engine.run(me());
+    await engine.run(me());
+    expect(patches).toHaveLength(1);
+    // Nothing was rewritten locally either: the device keeps what the user typed.
+    expect(settings.fontFamilySans).toBe("  Inter ");
   });
 });

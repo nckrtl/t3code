@@ -71,6 +71,13 @@ describe("mergeWorkspaces", () => {
     expect(ids(mergeWorkspaces(base, local, remote))).toEqual(["c:c", "a:a", "b:B remote"]);
   });
 
+  it("compares strings as the Gateway stores them", () => {
+    const stored = workspace("a", "Work", { icon: null, image: null, projectRefs: ["env:p"] });
+    const sent = workspace("a", " Work ", { icon: "  ", image: "", projectRefs: [" env:p ", ""] });
+    expect(sameWorkspaces([stored], [sent])).toBe(true);
+    expect(sameWorkspaces([stored], [workspace("a", "Work", { icon: "folder" })])).toBe(false);
+  });
+
   it("compares content, not identity", () => {
     expect(
       sameWorkspaces(
@@ -209,6 +216,29 @@ describe("createOrbitGatewayClient", () => {
       status: 409,
       details: { sections: { appearance: 3 } },
     });
+  });
+
+  it("sends workspaces the way the Gateway stores them and never the other sections", async () => {
+    const sent: OrbitGatewayRequest[] = [];
+    const client = createOrbitGatewayClient(async (request) => {
+      sent.push(request);
+      return {
+        status: 200,
+        body: JSON.stringify({
+          data: { profile_id: 1, version: 3, settings: { workspaces: [] }, updated_at: "now" },
+        }),
+      };
+    });
+    await client.replaceWorkspaces(1, 2, [
+      workspace("a", "  Work ", { icon: " ", image: "", projectRefs: [" env:p ", " "] }),
+    ]);
+    await client.replaceWorkspaces(1, 3, []);
+    // A PUT replaces every device type, so devices are only ever written by PATCH.
+    expect(sent[0]!.body).toEqual({
+      version: 2,
+      settings: { workspaces: [workspace("a", "Work", { projectRefs: ["env:p"] })] },
+    });
+    expect(sent[1]!.body).toEqual({ version: 3, settings: { workspaces: [] } });
   });
 
   it("turns the Gateway's error envelope into an OrbitGatewayError", async () => {

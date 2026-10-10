@@ -8,7 +8,7 @@ import {
   type OrbitGatewaySettings,
 } from "./client.ts";
 import { isJsonObject, type JsonObject, type ProfileSectionName } from "./profileDocument.ts";
-import { jsonEqual } from "./sectionMerge.ts";
+import { jsonEqual, toGatewayForm } from "./sectionMerge.ts";
 
 /**
  * Keeps sections of this device's Orbit profile in step with the device, one channel per section
@@ -235,15 +235,16 @@ export function createProfileSync(ports: ProfileSyncPorts) {
             pushes.push({
               channel,
               version: profileSide.version,
-              value:
+              value: toGatewayForm(
                 profileSide.value === null
                   ? local
-                  : channel.merge(profileSide.value, local, profileSide.value),
+                  : channel.merge(profileSide.value, toGatewayForm(local), profileSide.value),
+              ),
               local,
               kind: "push",
             });
           } else if (profileSide.value !== null) {
-            if (!jsonEqual(local, profileSide.value)) ports.onAdopt?.(name, local);
+            if (!jsonEqual(toGatewayForm(local), profileSide.value)) ports.onAdopt?.(name, local);
             pull(profileSide.value);
             outcomes[name] = "adopted";
           } else if (ignored[name] && jsonEqual(local, ignored[name])) {
@@ -253,7 +254,7 @@ export function createProfileSync(ports: ProfileSyncPorts) {
             pushes.push({
               channel,
               version: profileSide.version,
-              value: local,
+              value: toGatewayForm(local),
               local,
               kind: "seed",
             });
@@ -285,15 +286,23 @@ export function createProfileSync(ports: ProfileSyncPorts) {
         }
         if (jsonEqual(rejected.get(name), local)) continue;
 
-        const value =
+        // Compared and sent the way the Gateway stores it (see toGatewayForm), so a value it
+        // trimmed or an empty string it turned into null does not read as a remote edit.
+        const sendable = toGatewayForm(local);
+        const value = toGatewayForm(
           profileSide.value === null
             ? local
             : forcePush
-              ? channel.merge(profileSide.value, local, profileSide.value)
-              : channel.merge(base, local, profileSide.value);
+              ? channel.merge(profileSide.value, sendable, profileSide.value)
+              : channel.merge(
+                  base === null ? null : toGatewayForm(base),
+                  sendable,
+                  profileSide.value,
+                ),
+        );
         if (profileSide.value !== null && jsonEqual(value, profileSide.value)) {
           // The profile already holds the result: nothing to send.
-          if (!jsonEqual(local, value)) channel.applyRemote(value, known.base);
+          if (!jsonEqual(sendable, value)) channel.applyRemote(value, known.base);
           sections[name] = {
             version: profileSide.version,
             base: read(channel) ?? value,
@@ -351,7 +360,7 @@ export function createProfileSync(ports: ProfileSyncPorts) {
         // The device may have changed while the PATCH was in flight; its newer edit then stays
         // dirty against `base` and goes out on the next run instead of being overwritten.
         const unchanged = jsonEqual(read(channel) ?? undefined, local);
-        if (unchanged && !jsonEqual(local, value)) {
+        if (unchanged && !jsonEqual(toGatewayForm(local), value)) {
           channel.applyRemote(value, sections[name]?.base ?? null);
         }
         sections[name] = {

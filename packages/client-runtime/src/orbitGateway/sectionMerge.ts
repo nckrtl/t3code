@@ -147,3 +147,36 @@ export function mergeDeviceSection(
         : mine,
   });
 }
+
+function gatewayForm(value: JsonValue): JsonValue {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  }
+  if (Array.isArray(value)) {
+    return value.map(gatewayForm).filter((entry) => !isEmptyMap(entry));
+  }
+  if (isJsonObject(value)) {
+    const form: Record<string, JsonValue> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const normalized = gatewayForm(entry);
+      if (!isEmptyMap(normalized)) form[key] = normalized;
+    }
+    return form;
+  }
+  return value;
+}
+
+function isEmptyMap(value: JsonValue): boolean {
+  return isJsonObject(value) && Object.keys(value).length === 0;
+}
+
+/**
+ * A section as the Gateway stores it. PHP cannot tell an empty map from an empty list, so the
+ * Gateway rejects an empty object anywhere in a section (422); it also trims every string and
+ * turns an empty one into null. A client compares and sends values in this form, so what it
+ * wrote reads back equal and never counts as a change another device made.
+ */
+export function toGatewayForm(section: JsonObject): JsonObject {
+  return gatewayForm(section) as JsonObject;
+}

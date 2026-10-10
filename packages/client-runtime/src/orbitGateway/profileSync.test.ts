@@ -13,12 +13,27 @@ import {
   type ProfileSyncChannel,
   type ProfileSyncState,
 } from "./profileSync.ts";
-import { jsonEqual, mergeAppearance, mergeDeviceSection } from "./sectionMerge.ts";
+import { jsonEqual, mergeAppearance, mergeDeviceSection, toGatewayForm } from "./sectionMerge.ts";
 
 type Values = Record<string, string | number | boolean>;
 const device = (values: Values, schema = 1): JsonObject => ({ schema, values: { ...values } });
 const valuesOf = (section: JsonObject | null | undefined): Values =>
   ((section?.values as Values | undefined) ?? {}) as Values;
+
+/** What the real Gateway does to a section: refuses empty maps, trims strings, stores "" as null. */
+function storedLikeTheGateway(value: unknown): unknown {
+  if (typeof value === "string") return value.trim() === "" ? null : value.trim();
+  if (Array.isArray(value)) return value.map(storedLikeTheGateway);
+  if (typeof value === "object" && value !== null) {
+    if (Object.keys(value).length === 0) {
+      throw new OrbitGatewayError("validation.failed", "empty map", 422);
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, storedLikeTheGateway(entry)]),
+    );
+  }
+  return value;
+}
 
 /** An in-memory Gateway that checks section versions the way the real one is specified to. */
 function fakeGateway(options: { sections?: boolean } = {}) {
@@ -62,6 +77,7 @@ function fakeGateway(options: { sections?: boolean } = {}) {
       if (gateway.patchStatus !== null) {
         throw new OrbitGatewayError("gateway.request_failed", "no", gateway.patchStatus);
       }
+      for (const section of Object.values(patch)) storedLikeTheGateway(section.value);
       const stale = Object.entries(patch).filter(
         ([name, section]) =>
           gateway.alwaysConflict || (gateway.sections.get(name)?.version ?? 0) !== section.version,
@@ -77,7 +93,7 @@ function fakeGateway(options: { sections?: boolean } = {}) {
         else {
           gateway.sections.set(name, {
             version: (current?.version ?? 0) + 1,
-            value: section.value as JsonObject,
+            value: storedLikeTheGateway(section.value) as JsonObject,
             updatedBy: gateway.caller,
           });
         }
@@ -440,6 +456,78 @@ describe("profile sync engine", () => {
       kind: "synced",
       sections: { appearance: { updatedBy: "device" } },
     });
+  });
+});
+
+describe("what the Gateway does to a section", () => {
+  it("never sends an empty map, and still syncs the rest of the section", async () => {
+    const fake = fakeGateway();
+    const mac = makeDevice(fake, {
+      appearance: {
+        schema: 1,
+        mode: "dark",
+        contrast: 100,
+        themes: {},
+        variants: { light: {}, dark: {} },
+        customThemes: [{ id: "a", colors: {} }],
+      } as JsonObject,
+    });
+    await expect(mac.sync()).resolves.toMatchObject({ kind: "synced" });
+    expect(fake.gateway.sections.get("appearance")!.value).toEqual({
+      schema: 1,
+      mode: "dark",
+      contrast: 100,
+      customThemes: [{ id: "a" }],
+    });
+  });
+
+  it("does not push again when the Gateway trimmed a string or turned an empty one into null", async () => {
+    const fake = fakeGateway();
+    const mac = makeDevice(fake, { settings: { font: "", size: 15 } });
+    await mac.sync();
+    expect(valuesOf(fake.gateway.sections.get("devices.desktop")!.value).font).toBeNull();
+
+    mac.memory.settings.font = "  Inter  ";
+    await mac.sync();
+    expect(valuesOf(fake.gateway.sections.get("devices.desktop")!.value).font).toBe("Inter");
+
+    const patches = fake.gateway.patches.length;
+    await mac.sync();
+    await mac.sync();
+    expect(fake.gateway.patches).toHaveLength(patches);
+  });
+
+  it("does not read its own normalized write as another device's edit", async () => {
+    const fake = fakeGateway();
+    const mac = makeDevice(fake, { settings: { font: "", size: 15 } });
+    const mini = makeDevice(fake, { settings: { font: "", size: 15 } });
+    await mac.sync();
+    await mini.sync();
+    mac.memory.settings.size = 18;
+    mini.memory.settings.font = " ";
+    await mac.sync();
+    // The mini's edit is blank, which the Gateway stores as null: same as what is there.
+    const result = await mini.sync();
+    expect(result).toMatchObject({ kind: "synced" });
+    expect(mini.memory.settings.size).toBe(18);
+    const patches = fake.gateway.patches.length;
+    await mini.sync();
+    await mac.sync();
+    expect(fake.gateway.patches).toHaveLength(patches);
+  });
+
+  it("puts values in the Gateway's form", () => {
+    expect(
+      toGatewayForm({
+        a: "  x ",
+        b: "   ",
+        c: { d: {}, e: [] },
+        f: [{}, "", { g: 1 }],
+        h: {},
+        i: 0,
+        j: false,
+      }),
+    ).toEqual({ a: "x", b: null, c: { e: [] }, f: [null, { g: 1 }], j: false, i: 0 });
   });
 });
 

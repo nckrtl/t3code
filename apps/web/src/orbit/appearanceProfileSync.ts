@@ -101,6 +101,8 @@ function slotFor(
   if (builtInIds.has(definition.id)) return { id: definition.id, source: "builtin" };
   // What this slot renders: the theme's palette for the appearance, or its only one.
   const forSlot = getThemeColorsForMode(definition, appearance);
+  // The Gateway rejects an empty palette; a theme without colors reads as the stock look.
+  if (Object.keys(forSlot ?? definition.colors).length === 0) return STOCK_SLOT;
   const inLibrary = getCustomThemes().some(
     (theme) => theme.id === definition.id && !isProfileCopy(theme),
   );
@@ -113,12 +115,17 @@ function slotFor(
   };
 }
 
-function customThemeJson(theme: ThemeDefinition): ProfileCustomTheme {
+/**
+ * One library theme, or null when it has no colors to send. The Gateway rejects empty maps
+ * (PHP cannot tell `{}` from `[]`), so an empty variant is left out and a theme without a base
+ * palette is not synced at all.
+ */
+function customThemeJson(theme: ThemeDefinition): ProfileCustomTheme | null {
+  if (Object.keys(theme.colors).length === 0) return null;
   const variants = Object.fromEntries(
-    Object.entries(theme.variants ?? {}).map(([appearance, colors]) => [
-      appearance,
-      colorsJson(colors),
-    ]),
+    Object.entries(theme.variants ?? {})
+      .filter(([, colors]) => Object.keys(colors).length > 0)
+      .map(([appearance, colors]) => [appearance, colorsJson(colors)]),
   );
   return {
     id: theme.id,
@@ -145,8 +152,8 @@ export function serializeAppearance(input: {
   const customThemes = [...input.library]
     .filter((theme) => !isProfileCopy(theme))
     .sort((left, right) => (left.id < right.id ? -1 : 1))
-    .slice(0, PROFILE_LIMITS.customThemes)
-    .map(customThemeJson);
+    .flatMap((theme) => customThemeJson(theme) ?? [])
+    .slice(0, PROFILE_LIMITS.customThemes);
   const section: ProfileAppearance = {
     schema: PROFILE_SCHEMA_VERSION,
     mode: input.mode,

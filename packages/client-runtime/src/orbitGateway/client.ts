@@ -223,16 +223,29 @@ export function createOrbitGatewayClient(transport: OrbitGatewayTransport): Orbi
   };
 }
 
-/** The wire form of a workspace: only the keys the Gateway accepts. */
+/** A string the way the Gateway stores it: trimmed, and null when nothing is left. */
+export function gatewayText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function gatewayTexts(values: readonly string[] | undefined): string[] {
+  return (values ?? []).flatMap((value) => gatewayText(value) ?? []);
+}
+
+/**
+ * The wire form of a workspace: only the keys the Gateway accepts, with strings as it stores
+ * them (an empty icon or image is null), so a read-back equals what was sent.
+ */
 function toWire(workspace: OrbitGatewayWorkspace): OrbitGatewayWorkspace {
   return {
-    id: workspace.id,
-    name: workspace.name,
-    color: workspace.color,
-    icon: workspace.icon,
-    image: workspace.image ?? null,
-    projectRefs: [...(workspace.projectRefs ?? [])],
-    projectKeys: [...(workspace.projectKeys ?? [])],
+    id: workspace.id.trim(),
+    name: workspace.name.trim(),
+    color: workspace.color.trim(),
+    icon: gatewayText(workspace.icon),
+    image: gatewayText(workspace.image),
+    projectRefs: gatewayTexts(workspace.projectRefs),
+    projectKeys: gatewayTexts(workspace.projectKeys),
   };
 }
 

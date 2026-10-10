@@ -1,4 +1,4 @@
-import type { OrbitGatewayWorkspace } from "./client.ts";
+import { gatewayText, type OrbitGatewayWorkspace } from "./client.ts";
 
 /**
  * Three-way merge of a profile's workspaces, used when another device replaced the settings while
@@ -98,12 +98,14 @@ function sameWorkspace(
   right: OrbitGatewayWorkspace | undefined,
 ): boolean {
   if (left === undefined || right === undefined) return left === right;
+  // Compared as the Gateway stores strings (trimmed, empty is null), so what it normalized on
+  // the way in does not read as another device's edit.
   return (
-    left.id === right.id &&
-    left.name === right.name &&
-    left.color === right.color &&
-    left.icon === right.icon &&
-    (left.image ?? null) === (right.image ?? null) &&
+    gatewayText(left.id) === gatewayText(right.id) &&
+    gatewayText(left.name) === gatewayText(right.name) &&
+    gatewayText(left.color) === gatewayText(right.color) &&
+    gatewayText(left.icon) === gatewayText(right.icon) &&
+    gatewayText(left.image) === gatewayText(right.image) &&
     sameList(left.projectRefs, right.projectRefs) &&
     sameList(left.projectKeys, right.projectKeys)
   );
@@ -113,7 +115,7 @@ function sameList(
   left: readonly string[] | undefined,
   right: readonly string[] | undefined,
 ): boolean {
-  const a = left ?? [];
-  const b = right ?? [];
+  const a = (left ?? []).flatMap((value) => gatewayText(value) ?? []);
+  const b = (right ?? []).flatMap((value) => gatewayText(value) ?? []);
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }

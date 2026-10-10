@@ -21,6 +21,7 @@ import {
   PROFILE_THEME_COLLECTION,
   pruneProfileThemeCopies,
   readLocalAppearance,
+  serializeAppearance,
   type AppearanceHost,
 } from "./appearanceProfileSync";
 
@@ -149,6 +150,31 @@ describe("serializing the appearance", () => {
       name: "Dark Ocean",
       source: "published",
     });
+  });
+
+  it("leaves empty maps out, because the Gateway rejects them", async () => {
+    const withoutColors = { ...customTheme("no-colors"), colors: {} } as unknown as ThemeDefinition;
+    const withEmptyVariant = {
+      ...customTheme("light-less"),
+      variants: { light: {} },
+    } as unknown as ThemeDefinition;
+    const local = serializeAppearance({
+      theme: "system",
+      halves: {},
+      mode: "system",
+      contrast: 100,
+      library: [withoutColors, withEmptyVariant, customTheme("fine")],
+    })!;
+    const library = local.customThemes as JsonObject[];
+    expect(library.map((entry) => entry.id)).toEqual(["fine", "light-less"]);
+    expect(library[1]).not.toHaveProperty("variants");
+    const hasEmptyMap = (value: unknown): boolean =>
+      typeof value === "object" &&
+      value !== null &&
+      (Array.isArray(value)
+        ? value.some(hasEmptyMap)
+        : Object.keys(value).length === 0 || Object.values(value).some(hasEmptyMap));
+    expect(hasEmptyMap(local)).toBe(false);
   });
 
   it("waits for a published theme that has not arrived instead of reporting the stock look", () => {

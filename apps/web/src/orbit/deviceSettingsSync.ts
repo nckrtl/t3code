@@ -7,7 +7,11 @@ import {
   type JsonObject,
   type ProfileSyncChannel,
 } from "@t3tools/client-runtime/orbit-gateway";
-import { ClientSettingsPatch, type ClientSettings } from "@t3tools/contracts/settings";
+import {
+  ClientSettingsPatch,
+  DEFAULT_CLIENT_SETTINGS,
+  type ClientSettings,
+} from "@t3tools/contracts/settings";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
@@ -70,9 +74,12 @@ export function desktopSettingsPatch(section: JsonObject): ClientSettingsPatch {
   const patch: Record<string, unknown> = {};
   for (const key of DESKTOP_SYNCED_SETTING_KEYS) {
     if (!(key in values)) continue;
+    // The Gateway stores an empty string as null; for a text setting that is "unset".
+    const stored =
+      values[key] === null && typeof DEFAULT_CLIENT_SETTINGS[key] === "string" ? "" : values[key];
     const decoded = Option.getOrNull(
       // Values come from another device, so each is checked on its own.
-      decodeSettingsPatch({ [key]: values[key] } as typeof ClientSettingsPatch.Encoded),
+      decodeSettingsPatch({ [key]: stored } as typeof ClientSettingsPatch.Encoded),
     );
     if (decoded !== null && key in decoded) patch[key] = (decoded as Record<string, unknown>)[key];
   }
@@ -88,7 +95,13 @@ export interface DesktopDeviceHost {
 export function createDesktopDeviceChannel(host: DesktopDeviceHost): ProfileSyncChannel {
   return {
     name: DESKTOP_DEVICE_SECTION,
-    readLocal: () => readDesktopDeviceSection(host.read()),
+    readLocal: () => {
+      const section = readDesktopDeviceSection(host.read());
+      // The Gateway rejects an empty `values` map, so a section with nothing to send is not written.
+      return Object.keys(parseProfileDeviceSection(section)?.values ?? {}).length > 0
+        ? section
+        : null;
+    },
     applyRemote: (value) => {
       const patch = desktopSettingsPatch(value);
       const current = host.read();
