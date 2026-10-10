@@ -4,7 +4,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { managedRelaySessionAtom } from "@t3tools/client-runtime/relay";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { useCallback, useRef, useState } from "react";
-import { Platform, RefreshControl } from "react-native";
+import { Platform, RefreshControl, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -13,6 +13,11 @@ import { AndroidHeaderIconButton } from "../../components/AndroidScreenHeader";
 import { CloudEnvironmentRows } from "../connection/CloudEnvironmentRows";
 import { LocalEnvironmentList } from "../connection/LocalEnvironmentList";
 import { GitHubRoutingSettings } from "../connection/GitHubRoutingSettings";
+import {
+  EnvironmentProviderPicker,
+  OrbitEnvironmentSections,
+} from "../orbit/OrbitEnvironmentSections";
+import { useOrbitGateway } from "../orbit/orbitGatewayStore";
 import { splitEnvironmentSections } from "../connection/environmentSections";
 import { useUniwindTheme } from "../../lib/useUniwindTheme";
 import { useRemoteConnections } from "../../state/use-remote-environment-registry";
@@ -37,6 +42,7 @@ export function SettingsEnvironmentsRouteScreen() {
   } = useRemoteConnections();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const orbitProvided = useOrbitGateway().provider === "orbit";
   const environmentSections = splitEnvironmentSections({
     connectedEnvironments,
     cloudEnvironments: null,
@@ -131,18 +137,22 @@ export function SettingsEnvironmentsRouteScreen() {
           </AndroidAnchoredMenu>
         ) : undefined
       }
-      actions={[
-        {
-          accessibilityLabel: "Add environment",
-          icon: "plus",
-          tintColor: headerIconColor,
-          onPress: () =>
-            navigation.navigate("SettingsSheet", {
-              screen: "SettingsContent",
-              params: { screen: "SettingsEnvironmentNew" },
-            }),
-        },
-      ]}
+      actions={
+        orbitProvided
+          ? []
+          : [
+              {
+                accessibilityLabel: "Add environment",
+                icon: "plus",
+                tintColor: headerIconColor,
+                onPress: () =>
+                  navigation.navigate("SettingsSheet", {
+                    screen: "SettingsContent",
+                    params: { screen: "SettingsEnvironmentNew" },
+                  }),
+              },
+            ]
+      }
     >
       <ScrollView
         alwaysBounceVertical
@@ -162,32 +172,41 @@ export function SettingsEnvironmentsRouteScreen() {
           ) : undefined
         }
       >
-        <LocalEnvironmentList
-          environments={localEnvironments}
-          expandedId={null}
-          onToggle={openEnvironment}
-          opensDetails
-          onReconnect={onReconnectEnvironment}
-          onRemove={onRemoveEnvironmentPress}
-          onSetEnabled={onSetEnvironmentEnabled}
-          onUpdate={handleUpdateEnvironment}
-        />
+        <View className="mb-4">
+          <EnvironmentProviderPicker />
+        </View>
+        {orbitProvided ? (
+          <OrbitEnvironmentSections />
+        ) : (
+          <>
+            <LocalEnvironmentList
+              environments={localEnvironments}
+              expandedId={null}
+              onToggle={openEnvironment}
+              opensDetails
+              onReconnect={onReconnectEnvironment}
+              onRemove={onRemoveEnvironmentPress}
+              onSetEnabled={onSetEnvironmentEnabled}
+              onUpdate={handleUpdateEnvironment}
+            />
 
-        {/* Always mounted: already-connected relay environments must stay
+            {/* Always mounted: already-connected relay environments must stay
             visible (and removable) even when cloud config is missing or the
             user is signed out — the component gates discovery itself. */}
-        <CloudEnvironmentRows
-          connectedCloudEnvironments={connectedCloudEnvironments}
-          onOpenEnvironment={openEnvironment}
-          onSetEnvironmentEnabled={onSetEnvironmentEnabled}
-          onRemoveEnvironment={onRemoveEnvironmentPress}
-          {...(SHOWCASE_ENABLED
-            ? {
-                showcaseAvailableEnvironments: SHOWCASE_AVAILABLE_CLOUD_ENVIRONMENTS,
-                showcaseSignedIn: true,
-              }
-            : {})}
-        />
+            <CloudEnvironmentRows
+              connectedCloudEnvironments={connectedCloudEnvironments}
+              onOpenEnvironment={openEnvironment}
+              onSetEnvironmentEnabled={onSetEnvironmentEnabled}
+              onRemoveEnvironment={onRemoveEnvironmentPress}
+              {...(SHOWCASE_ENABLED
+                ? {
+                    showcaseAvailableEnvironments: SHOWCASE_AVAILABLE_CLOUD_ENVIRONMENTS,
+                    showcaseSignedIn: true,
+                  }
+                : {})}
+            />
+          </>
+        )}
         <GitHubRoutingSettings />
       </ScrollView>
     </SettingsScreen>

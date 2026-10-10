@@ -83,17 +83,12 @@ function ConfiguredSettingsRouteScreen() {
             onPress={() => navigation.navigate("SettingsSheet", { screen: "SettingsAuth" })}
           />
           <SettingsRow
-            icon="globe"
-            leading={<OrbitLogo size={Platform.OS === "android" ? 24 : 22} />}
-            label="Orbit"
-            value={orbitLabel}
-            valuePosition="trailing"
-            target="SettingsOrbit"
-          />
-          <SettingsRow
             icon="desktopcomputer"
+            leading={
+              orbitLabel ? <OrbitLogo size={Platform.OS === "android" ? 24 : 22} /> : undefined
+            }
             label="Environments"
-            value={`${Object.keys(savedConnectionsById).length}`}
+            value={orbitLabel ?? `${Object.keys(savedConnectionsById).length}`}
             valuePosition="trailing"
             target="SettingsEnvironments"
           />
@@ -125,17 +120,12 @@ function LocalSettingsRouteScreen() {
       >
         <SettingsSection title="Connections">
           <SettingsRow
-            icon="globe"
-            leading={<OrbitLogo size={Platform.OS === "android" ? 24 : 22} />}
-            label="Orbit"
-            value={orbitLabel}
-            valuePosition="trailing"
-            target="SettingsOrbit"
-          />
-          <SettingsRow
             icon="desktopcomputer"
+            leading={
+              orbitLabel ? <OrbitLogo size={Platform.OS === "android" ? 24 : 22} /> : undefined
+            }
             label="Environments"
-            value={`${environmentCount}`}
+            value={orbitLabel ?? `${environmentCount}`}
             valuePosition="trailing"
             target="SettingsEnvironments"
           />
@@ -147,11 +137,9 @@ function LocalSettingsRouteScreen() {
   );
 }
 
-function useOrbitProfileLabel(): string {
-  const gateway = useOrbitGateway();
-  if (gateway.node?.profile) return gateway.node.profile.name;
-  if (gateway.node) return "Choose profile";
-  return gateway.phase === "error" ? "Offline" : "";
+/** "Orbit" while the Orbit Gateway provides the environments, in place of the environment count. */
+function useOrbitProfileLabel(): string | null {
+  return useOrbitGateway().provider === "orbit" ? "Orbit" : null;
 }
 
 function SettingsIndexSections() {

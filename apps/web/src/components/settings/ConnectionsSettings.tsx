@@ -166,6 +166,8 @@ import {
 } from "~/state/environments";
 import { requestConfirmDialog } from "~/confirmDialog";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { useEnvironmentProvider } from "~/orbit/environmentProvider";
+import { EnvironmentProviderSection, OrbitEnvironmentSections } from "./OrbitSettings";
 import { primaryServerKeybindingsAtom, serverEnvironment } from "~/state/server";
 import { ConnectionStatusDot } from "../ConnectionStatusDot";
 import {
@@ -1824,6 +1826,7 @@ function CloudRemoteEnvironmentRows({
 }
 
 export function ConnectionsSettings() {
+  const environmentProvider = useEnvironmentProvider((state) => state.provider);
   const desktopBridge = window.desktopBridge;
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { environments } = useEnvironments();
@@ -3694,8 +3697,19 @@ export function ConnectionsSettings() {
     </>
   );
 
+  if (environmentProvider === "orbit") {
+    return (
+      <SettingsPageContainer width="wide">
+        <EnvironmentProviderSection />
+        {primarySettings}
+        <OrbitEnvironmentSections />
+      </SettingsPageContainer>
+    );
+  }
+
   return (
     <SettingsPageContainer width="wide">
+      <EnvironmentProviderSection />
       {primarySettings}
       <SettingsSection
         {...searchableSetting("remote-environments")}

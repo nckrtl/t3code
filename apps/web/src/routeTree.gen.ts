@@ -26,7 +26,6 @@ import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings.integrations'
 import { Route as SettingsKeybindingsRouteImport } from './routes/settings.keybindings'
 import { Route as SettingsOpenSourceLicensesRouteImport } from './routes/settings.open-source-licenses'
-import { Route as SettingsOrbitRouteImport } from './routes/settings.orbit'
 import { Route as SettingsPasswordsRouteImport } from './routes/settings.passwords'
 import { Route as SettingsProjectsRouteImport } from './routes/settings.projects'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
@@ -121,11 +120,6 @@ const SettingsOpenSourceLicensesRoute =
     path: '/open-source-licenses',
     getParentRoute: () => SettingsRoute,
   } as any)
-const SettingsOrbitRoute = SettingsOrbitRouteImport.update({
-  id: '/orbit',
-  path: '/orbit',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsPasswordsRoute = SettingsPasswordsRouteImport.update({
   id: '/passwords',
   path: '/passwords',
@@ -185,7 +179,6 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
-  '/settings/orbit': typeof SettingsOrbitRoute
   '/settings/passwords': typeof SettingsPasswordsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -211,7 +204,6 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
-  '/settings/orbit': typeof SettingsOrbitRoute
   '/settings/passwords': typeof SettingsPasswordsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -240,7 +232,6 @@ export interface FileRoutesById {
   '/settings/integrations': typeof SettingsIntegrationsRoute
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/open-source-licenses': typeof SettingsOpenSourceLicensesRoute
-  '/settings/orbit': typeof SettingsOrbitRoute
   '/settings/passwords': typeof SettingsPasswordsRoute
   '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -270,7 +261,6 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/keybindings'
     | '/settings/open-source-licenses'
-    | '/settings/orbit'
     | '/settings/passwords'
     | '/settings/projects'
     | '/settings/providers'
@@ -296,7 +286,6 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/keybindings'
     | '/settings/open-source-licenses'
-    | '/settings/orbit'
     | '/settings/passwords'
     | '/settings/projects'
     | '/settings/providers'
@@ -324,7 +313,6 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/keybindings'
     | '/settings/open-source-licenses'
-    | '/settings/orbit'
     | '/settings/passwords'
     | '/settings/projects'
     | '/settings/providers'
@@ -467,13 +455,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsOpenSourceLicensesRouteImport
       parentRoute: typeof SettingsRoute
     }
-    '/settings/orbit': {
-      id: '/settings/orbit'
-      path: '/orbit'
-      fullPath: '/settings/orbit'
-      preLoaderRoute: typeof SettingsOrbitRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/settings/passwords': {
       id: '/settings/passwords'
       path: '/passwords'
@@ -558,7 +539,6 @@ interface SettingsRouteChildren {
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
   SettingsKeybindingsRoute: typeof SettingsKeybindingsRoute
   SettingsOpenSourceLicensesRoute: typeof SettingsOpenSourceLicensesRoute
-  SettingsOrbitRoute: typeof SettingsOrbitRoute
   SettingsPasswordsRoute: typeof SettingsPasswordsRoute
   SettingsProjectsRoute: typeof SettingsProjectsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
@@ -576,7 +556,6 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntegrationsRoute: SettingsIntegrationsRoute,
   SettingsKeybindingsRoute: SettingsKeybindingsRoute,
   SettingsOpenSourceLicensesRoute: SettingsOpenSourceLicensesRoute,
-  SettingsOrbitRoute: SettingsOrbitRoute,
   SettingsPasswordsRoute: SettingsPasswordsRoute,
   SettingsProjectsRoute: SettingsProjectsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,

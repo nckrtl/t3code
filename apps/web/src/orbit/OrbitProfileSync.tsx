@@ -10,6 +10,7 @@ import { create } from "zustand";
 
 import { useWorkspaceStore } from "../workspaceStore";
 import { WORKSPACE_COLORS, type Workspace, type WorkspaceColor } from "../workspaces.logic";
+import { reconcileEnvironmentProvider, useEnvironmentProvider } from "./environmentProvider";
 import {
   syncWorkspaceProfile,
   type WorkspaceProfileSyncPorts,
@@ -110,8 +111,9 @@ function writeLocal(workspaces: readonly OrbitGatewayWorkspace[]): void {
 }
 
 /**
- * Syncs the workspace list with this device's Orbit profile. Mounted once, in the main window of
- * the desktop app; extra windows follow the main window through the workspace store's storage.
+ * Applies the environment provider and, in Orbit mode, syncs the workspace list with this device's
+ * Orbit profile. Mounted once, in the main window of the desktop app; extra windows follow the main
+ * window through the workspace and catalog storage.
  */
 export function OrbitProfileSync() {
   useEffect(() => {
@@ -134,8 +136,19 @@ export function OrbitProfileSync() {
         again = true;
         return;
       }
-      running = syncWorkspaceProfile(ports)
-        .then((result) => {
+      running = reconcileEnvironmentProvider(client)
+        .then(async () => {
+          // Workspaces sync only while Orbit provides the environments.
+          if (useEnvironmentProvider.getState().provider !== "orbit") {
+            useOrbitProfileSyncStatus.setState({
+              phase: "off",
+              profileName: null,
+              error: null,
+              syncedAt: null,
+            });
+            return;
+          }
+          const result = await syncWorkspaceProfile(ports);
           useOrbitProfileSyncStatus.setState(
             result.kind === "unbound"
               ? { phase: "unbound", profileName: null, error: null, syncedAt: Date.now() }
@@ -167,6 +180,9 @@ export function OrbitProfileSync() {
         });
     };
 
+    const unsubscribeProvider = useEnvironmentProvider.subscribe((state, previous) => {
+      if (state.provider !== previous.provider) run();
+    });
     let editTimer: ReturnType<typeof setTimeout> | null = null;
     const unsubscribe = useWorkspaceStore.subscribe((state, previous) => {
       if (state.workspaces === previous.workspaces) return;
@@ -181,6 +197,7 @@ export function OrbitProfileSync() {
     return () => {
       disposed = true;
       requestSync = null;
+      unsubscribeProvider();
       unsubscribe();
       clearInterval(interval);
       if (editTimer) clearTimeout(editTimer);

@@ -1,29 +1,25 @@
 import {
   OrbitGatewayError,
+  type EnvironmentProvider,
   type OrbitGatewayEnvironment,
   type OrbitGatewayNode,
   type OrbitGatewayProfile,
 } from "@t3tools/client-runtime/orbit-gateway";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { connectPairing as connectPairingAtom } from "~/connection/onboarding";
+import { setEnvironmentProvider, useEnvironmentProvider } from "~/orbit/environmentProvider";
 import {
   desktopOrbitGatewayClient,
   syncOrbitProfileNow,
   useOrbitProfileSyncStatus,
 } from "~/orbit/OrbitProfileSync";
 import { useEnvironments } from "~/state/environments";
-import { useAtomCommand } from "~/state/use-atom-command";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { toastManager } from "../ui/toast";
-import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
+import { SettingsRow, SettingsSection } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 
 interface GatewayView {
@@ -31,6 +27,11 @@ interface GatewayView {
   readonly profiles: readonly OrbitGatewayProfile[];
   readonly environments: readonly OrbitGatewayEnvironment[];
 }
+
+const PROVIDER_LABELS: Record<EnvironmentProvider, string> = {
+  default: "Default",
+  orbit: "Orbit",
+};
 
 function message(error: unknown): string {
   return error instanceof OrbitGatewayError || error instanceof Error
@@ -47,19 +48,59 @@ function relativeTime(at: number | null): string {
 }
 
 /**
- * Settings › Orbit: this device's Node and profile on the Orbit Gateway, the workspace sync, and the
- * T3 servers the Gateway knows, each paired in one click. Desktop only: the Gateway calls go
- * through the main process.
+ * Where this device's environments come from: the ones added here (Default) or the T3 servers on
+ * the Orbit Gateway (Orbit). Only the desktop app can reach the Gateway, so a browser never offers
+ * Orbit.
  */
-export function OrbitSettingsPanel() {
+export function EnvironmentProviderSection() {
+  const provider = useEnvironmentProvider((state) => state.provider);
+  const orbitAvailable = useMemo(() => desktopOrbitGatewayClient() !== null, []);
+  if (!orbitAvailable && provider === "default") return null;
+
+  return (
+    <SettingsSection {...searchableSetting("environment-provider")}>
+      <SettingsRow
+        title="Environments from"
+        description={
+          provider === "orbit"
+            ? "The T3 servers registered on the Orbit Gateway, paired automatically. Environments added here are switched off until you choose Default again."
+            : "Environments you add on this device. Orbit uses the servers on the Orbit Gateway instead and syncs workspaces with your profile."
+        }
+        control={
+          <Select
+            value={provider}
+            onValueChange={(next) => {
+              if (next === "default" || next === "orbit") setEnvironmentProvider(next);
+            }}
+          >
+            <SelectTrigger size="sm" aria-label="Environments from">
+              <SelectValue>{PROVIDER_LABELS[provider]}</SelectValue>
+            </SelectTrigger>
+            <SelectPopup align="end" alignItemWithTrigger={false}>
+              <SelectItem value="default">{PROVIDER_LABELS.default}</SelectItem>
+              {orbitAvailable ? (
+                <SelectItem value="orbit">{PROVIDER_LABELS.orbit}</SelectItem>
+              ) : null}
+            </SelectPopup>
+          </Select>
+        }
+      />
+    </SettingsSection>
+  );
+}
+
+/**
+ * The Orbit side of Connections: this device's Node and profile on the Gateway, the workspace sync,
+ * and the Gateway's T3 servers. Workspaces are edited on the desktop; pairing is automatic.
+ */
+export function OrbitEnvironmentSections() {
   const client = useMemo(() => desktopOrbitGatewayClient(), []);
   const sync = useOrbitProfileSyncStatus();
   const { environments: savedEnvironments } = useEnvironments();
-  const connectPairing = useAtomCommand(connectPairingAtom, { reportFailure: false });
   const [view, setView] = useState<GatewayView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [newProfileName, setNewProfileName] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!client) return;
@@ -78,58 +119,32 @@ export function OrbitSettingsPanel() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, sync.syncedAt]);
 
-  const run = async (key: string, action: () => Promise<void>) => {
-    setBusy(key);
+  const bindProfile = async (profile: { readonly id: number } | { readonly name: string }) => {
+    if (!client) return;
+    setBusy(true);
     try {
-      await action();
-    } catch (error) {
-      toastManager.add({ type: "error", title: "Orbit", description: message(error) });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const bindProfile = (profile: { readonly id: number } | { readonly name: string }) =>
-    run("profile", async () => {
-      if (!client) return;
       const id = "id" in profile ? profile.id : (await client.createProfile(profile.name)).id;
       await client.bindProfile(id);
       setNewProfileName("");
       await load();
       syncOrbitProfileNow();
-    });
+    } catch (error) {
+      toastManager.add({ type: "error", title: "Orbit", description: message(error) });
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const pair = (environment: OrbitGatewayEnvironment) =>
-    run(`pair:${environment.environmentId}`, async () => {
-      if (!client) return;
-      const pairing = await client.pair(environment.environmentId);
-      const result = await connectPairing({ pairingUrl: pairing.pairingUrl });
-      if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-        throw squashAtomCommandFailure(result);
-      }
-    });
-
-  if (!client) {
-    return (
-      <SettingsPageContainer>
-        <SettingsSection title="Orbit">
-          <SettingsRow
-            title="Available in the desktop app"
-            description="The Orbit Gateway knows a device by its WireGuard address, so the desktop app calls it."
-          />
-        </SettingsSection>
-      </SettingsPageContainer>
-    );
-  }
-
-  const paired = new Set(savedEnvironments.map((environment) => String(environment.environmentId)));
+  const connected = new Set(
+    savedEnvironments.map((environment) => String(environment.environmentId)),
+  );
   const profile = view?.node.profile ?? null;
 
   return (
-    <SettingsPageContainer>
-      <SettingsSection id={searchableSetting("orbit-device").id} title="This device">
+    <>
+      <SettingsSection {...searchableSetting("orbit-device")}>
         <SettingsRow
           title={view?.node.name ?? (loadError ? "Gateway unreachable" : "Connecting…")}
           description={
@@ -145,7 +160,7 @@ export function OrbitSettingsPanel() {
       </SettingsSection>
 
       {view ? (
-        <SettingsSection id={searchableSetting("orbit-profile").id} title="Profile">
+        <SettingsSection {...searchableSetting("orbit-profile")}>
           <SettingsRow
             title="Profile"
             description="Devices with the same profile share their workspaces."
@@ -157,7 +172,7 @@ export function OrbitSettingsPanel() {
                   if (chosen && chosen.id !== profile?.id) void bindProfile({ id: chosen.id });
                 }}
               >
-                <SelectTrigger size="sm" aria-label="Profile" disabled={busy !== null}>
+                <SelectTrigger size="sm" aria-label="Profile" disabled={busy}>
                   <SelectValue>{profile?.name ?? "Choose a profile"}</SelectValue>
                 </SelectTrigger>
                 <SelectPopup align="end" alignItemWithTrigger={false}>
@@ -184,7 +199,7 @@ export function OrbitSettingsPanel() {
                 <Button
                   size="xs"
                   variant="outline"
-                  disabled={newProfileName.trim() === "" || busy !== null}
+                  disabled={newProfileName.trim() === "" || busy}
                   onClick={() => void bindProfile({ name: newProfileName.trim() })}
                 >
                   Create
@@ -193,7 +208,7 @@ export function OrbitSettingsPanel() {
             }
           />
           <SettingsRow
-            id={searchableSetting("orbit-workspace-sync").id}
+            {...searchableSetting("orbit-workspace-sync")}
             title="Workspace sync"
             description={
               sync.phase === "error"
@@ -219,45 +234,32 @@ export function OrbitSettingsPanel() {
       ) : null}
 
       {view ? (
-        <SettingsSection id={searchableSetting("orbit-servers").id} title="Servers">
+        <SettingsSection {...searchableSetting("orbit-servers")}>
           {view.environments.length === 0 ? (
             <SettingsRow
               title="No servers registered"
               description="T3 servers register themselves with the Gateway."
             />
           ) : (
-            view.environments.map((environment) => {
-              const isPaired = paired.has(environment.environmentId);
-              const key = `pair:${environment.environmentId}`;
-              return (
-                <SettingsRow
-                  key={environment.environmentId}
-                  title={environment.label}
-                  description={
-                    environment.status === "session_expired"
+            view.environments.map((environment) => (
+              <SettingsRow
+                key={environment.environmentId}
+                title={environment.label}
+                description={environment.url.replace(/^https?:\/\//, "")}
+                control={
+                  <span className="text-ui text-muted-foreground">
+                    {environment.status === "session_expired"
                       ? "Registration expired"
-                      : environment.url.replace(/^https?:\/\//, "")
-                  }
-                  control={
-                    isPaired ? (
-                      <span className="text-ui text-muted-foreground">Paired</span>
-                    ) : (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        disabled={busy !== null || environment.status !== "registered"}
-                        onClick={() => void pair(environment)}
-                      >
-                        {busy === key ? "Pairing…" : "Pair"}
-                      </Button>
-                    )
-                  }
-                />
-              );
-            })
+                      : connected.has(environment.environmentId)
+                        ? "Paired"
+                        : "Pairing…"}
+                  </span>
+                }
+              />
+            ))
           )}
         </SettingsSection>
       ) : null}
-    </SettingsPageContainer>
+    </>
   );
 }

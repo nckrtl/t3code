@@ -23,7 +23,6 @@ export type SettingsPath =
   | "/settings/source-control"
   | "/settings/storage"
   | "/settings/connections"
-  | "/settings/orbit"
   | "/settings/archived";
 
 /**
@@ -96,7 +95,6 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/source-control": "Source Control",
   "/settings/storage": "Storage",
   "/settings/connections": "Connections",
-  "/settings/orbit": "Orbit",
   "/settings/archived": "Archive",
 };
 
@@ -548,30 +546,37 @@ export const SETTINGS_SEARCH_ITEMS = [
     targetId: "snap-shot-enabled",
   },
   {
+    id: "environment-provider",
+    title: "Environment provider",
+    to: "/settings/connections",
+    desktopOnly: true,
+    searchTerms: ["orbit default environments source gateway servers manage"],
+  },
+  {
     id: "orbit-device",
     title: "Orbit Gateway",
-    to: "/settings/orbit",
+    to: "/settings/connections",
     desktopOnly: true,
     searchTerms: ["orbit gateway wireguard node device sign in"],
   },
   {
     id: "orbit-profile",
     title: "Orbit profile",
-    to: "/settings/orbit",
+    to: "/settings/connections",
     desktopOnly: true,
     searchTerms: ["profile share workspaces phone desktop devices"],
   },
   {
     id: "orbit-workspace-sync",
     title: "Workspace sync",
-    to: "/settings/orbit",
+    to: "/settings/connections",
     desktopOnly: true,
     searchTerms: ["sync workspaces orbit profile gateway"],
   },
   {
     id: "orbit-servers",
     title: "Orbit servers",
-    to: "/settings/orbit",
+    to: "/settings/connections",
     desktopOnly: true,
     searchTerms: ["pair servers environments gateway beast mini shark"],
   },
@@ -953,7 +958,6 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/source-control": "environment-defaults",
   "/settings/storage": "project-defaults",
   "/settings/connections": "connections",
-  "/settings/orbit": null,
   "/settings/archived": "project-defaults",
 };
 
