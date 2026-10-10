@@ -236,25 +236,27 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "interface-font",
     title: "Interface font",
     to: "/settings/appearance",
-    searchTerms: ["typography family size system sans"],
+    searchTerms: ["typography family size line height spacing leading system sans"],
   },
   {
     id: "prompt-font",
     title: "Prompt font",
     to: "/settings/appearance",
-    searchTerms: ["typography family size composer input"],
+    searchTerms: ["typography family size line height spacing leading composer input"],
   },
   {
     id: "code-font",
     title: "Code font",
     to: "/settings/appearance",
-    searchTerms: ["typography family size monospace code blocks diffs file previews"],
+    searchTerms: [
+      "typography family size line height spacing leading monospace code blocks diffs file previews",
+    ],
   },
   {
     id: "terminal-font",
     title: "Terminal font",
     to: "/settings/appearance",
-    searchTerms: ["typography family size monospace output"],
+    searchTerms: ["typography family size line height spacing leading monospace output"],
   },
   {
     id: "font-smoothing",

@@ -168,9 +168,13 @@ const TERMINAL_PREVIEW_TRANSCRIPT =
   TERMINAL_PROMPT;
 
 /** The surface treats an omitted family or size as "use the built-in default". */
-function previewTerminalFont(family: string, size: number): { family?: string; size: number } {
+function previewTerminalFont(
+  family: string,
+  size: number,
+  lineHeight: number,
+): { family?: string; size: number; lineHeight: number } {
   const trimmed = family.trim();
-  return trimmed.length > 0 ? { family: trimmed, size } : { size };
+  return trimmed.length > 0 ? { family: trimmed, size, lineHeight } : { size, lineHeight };
 }
 
 /**
@@ -179,18 +183,28 @@ function previewTerminalFont(family: string, size: number): { family?: string; s
  * exercises the same glyph atlas, cell metrics, and monospace gate the
  * terminal drawer uses.
  */
-export function TerminalFontPreview({ family, size }: { family: string; size: number }) {
+export function TerminalFontPreview({
+  family,
+  size,
+  lineHeight,
+}: {
+  family: string;
+  size: number;
+  lineHeight: number;
+}) {
   const mountRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<GhosttyTerminalSurface | null>(null);
-  const fontRef = useRef({ family, size });
+  const fontRef = useRef({ family, size, lineHeight });
   const { theme, resolvedTheme } = useTheme();
 
   useEffect(() => {
     const current = fontRef.current;
-    if (current.family === family && current.size === size) return;
-    fontRef.current = { family, size };
-    void surfaceRef.current?.setFont(previewTerminalFont(family, size));
-  }, [family, size]);
+    if (current.family === family && current.size === size && current.lineHeight === lineHeight) {
+      return;
+    }
+    fontRef.current = { family, size, lineHeight };
+    void surfaceRef.current?.setFont(previewTerminalFont(family, size, lineHeight));
+  }, [family, size, lineHeight]);
 
   // Re-read the terminal tokens on any theme change — switching between two
   // palettes can leave resolvedTheme (light/dark) untouched.
@@ -236,7 +250,11 @@ export function TerminalFontPreview({ family, size }: { family: string; size: nu
 
     void GhosttyTerminalSurface.create(mount, {
       theme: terminalThemeFromApp(mount),
-      font: previewTerminalFont(fontRef.current.family, fontRef.current.size),
+      font: previewTerminalFont(
+        fontRef.current.family,
+        fontRef.current.size,
+        fontRef.current.lineHeight,
+      ),
       onData: echo,
       onResize: noop,
       onSelectionChange: noop,
@@ -252,7 +270,7 @@ export function TerminalFontPreview({ family, size }: { family: string; size: nu
       // The theme and font may both have changed while the WASM surface loaded.
       surface.setTheme(terminalThemeFromApp(mount));
       const font = fontRef.current;
-      void surface.setFont(previewTerminalFont(font.family, font.size));
+      void surface.setFont(previewTerminalFont(font.family, font.size, font.lineHeight));
       surface.write(TERMINAL_PREVIEW_TRANSCRIPT);
     });
 

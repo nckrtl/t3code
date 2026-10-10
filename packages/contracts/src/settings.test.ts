@@ -77,6 +77,45 @@ describe("ClientSettings rich text composer", () => {
   });
 });
 
+describe("ClientSettings line heights", () => {
+  it("defaults to what each surface used before the setting existed, for settings saved earlier", () => {
+    const decoded = decodeClientSettings({ fontSizeCode: 15 });
+    expect(decoded).toMatchObject({
+      lineHeightInterface: 1.5,
+      lineHeightPrompt: 1.625,
+      lineHeightCode: 1.625,
+      lineHeightTerminal: 1.35,
+    });
+  });
+
+  it("keeps a chosen value through patches and persistence", () => {
+    const chosen = { lineHeightCode: 1.8, lineHeightTerminal: 1.2 };
+    expect(decodeClientSettingsPatch(chosen)).toEqual(chosen);
+    expect(encodeClientSettings(decodeClientSettings(chosen))).toMatchObject(chosen);
+  });
+
+  it.each([
+    ["lineHeightInterface", 1.2],
+    ["lineHeightInterface", 2.1],
+    ["lineHeightPrompt", 0.9],
+    ["lineHeightCode", 2.5],
+    ["lineHeightTerminal", 0.5],
+    ["lineHeightTerminal", Number.NaN],
+  ])("rejects %s = %s", (key, value) => {
+    expect(() => decodeClientSettings({ [key]: value })).toThrow();
+    expect(() => decodeClientSettingsPatch({ [key]: value })).toThrow();
+  });
+
+  it.each([
+    ["lineHeightInterface", 1.25],
+    ["lineHeightInterface", 2],
+    ["lineHeightPrompt", 1],
+    ["lineHeightCode", 2],
+  ])("accepts the bound %s = %s", (key, value) => {
+    expect(decodeClientSettings({ [key]: value })).toMatchObject({ [key]: value });
+  });
+});
+
 describe("ServerSettings default permissions", () => {
   it("keeps full access for settings saved before a default was configured", () => {
     expect(decodeServerSettings({}).defaultRuntimeMode).toBe("full-access");

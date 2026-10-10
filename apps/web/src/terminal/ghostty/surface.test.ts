@@ -26,6 +26,7 @@ import {
   terminalContentOriginY,
   terminalFontFamily,
   terminalFontSize,
+  terminalLineHeight,
   terminalWheelArrowData,
   terminalWheelDeltaRows,
   GhosttyTerminalSurface,
@@ -922,6 +923,14 @@ describe("terminal font resolution", () => {
       true,
     );
     expect(terminalFontFamily(" , ")).toBe(DEFAULT_TERMINAL_FONT_FAMILY);
+  });
+
+  it("clamps requested line heights and defaults to the long-standing 1.35", () => {
+    expect(terminalLineHeight()).toBe(1.35);
+    expect(terminalLineHeight(Number.NaN)).toBe(1.35);
+    expect(terminalLineHeight(1.6)).toBe(1.6);
+    expect(terminalLineHeight(0.2)).toBe(1);
+    expect(terminalLineHeight(9)).toBe(2);
   });
 
   it("clamps requested font sizes to the supported range", () => {

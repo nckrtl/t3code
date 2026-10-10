@@ -4466,7 +4466,7 @@ function buildToolCallExpandedBody(
 }
 
 const toolCallExpandedBodyClassName =
-  "max-h-64 cursor-text overflow-auto whitespace-pre-wrap break-words font-mono text-secondary-label text-(length:--font-size-code,var(--text-2xs)) leading-relaxed select-text";
+  "max-h-64 cursor-text overflow-auto whitespace-pre-wrap break-words font-mono text-secondary-label text-(length:--font-size-code,var(--text-2xs)) leading-(--line-height-code,1.625) select-text";
 
 function workEntryIconName(workEntry: TimelineWorkEntry): WorkEntryIconName {
   if (

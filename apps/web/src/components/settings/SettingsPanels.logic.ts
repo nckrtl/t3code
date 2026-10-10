@@ -85,25 +85,33 @@ type TypographySettings = Pick<
   | "fontSizePrompt"
   | "fontSizeCode"
   | "fontSizeTerminal"
+  | "lineHeightInterface"
+  | "lineHeightPrompt"
+  | "lineHeightCode"
+  | "lineHeightTerminal"
 >;
 
-/** Labels the font rows whose family or size differs from the defaults. */
+/** Labels the font rows whose family, size or line height differs from the defaults. */
 export function getChangedTypographySettingLabels(settings: TypographySettings): string[] {
   return [
     ...(settings.fontFamilySans !== DEFAULT_UNIFIED_SETTINGS.fontFamilySans ||
-    settings.fontSizeInterface !== DEFAULT_UNIFIED_SETTINGS.fontSizeInterface
+    settings.fontSizeInterface !== DEFAULT_UNIFIED_SETTINGS.fontSizeInterface ||
+    settings.lineHeightInterface !== DEFAULT_UNIFIED_SETTINGS.lineHeightInterface
       ? ["Interface font"]
       : []),
     ...(settings.fontFamilyComposer !== DEFAULT_UNIFIED_SETTINGS.fontFamilyComposer ||
-    settings.fontSizePrompt !== DEFAULT_UNIFIED_SETTINGS.fontSizePrompt
+    settings.fontSizePrompt !== DEFAULT_UNIFIED_SETTINGS.fontSizePrompt ||
+    settings.lineHeightPrompt !== DEFAULT_UNIFIED_SETTINGS.lineHeightPrompt
       ? ["Prompt font"]
       : []),
     ...(settings.fontFamilyCode !== DEFAULT_UNIFIED_SETTINGS.fontFamilyCode ||
-    settings.fontSizeCode !== DEFAULT_UNIFIED_SETTINGS.fontSizeCode
+    settings.fontSizeCode !== DEFAULT_UNIFIED_SETTINGS.fontSizeCode ||
+    settings.lineHeightCode !== DEFAULT_UNIFIED_SETTINGS.lineHeightCode
       ? ["Code font"]
       : []),
     ...(settings.fontFamilyTerminal !== DEFAULT_UNIFIED_SETTINGS.fontFamilyTerminal ||
-    settings.fontSizeTerminal !== DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal
+    settings.fontSizeTerminal !== DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal ||
+    settings.lineHeightTerminal !== DEFAULT_UNIFIED_SETTINGS.lineHeightTerminal
       ? ["Terminal font"]
       : []),
   ];

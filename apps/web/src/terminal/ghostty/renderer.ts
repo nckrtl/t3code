@@ -60,10 +60,19 @@ function fontForCell(cell: GhosttyCell, fontSize: number, fontFamily: string): s
   return `${style} ${weight} ${fontSize}px ${fontFamily}`;
 }
 
+/** The cell height multiple the terminal always used; the setting's default (1.35). */
+export const DEFAULT_GHOSTTY_LINE_HEIGHT = 1.35;
+
+/**
+ * Cell size for a font. `lineHeight` is a multiple of the font size; the cell
+ * never gets shorter than the glyphs it holds, so a very tight value stops at
+ * the face's own height instead of clipping descenders.
+ */
 export function measureGhosttyCell(
   context: CanvasRenderingContext2D,
   fontSize: number,
   fontFamily: string,
+  lineHeight: number = DEFAULT_GHOSTTY_LINE_HEIGHT,
 ): GhosttyCellMetrics {
   context.font = `normal 400 ${fontSize}px ${fontFamily}`;
   const widthMeasurement = context.measureText("M");
@@ -71,7 +80,7 @@ export function measureGhosttyCell(
   const ascent = verticalMeasurement.actualBoundingBoxAscent || fontSize;
   const descent = verticalMeasurement.actualBoundingBoxDescent;
   const glyphHeight = ascent + descent;
-  const height = Math.max(1, Math.round(fontSize * 1.35), Math.ceil(glyphHeight));
+  const height = Math.max(1, Math.round(fontSize * lineHeight), Math.ceil(glyphHeight));
   return {
     width: Math.max(1, widthMeasurement.width),
     height,

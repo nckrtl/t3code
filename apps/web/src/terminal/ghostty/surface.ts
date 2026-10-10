@@ -8,6 +8,7 @@ import {
   type GhosttyTheme,
 } from "./core";
 import {
+  DEFAULT_GHOSTTY_LINE_HEIGHT,
   measureGhosttyCell,
   renderGhosttySnapshot,
   terminalGridSize,
@@ -20,6 +21,8 @@ import { isMonospaceFamily } from "../../appearanceFonts";
 export const DEFAULT_TERMINAL_FONT_SIZE = 12;
 const MIN_TERMINAL_FONT_SIZE = 6;
 const MAX_TERMINAL_FONT_SIZE = 32;
+const MIN_TERMINAL_LINE_HEIGHT = 1;
+const MAX_TERMINAL_LINE_HEIGHT = 2;
 // The glyph fallbacks only supply symbols the text faces are missing (powerline
 // separators, devicons, and other private-use prompt symbols), so shells
 // configured for a locally installed Nerd Font keep their prompt glyphs no
@@ -49,6 +52,8 @@ const TERMINAL_FONT_LOAD_VARIANTS = [
 export interface GhosttyTerminalFont {
   readonly family?: string;
   readonly size?: number;
+  /** A multiple of the font size; omitted means the built-in 1.35. */
+  readonly lineHeight?: number;
 }
 
 let symbolsFontLoad: Promise<void> | null = null;
@@ -133,6 +138,11 @@ export async function loadTerminalFontFamily(
 export function terminalFontSize(size?: number): number {
   if (size === undefined || !Number.isFinite(size)) return DEFAULT_TERMINAL_FONT_SIZE;
   return Math.max(MIN_TERMINAL_FONT_SIZE, Math.min(MAX_TERMINAL_FONT_SIZE, Math.round(size)));
+}
+
+export function terminalLineHeight(lineHeight?: number): number {
+  if (lineHeight === undefined || !Number.isFinite(lineHeight)) return DEFAULT_GHOSTTY_LINE_HEIGHT;
+  return Math.max(MIN_TERMINAL_LINE_HEIGHT, Math.min(MAX_TERMINAL_LINE_HEIGHT, lineHeight));
 }
 
 /**
@@ -572,6 +582,7 @@ export class GhosttyTerminalSurface {
   private fontFamily: string;
   private requestedFontFamily: string | undefined;
   private fontSize: number;
+  private lineHeight: number;
   private fontEpoch = 0;
   private pendingFontEpoch: number | null = null;
   private readonly resizeObserver: ResizeObserver;
@@ -665,6 +676,7 @@ export class GhosttyTerminalSurface {
     this.fontFamily = fontFamily;
     this.requestedFontFamily = options.font?.family;
     this.fontSize = terminalFontSize(options.font?.size);
+    this.lineHeight = terminalLineHeight(options.font?.lineHeight);
     this.resizeObserver = new ResizeObserver(() => this.fit());
     this.installEvents();
     this.watchDevicePixelRatio();
@@ -720,7 +732,12 @@ export class GhosttyTerminalSurface {
       // Metrics fall back to whichever faces are already available.
     }
     const fontFamily = await loadTerminalFontFamily(options.font?.family, fontSize);
-    const metrics = measureGhosttyCell(context, fontSize, fontFamily);
+    const metrics = measureGhosttyCell(
+      context,
+      fontSize,
+      fontFamily,
+      terminalLineHeight(options.font?.lineHeight),
+    );
     const grid = terminalGridSize(mount.clientWidth, mount.clientHeight, metrics, CONTENT_PADDING);
     const core = await GhosttyTerminalCore.create(
       grid.cols,
@@ -796,6 +813,7 @@ export class GhosttyTerminalSurface {
   async setFont(font: GhosttyTerminalFont): Promise<void> {
     if (this.disposed) return;
     const fontSize = terminalFontSize(font.size);
+    const lineHeight = terminalLineHeight(font.lineHeight);
     // The fields only change together with their metrics after the load, and
     // the epoch lets the newest overlapping call win regardless of load order.
     const epoch = ++this.fontEpoch;
@@ -806,11 +824,17 @@ export class GhosttyTerminalSurface {
     this.fontFamily = fontFamily;
     this.requestedFontFamily = font.family;
     this.fontSize = fontSize;
+    this.lineHeight = lineHeight;
     this.applyFontMetrics();
   }
 
   private applyFontMetrics(): void {
-    this.metrics = measureGhosttyCell(this.context, this.fontSize, this.fontFamily);
+    this.metrics = measureGhosttyCell(
+      this.context,
+      this.fontSize,
+      this.fontFamily,
+      this.lineHeight,
+    );
     this.core.resize(this.cols, this.rows, this.metrics.width, this.metrics.height);
     // Cached IME textarea coordinates are stale in the new cell geometry.
     this.inputLeft = -1;
@@ -844,7 +868,12 @@ export class GhosttyTerminalSurface {
     }
     // A face that finished loading after the initial measurement changes glyph
     // advances; re-measure and refit so the grid matches what actually renders.
-    const metrics = measureGhosttyCell(this.context, this.fontSize, this.fontFamily);
+    const metrics = measureGhosttyCell(
+      this.context,
+      this.fontSize,
+      this.fontFamily,
+      this.lineHeight,
+    );
     if (
       metrics.width === this.metrics.width &&
       metrics.height === this.metrics.height &&

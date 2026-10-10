@@ -155,6 +155,53 @@ export const TerminalFontSize = Schema.Int.check(
 export type TerminalFontSize = typeof TerminalFontSize.Type;
 const DEFAULT_TERMINAL_FONT_SIZE: TerminalFontSize = 12;
 
+/**
+ * Line heights are unitless multipliers of the font size, one per font size
+ * above, in steps of 0.05. Each default is what its surface used before the
+ * setting existed, so nothing changes until the user adjusts one:
+ * - interface 1.5: the root `line-height` (Tailwind's preflight); the other
+ *   text sizes scale in proportion (see `--line-height-interface-scale`).
+ * - prompt 1.625: the composer's `leading-relaxed`.
+ * - code 1.625: chat code blocks' `leading-relaxed`. Diffs and file previews
+ *   keep @pierre/diffs' own 20px until the value moves off this default.
+ * - terminal 1.35: the cell height the terminal renderer always used.
+ */
+export const LINE_HEIGHT_STEP = 0.05;
+const lineHeightBetween = (minimum: number, maximum: number) =>
+  Schema.Number.check(Schema.isFinite(), Schema.isBetween({ minimum, maximum }));
+
+// The interface minimum keeps tight headings (Tailwind's text-3xl is 1.2) from
+// clipping once the proportional scale is applied.
+export const MIN_INTERFACE_LINE_HEIGHT = 1.25;
+export const MAX_INTERFACE_LINE_HEIGHT = 2;
+export const InterfaceLineHeight = lineHeightBetween(
+  MIN_INTERFACE_LINE_HEIGHT,
+  MAX_INTERFACE_LINE_HEIGHT,
+);
+export type InterfaceLineHeight = typeof InterfaceLineHeight.Type;
+export const DEFAULT_INTERFACE_LINE_HEIGHT: InterfaceLineHeight = 1.5;
+
+export const MIN_PROMPT_LINE_HEIGHT = 1;
+export const MAX_PROMPT_LINE_HEIGHT = 2;
+export const PromptLineHeight = lineHeightBetween(MIN_PROMPT_LINE_HEIGHT, MAX_PROMPT_LINE_HEIGHT);
+export type PromptLineHeight = typeof PromptLineHeight.Type;
+export const DEFAULT_PROMPT_LINE_HEIGHT: PromptLineHeight = 1.625;
+
+export const MIN_CODE_LINE_HEIGHT = 1;
+export const MAX_CODE_LINE_HEIGHT = 2;
+export const CodeLineHeight = lineHeightBetween(MIN_CODE_LINE_HEIGHT, MAX_CODE_LINE_HEIGHT);
+export type CodeLineHeight = typeof CodeLineHeight.Type;
+export const DEFAULT_CODE_LINE_HEIGHT: CodeLineHeight = 1.625;
+
+export const MIN_TERMINAL_LINE_HEIGHT = 1;
+export const MAX_TERMINAL_LINE_HEIGHT = 2;
+export const TerminalLineHeight = lineHeightBetween(
+  MIN_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_LINE_HEIGHT,
+);
+export type TerminalLineHeight = typeof TerminalLineHeight.Type;
+export const DEFAULT_TERMINAL_LINE_HEIGHT: TerminalLineHeight = 1.35;
+
 export const EnvironmentIdentificationMode = Schema.Literals(["artwork", "pill", "none"]);
 export type EnvironmentIdentificationMode = typeof EnvironmentIdentificationMode.Type;
 export const DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE: EnvironmentIdentificationMode = "artwork";
@@ -407,6 +454,18 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   fontSizeTerminal: TerminalFontSize.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_FONT_SIZE)),
+  ),
+  lineHeightInterface: InterfaceLineHeight.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_INTERFACE_LINE_HEIGHT)),
+  ),
+  lineHeightPrompt: PromptLineHeight.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROMPT_LINE_HEIGHT)),
+  ),
+  lineHeightCode: CodeLineHeight.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_CODE_LINE_HEIGHT)),
+  ),
+  lineHeightTerminal: TerminalLineHeight.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_TERMINAL_LINE_HEIGHT)),
   ),
   fontFamilyCode: FontFamilyPreference.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   fontFamilyComposer: FontFamilyPreference.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
@@ -1655,6 +1714,10 @@ export const ClientSettingsPatch = Schema.Struct({
   fontSizePrompt: Schema.optionalKey(PromptFontSize),
   fontSizeCode: Schema.optionalKey(CodeFontSize),
   fontSizeTerminal: Schema.optionalKey(TerminalFontSize),
+  lineHeightInterface: Schema.optionalKey(InterfaceLineHeight),
+  lineHeightPrompt: Schema.optionalKey(PromptLineHeight),
+  lineHeightCode: Schema.optionalKey(CodeLineHeight),
+  lineHeightTerminal: Schema.optionalKey(TerminalLineHeight),
   fontFamilyCode: Schema.optionalKey(FontFamilyPreference),
   fontFamilyComposer: Schema.optionalKey(FontFamilyPreference),
   fontFamilySans: Schema.optionalKey(FontFamilyPreference),

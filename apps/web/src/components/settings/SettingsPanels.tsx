@@ -27,21 +27,29 @@ import {
   type EnvironmentIdentificationMode,
   MAX_APPEARANCE_CONTRAST,
   MAX_CODE_FONT_SIZE,
+  MAX_CODE_LINE_HEIGHT,
   MAX_GLASS_OPACITY,
   MAX_INTERFACE_FONT_SIZE,
+  MAX_INTERFACE_LINE_HEIGHT,
   MAX_PANEL_ANIMATION_DURATION_MS,
   MAX_PROMPT_FONT_SIZE,
+  MAX_PROMPT_LINE_HEIGHT,
   MAX_SIDEBAR_AUTO_SETTLE_AFTER_DAYS,
   MAX_TERMINAL_FONT_SIZE,
+  MAX_TERMINAL_LINE_HEIGHT,
   MIN_CODE_FONT_SIZE,
+  MIN_CODE_LINE_HEIGHT,
   MIN_APPEARANCE_CONTRAST,
   MIN_GLASS_OPACITY,
   MIN_INTERFACE_FONT_SIZE,
+  MIN_INTERFACE_LINE_HEIGHT,
   MIN_PANEL_ANIMATION_DURATION_MS,
   MIN_PROMPT_FONT_SIZE,
+  MIN_PROMPT_LINE_HEIGHT,
   MIN_SIDEBAR_AUTO_SETTLE_AFTER_DAYS,
   type ResponseStreamingMode,
   MIN_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_LINE_HEIGHT,
   type QuitConfirmationMode,
 } from "@t3tools/contracts/settings";
 import { resolveServerBackgroundActivitySettings } from "@t3tools/shared/backgroundActivitySettings";
@@ -124,9 +132,11 @@ import {
   DEFAULT_SANS_FONT_STACK,
   isFontFamilyAvailable,
   isMonospaceFamily,
+  lineHeightOptions,
   resolveDefaultFamilyLabel,
   resolveTerminalFontPreference,
   resolveTerminalFontSizePreference,
+  resolveTerminalLineHeightPreference,
   TYPOGRAPHY_ADVANCED_STORAGE_KEY,
 } from "../../appearanceFonts";
 import { CodeFontPreview, PromptFontPreview, TerminalFontPreview } from "./SettingsFontPreviews";
@@ -681,6 +691,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.fontSizeInterface,
       settings.fontSizePrompt,
       settings.fontSizeTerminal,
+      settings.lineHeightCode,
+      settings.lineHeightInterface,
+      settings.lineHeightPrompt,
+      settings.lineHeightTerminal,
       settings.glassOpacity,
       settings.panelAnimationDurationMs,
       settings.responseStreamingMode,
@@ -813,6 +827,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       fontSizePrompt: DEFAULT_UNIFIED_SETTINGS.fontSizePrompt,
       fontSizeCode: DEFAULT_UNIFIED_SETTINGS.fontSizeCode,
       fontSizeTerminal: DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal,
+      lineHeightInterface: DEFAULT_UNIFIED_SETTINGS.lineHeightInterface,
+      lineHeightPrompt: DEFAULT_UNIFIED_SETTINGS.lineHeightPrompt,
+      lineHeightCode: DEFAULT_UNIFIED_SETTINGS.lineHeightCode,
+      lineHeightTerminal: DEFAULT_UNIFIED_SETTINGS.lineHeightTerminal,
       browserDefaultViewport: DEFAULT_UNIFIED_SETTINGS.browserDefaultViewport,
       browserDefaultZoomFactor: DEFAULT_UNIFIED_SETTINGS.browserDefaultZoomFactor,
       browserDefaultAppearance: DEFAULT_UNIFIED_SETTINGS.browserDefaultAppearance,
@@ -1529,6 +1547,7 @@ function InterfaceFontRow({ preview }: { preview?: ReactNode }) {
         updateSettings({
           fontFamilySans: DEFAULT_UNIFIED_SETTINGS.fontFamilySans,
           fontSizeInterface: DEFAULT_UNIFIED_SETTINGS.fontSizeInterface,
+          lineHeightInterface: DEFAULT_UNIFIED_SETTINGS.lineHeightInterface,
         })
       }
       size={{
@@ -1538,6 +1557,14 @@ function InterfaceFontRow({ preview }: { preview?: ReactNode }) {
         value: settings.fontSizeInterface,
         defaultValue: DEFAULT_UNIFIED_SETTINGS.fontSizeInterface,
         onChange: (fontSizeInterface) => updateSettings({ fontSizeInterface }),
+      }}
+      lineHeight={{
+        label: "Interface line height",
+        min: MIN_INTERFACE_LINE_HEIGHT,
+        max: MAX_INTERFACE_LINE_HEIGHT,
+        value: settings.lineHeightInterface,
+        defaultValue: DEFAULT_UNIFIED_SETTINGS.lineHeightInterface,
+        onChange: (lineHeightInterface) => updateSettings({ lineHeightInterface }),
       }}
       {...(preview !== undefined ? { preview } : {})}
     />
@@ -1560,6 +1587,7 @@ function PromptFontRow() {
         updateSettings({
           fontFamilyComposer: DEFAULT_UNIFIED_SETTINGS.fontFamilyComposer,
           fontSizePrompt: DEFAULT_UNIFIED_SETTINGS.fontSizePrompt,
+          lineHeightPrompt: DEFAULT_UNIFIED_SETTINGS.lineHeightPrompt,
         })
       }
       size={{
@@ -1569,6 +1597,14 @@ function PromptFontRow() {
         value: settings.fontSizePrompt,
         defaultValue: DEFAULT_UNIFIED_SETTINGS.fontSizePrompt,
         onChange: (fontSizePrompt) => updateSettings({ fontSizePrompt }),
+      }}
+      lineHeight={{
+        label: "Prompt line height",
+        min: MIN_PROMPT_LINE_HEIGHT,
+        max: MAX_PROMPT_LINE_HEIGHT,
+        value: settings.lineHeightPrompt,
+        defaultValue: DEFAULT_UNIFIED_SETTINGS.lineHeightPrompt,
+        onChange: (lineHeightPrompt) => updateSettings({ lineHeightPrompt }),
       }}
       preview={<PromptFontPreview />}
     />
@@ -1600,6 +1636,7 @@ function CodeFontRow({
         updateSettings({
           fontFamilyCode: DEFAULT_UNIFIED_SETTINGS.fontFamilyCode,
           fontSizeCode: DEFAULT_UNIFIED_SETTINGS.fontSizeCode,
+          lineHeightCode: DEFAULT_UNIFIED_SETTINGS.lineHeightCode,
         })
       }
       requireMonospace
@@ -1610,6 +1647,14 @@ function CodeFontRow({
         value: settings.fontSizeCode,
         defaultValue: DEFAULT_UNIFIED_SETTINGS.fontSizeCode,
         onChange: (fontSizeCode) => updateSettings({ fontSizeCode }),
+      }}
+      lineHeight={{
+        label: "Code line height",
+        min: MIN_CODE_LINE_HEIGHT,
+        max: MAX_CODE_LINE_HEIGHT,
+        value: settings.lineHeightCode,
+        defaultValue: DEFAULT_UNIFIED_SETTINGS.lineHeightCode,
+        onChange: (lineHeightCode) => updateSettings({ lineHeightCode }),
       }}
       preview={preview ?? <CodeFontPreview />}
     />
@@ -1632,6 +1677,7 @@ function TerminalFontRow() {
         updateSettings({
           fontFamilyTerminal: DEFAULT_UNIFIED_SETTINGS.fontFamilyTerminal,
           fontSizeTerminal: DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal,
+          lineHeightTerminal: DEFAULT_UNIFIED_SETTINGS.lineHeightTerminal,
         })
       }
       requireMonospace
@@ -1643,6 +1689,14 @@ function TerminalFontRow() {
         defaultValue: DEFAULT_UNIFIED_SETTINGS.fontSizeTerminal,
         onChange: (fontSizeTerminal) => updateSettings({ fontSizeTerminal }),
       }}
+      lineHeight={{
+        label: "Terminal line height",
+        min: MIN_TERMINAL_LINE_HEIGHT,
+        max: MAX_TERMINAL_LINE_HEIGHT,
+        value: settings.lineHeightTerminal,
+        defaultValue: DEFAULT_UNIFIED_SETTINGS.lineHeightTerminal,
+        onChange: (lineHeightTerminal) => updateSettings({ lineHeightTerminal }),
+      }}
       preview={
         <TerminalFontPreview
           family={resolveTerminalFontPreference({
@@ -1651,6 +1705,7 @@ function TerminalFontRow() {
             terminal: settings.fontFamilyTerminal,
           })}
           size={settings.fontSizeTerminal}
+          lineHeight={settings.lineHeightTerminal}
         />
       }
     />
@@ -1751,6 +1806,11 @@ function SimpleFontRows() {
                 code: settings.fontSizeCode,
                 terminal: settings.fontSizeTerminal,
               })}
+              lineHeight={resolveTerminalLineHeightPreference({
+                advanced: false,
+                code: settings.lineHeightCode,
+                terminal: settings.lineHeightTerminal,
+              })}
             />
           </>
         }
@@ -1826,6 +1886,7 @@ function FontFamilySettingsRow({
   onReset,
   requireMonospace = false,
   size,
+  lineHeight,
 }: {
   id?: string;
   title: string;
@@ -1840,6 +1901,15 @@ function FontFamilySettingsRow({
   onReset: () => void;
   requireMonospace?: boolean;
   size: {
+    label: string;
+    min: number;
+    max: number;
+    value: number;
+    defaultValue: number;
+    onChange: (v: number) => void;
+  };
+  /** Sits beside the size: a unitless multiple of it. */
+  lineHeight: {
     label: string;
     min: number;
     max: number;
@@ -1903,7 +1973,9 @@ function FontFamilySettingsRow({
     onReset();
   };
   const resetAction =
-    value !== defaultValue || size.value !== size.defaultValue ? (
+    value !== defaultValue ||
+    size.value !== size.defaultValue ||
+    lineHeight.value !== lineHeight.defaultValue ? (
       <SettingResetButton label={title.toLowerCase()} onClick={resetToDefault} />
     ) : null;
   const fontEnumeration = useFontEnumeration();
@@ -1995,6 +2067,27 @@ function FontFamilySettingsRow({
               </SelectItem>
             ),
           )}
+        </SelectPopup>
+      </Select>
+      <Select
+        value={String(lineHeight.value)}
+        onValueChange={(next) => {
+          if (typeof next !== "string") return;
+          const parsed = Number(next);
+          if (Number.isFinite(parsed) && parsed >= lineHeight.min && parsed <= lineHeight.max) {
+            lineHeight.onChange(parsed);
+          }
+        }}
+      >
+        <SelectTrigger size="sm" className="w-20 shrink-0" aria-label={lineHeight.label}>
+          <SelectValue>{lineHeight.value.toFixed(2)}</SelectValue>
+        </SelectTrigger>
+        <SelectPopup align="end" alignItemWithTrigger={false}>
+          {lineHeightOptions(lineHeight.min, lineHeight.max).map((multiple) => (
+            <SelectItem hideIndicator key={multiple} value={String(multiple)}>
+              {multiple.toFixed(2)}
+            </SelectItem>
+          ))}
         </SelectPopup>
       </Select>
     </div>

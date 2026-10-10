@@ -349,6 +349,9 @@ function FontAppearanceSync() {
   const fontSizeInterface = useClientSettings((settings) => settings.fontSizeInterface);
   const fontSizePrompt = useClientSettings((settings) => settings.fontSizePrompt);
   const fontSizeCode = useClientSettings((settings) => settings.fontSizeCode);
+  const lineHeightInterface = useClientSettings((settings) => settings.lineHeightInterface);
+  const lineHeightPrompt = useClientSettings((settings) => settings.lineHeightPrompt);
+  const lineHeightCode = useClientSettings((settings) => settings.lineHeightCode);
   const fontSmoothing = useClientSettings((settings) => settings.fontSmoothing);
 
   useEffect(() => {
@@ -359,6 +362,9 @@ function FontAppearanceSync() {
       sizeInterface: fontSizeInterface,
       sizePrompt: fontSizePrompt,
       sizeCode: fontSizeCode,
+      lineHeightInterface,
+      lineHeightPrompt,
+      lineHeightCode,
       smoothing: fontSmoothing,
     });
   }, [
@@ -369,6 +375,9 @@ function FontAppearanceSync() {
     fontSizeInterface,
     fontSizePrompt,
     fontSmoothing,
+    lineHeightCode,
+    lineHeightInterface,
+    lineHeightPrompt,
   ]);
 
   return null;

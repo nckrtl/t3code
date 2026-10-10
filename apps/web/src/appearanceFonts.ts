@@ -7,14 +7,24 @@
 
 import {
   DEFAULT_CODE_FONT_SIZE,
+  DEFAULT_CODE_LINE_HEIGHT,
   DEFAULT_INTERFACE_FONT_SIZE,
+  DEFAULT_INTERFACE_LINE_HEIGHT,
   DEFAULT_PROMPT_FONT_SIZE,
+  DEFAULT_PROMPT_LINE_HEIGHT,
+  LINE_HEIGHT_STEP,
   MAX_CODE_FONT_SIZE,
+  MAX_CODE_LINE_HEIGHT,
   MAX_INTERFACE_FONT_SIZE,
+  MAX_INTERFACE_LINE_HEIGHT,
   MAX_PROMPT_FONT_SIZE,
+  MAX_PROMPT_LINE_HEIGHT,
   MIN_CODE_FONT_SIZE,
+  MIN_CODE_LINE_HEIGHT,
   MIN_INTERFACE_FONT_SIZE,
+  MIN_INTERFACE_LINE_HEIGHT,
   MIN_PROMPT_FONT_SIZE,
+  MIN_PROMPT_LINE_HEIGHT,
 } from "@t3tools/contracts";
 
 export const DEFAULT_SANS_FONT_STACK =
@@ -50,6 +60,21 @@ export function resolveTerminalFontSizePreference(input: {
   return input.code;
 }
 
+/**
+ * Simple typography has no terminal row, so the terminal follows the code line
+ * height - but only once the user moved it. The code default (1.625) is looser
+ * than the terminal's own (1.35); following it unconditionally would change
+ * every terminal the moment this setting shipped.
+ */
+export function resolveTerminalLineHeightPreference(input: {
+  readonly advanced: boolean;
+  readonly code: number;
+  readonly terminal: number;
+}): number {
+  if (input.advanced) return input.terminal;
+  return input.code === DEFAULT_CODE_LINE_HEIGHT ? input.terminal : input.code;
+}
+
 function quoteFontFamilyName(name: string): string {
   const bare = name.trim();
   if (bare.length === 0) return "";
@@ -78,6 +103,9 @@ export interface AppearanceFontPreferences {
   readonly sizeInterface: number;
   readonly sizePrompt: number;
   readonly sizeCode: number;
+  readonly lineHeightInterface: number;
+  readonly lineHeightPrompt: number;
+  readonly lineHeightCode: number;
   /** Grayscale `antialiased` rendering; false keeps the heavier platform default. */
   readonly smoothing: boolean;
 }
@@ -116,6 +144,11 @@ export function applyAppearanceFontVariables(
   // The @pierre/diffs surfaces read their own hook for code text.
   root.style.setProperty("--diffs-font-size", `${code}px`);
 
+  for (const [variable, value] of Object.entries(appearanceLineHeightVariables(preferences))) {
+    if (value === null) root.style.removeProperty(variable);
+    else root.style.setProperty(variable, value);
+  }
+
   // Inherited from the root; only macOS engines honor the property, so no
   // platform gate is needed here. Smoothing on means grayscale `antialiased`
   // (thinner strokes); off restores the platform default, which macOS renders
@@ -125,6 +158,84 @@ export function applyAppearanceFontVariables(
   } else {
     root.style.removeProperty("-webkit-font-smoothing");
   }
+}
+
+/**
+ * The line-height custom properties for the preferences; null removes one.
+ *
+ * - `--line-height-interface-scale` multiplies Tailwind's text and leading
+ *   tokens and the root line height (see index.css), so the interface value is
+ *   the body line height and 1.5 leaves every token as it was.
+ * - `--line-height-prompt` and `--line-height-code` replace the
+ *   `leading-relaxed` the composer and chat code blocks used.
+ * - `--diffs-line-height` routes the code value to diffs and file previews. They
+ *   used @pierre/diffs' fixed 20px, which no unitless value matches at every
+ *   code size, so the hook is only set once the value moves off its default.
+ */
+export function appearanceLineHeightVariables(
+  preferences: Pick<
+    AppearanceFontPreferences,
+    "lineHeightInterface" | "lineHeightPrompt" | "lineHeightCode"
+  >,
+): Readonly<Record<string, string | null>> {
+  const interfaceLineHeight = clampInterfaceLineHeight(preferences.lineHeightInterface);
+  const code = clampCodeLineHeight(preferences.lineHeightCode);
+  return {
+    "--line-height-interface-scale": String(
+      Math.round((interfaceLineHeight / DEFAULT_INTERFACE_LINE_HEIGHT) * 10_000) / 10_000,
+    ),
+    "--line-height-prompt": String(clampPromptLineHeight(preferences.lineHeightPrompt)),
+    "--line-height-code": String(code),
+    "--diffs-line-height": code === DEFAULT_CODE_LINE_HEIGHT ? null : String(code),
+  };
+}
+
+function clampLineHeight(
+  value: number,
+  minimum: number,
+  maximum: number,
+  fallback: number,
+): number {
+  if (!Number.isFinite(value)) return fallback;
+  // Steps are 0.05 and a default is 1.625; rounding to thousandths keeps 1.35 from
+  // drifting to 1.3500000000000001 without moving either.
+  return Math.round(Math.min(maximum, Math.max(minimum, value)) * 1000) / 1000;
+}
+
+/** The values the line-height pickers offer: every 0.05 from `min` to `max`. */
+export function lineHeightOptions(min: number, max: number): number[] {
+  const count = Math.round((max - min) / LINE_HEIGHT_STEP);
+  return Array.from(
+    { length: count + 1 },
+    (_, index) => Math.round((min + index * LINE_HEIGHT_STEP) * 100) / 100,
+  );
+}
+
+export function clampInterfaceLineHeight(value: number): number {
+  return clampLineHeight(
+    value,
+    MIN_INTERFACE_LINE_HEIGHT,
+    MAX_INTERFACE_LINE_HEIGHT,
+    DEFAULT_INTERFACE_LINE_HEIGHT,
+  );
+}
+
+export function clampPromptLineHeight(value: number): number {
+  return clampLineHeight(
+    value,
+    MIN_PROMPT_LINE_HEIGHT,
+    MAX_PROMPT_LINE_HEIGHT,
+    DEFAULT_PROMPT_LINE_HEIGHT,
+  );
+}
+
+export function clampCodeLineHeight(value: number): number {
+  return clampLineHeight(
+    value,
+    MIN_CODE_LINE_HEIGHT,
+    MAX_CODE_LINE_HEIGHT,
+    DEFAULT_CODE_LINE_HEIGHT,
+  );
 }
 
 function clampFontSize(value: number, minimum: number, maximum: number, fallback: number): number {

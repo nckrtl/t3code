@@ -54,6 +54,14 @@ describe("measureGhosttyCell", () => {
       height: 16,
       baseline: 11,
     });
+    // A looser line height grows the cell and keeps the glyphs centered in it.
+    expect(measureGhosttyCell(context, 12, "monospace", 1.75)).toEqual({
+      width: 7.2,
+      height: 21,
+      baseline: 14,
+    });
+    // A value tighter than the glyphs stops at the glyph height instead of clipping descenders.
+    expect(measureGhosttyCell(context, 12, "monospace", 1).height).toBe(12);
   });
 });
 

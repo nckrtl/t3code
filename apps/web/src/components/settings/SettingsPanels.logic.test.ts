@@ -30,6 +30,13 @@ describe("typography settings restore", () => {
         fontFamilyCode: "Fira Code",
       }),
     ).toEqual(["Interface font", "Code font"]);
+    expect(
+      getChangedTypographySettingLabels({
+        ...DEFAULT_UNIFIED_SETTINGS,
+        lineHeightTerminal: 1.6,
+        lineHeightPrompt: 1.4,
+      }),
+    ).toEqual(["Prompt font", "Terminal font"]);
   });
 });
 

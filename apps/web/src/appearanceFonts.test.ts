@@ -1,14 +1,22 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  appearanceLineHeightVariables,
+  applyAppearanceFontVariables,
   areFontAdvancesMonospace,
   clampCodeFontSize,
+  clampCodeLineHeight,
+  clampInterfaceLineHeight,
+  lineHeightOptions,
   clampInterfaceFontSize,
   clampPromptFontSize,
   cssFontFamilies,
   resolveDefaultFamilyLabel,
   resolveTerminalFontPreference,
   resolveTerminalFontSizePreference,
+  resolveTerminalLineHeightPreference,
 } from "./appearanceFonts";
 
 describe("areFontAdvancesMonospace", () => {
@@ -106,5 +114,80 @@ describe("font size clamping", () => {
     expect(clampCodeFontSize(13.4)).toBe(13);
     expect(clampInterfaceFontSize(Number.NaN)).toBe(16);
     expect(clampPromptFontSize(Number.POSITIVE_INFINITY)).toBe(14);
+  });
+});
+
+describe("line heights", () => {
+  const defaults = { lineHeightInterface: 1.5, lineHeightPrompt: 1.625, lineHeightCode: 1.625 };
+
+  it("leaves every surface as it was at the defaults", () => {
+    expect(appearanceLineHeightVariables(defaults)).toEqual({
+      "--line-height-interface-scale": "1",
+      "--line-height-prompt": "1.625",
+      "--line-height-code": "1.625",
+      // Diffs keep their fixed 20px until the code value moves.
+      "--diffs-line-height": null,
+    });
+  });
+
+  it("scales the interface by its ratio to the 1.5 body default and routes code to diffs", () => {
+    expect(
+      appearanceLineHeightVariables({
+        lineHeightInterface: 1.8,
+        lineHeightPrompt: 1.4,
+        lineHeightCode: 1.75,
+      }),
+    ).toEqual({
+      "--line-height-interface-scale": "1.2",
+      "--line-height-prompt": "1.4",
+      "--line-height-code": "1.75",
+      "--diffs-line-height": "1.75",
+    });
+  });
+
+  it("clamps to the supported range and survives bad input", () => {
+    expect(clampCodeLineHeight(9)).toBe(2);
+    expect(clampCodeLineHeight(0.2)).toBe(1);
+    expect(clampCodeLineHeight(Number.NaN)).toBe(1.625);
+    expect(clampInterfaceLineHeight(1)).toBe(1.25);
+    expect(clampCodeLineHeight(1.3500000000000001)).toBe(1.35);
+  });
+
+  it("offers every 0.05 step in range", () => {
+    const options = lineHeightOptions(1.25, 2);
+    expect(options[0]).toBe(1.25);
+    expect(options.at(-1)).toBe(2);
+    expect(options).toHaveLength(16);
+    expect(options).toContain(1.35);
+  });
+
+  it("sets and removes the properties on the root", () => {
+    const root = document.createElement("div");
+    const preferences = {
+      sans: "",
+      code: "",
+      composer: "",
+      sizeInterface: 16,
+      sizePrompt: 14,
+      sizeCode: 13,
+      smoothing: true,
+      ...defaults,
+    };
+    applyAppearanceFontVariables(root, { ...preferences, lineHeightCode: 1.9 });
+    expect(root.style.getPropertyValue("--diffs-line-height")).toBe("1.9");
+    applyAppearanceFontVariables(root, preferences);
+    expect(root.style.getPropertyValue("--diffs-line-height")).toBe("");
+    expect(root.style.getPropertyValue("--line-height-code")).toBe("1.625");
+  });
+
+  it("makes the terminal follow the code value only once it was moved, in simple mode", () => {
+    const input = { code: 1.625, terminal: 1.35 };
+    expect(resolveTerminalLineHeightPreference({ advanced: false, ...input })).toBe(1.35);
+    expect(
+      resolveTerminalLineHeightPreference({ advanced: false, code: 1.9, terminal: 1.35 }),
+    ).toBe(1.9);
+    expect(resolveTerminalLineHeightPreference({ advanced: true, code: 1.9, terminal: 1.35 })).toBe(
+      1.35,
+    );
   });
 });

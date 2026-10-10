@@ -27,6 +27,10 @@ describe("desktop device settings", () => {
         "timestampFormat",
         "environmentIdentificationMode",
         "fontSmoothing",
+        "lineHeightInterface",
+        "lineHeightPrompt",
+        "lineHeightCode",
+        "lineHeightTerminal",
       ]),
     );
     for (const machineBound of [
@@ -66,6 +70,8 @@ describe("desktop device settings", () => {
         section({
           chatWidth: "full",
           fontSizeInterface: 15,
+          lineHeightCode: 1.8,
+          lineHeightTerminal: 7,
           glassOpacity: 9_000,
           diffLayout: "sideways",
           futureSetting: true,
@@ -73,7 +79,7 @@ describe("desktop device settings", () => {
           confirmQuit: "never",
         }),
       ),
-    ).toEqual({ chatWidth: "full", fontSizeInterface: 15 });
+    ).toEqual({ chatWidth: "full", fontSizeInterface: 15, lineHeightCode: 1.8 });
   });
 
   it("writes only the settings that differ", () => {
