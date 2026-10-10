@@ -50,8 +50,8 @@ vp run dev:desktop --home-dir ~/.t3/desktop-dev
 
 Do not copy `environment-id`, `secrets` or `server-runtime.json`: the desktop
 dev app keeps its own server identity. The runner picks shifted ports (web
-5734, server 13774) and opens **T3 Code (Dev)**. Annotations from
-its window go to the same store; their records show `t3code-dev://app/...`
+5734, server 13774) and opens **Conn (Dev)**. Annotations from
+its window go to the same store; their records show `conn-dev://app/...`
 URLs.
 
 ## 4. Process the queue

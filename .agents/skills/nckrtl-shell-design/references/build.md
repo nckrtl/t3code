@@ -34,9 +34,13 @@ build date (earlier builds used `-rooms.`). Artifacts land in `release/`.
 
 ## Sign and install
 
-The `--signed` flag needs T3's Apple team, so re-sign with the local identity
+The app builds as **Conn** (`Conn.app`, app id `com.nckrtl.conn`, see
+`apps/desktop/src/branding/forkBrand.json`). The `--signed` flag needs T3's
+Apple team, so re-sign with your own team's certificate
 (`scripts/sign-macos-local.ts`, hardened runtime, release entitlements minus
-the team-bound passkey ones, so passkey sign-in is unavailable):
+the team-bound passkey ones, so passkey sign-in is unavailable). Without an
+identity argument the script picks the certificate of the Apple team in
+`forkBrand.json` (9SVJ4SYB9B) and checks `TeamIdentifier` afterwards:
 
 Over SSH the login keychain is locked and `codesign` fails with
 `errSecInternalComponent`. Sign from a terminal on the mini itself, or unlock
@@ -48,11 +52,11 @@ security unlock-keychain ~/Library/Keychains/login.keychain-db
 
 ```bash
 tmp=$(mktemp -d)
-ditto -x -k "release/T3-Code-<version>-arm64.zip" "$tmp"
-node scripts/sign-macos-local.ts "$tmp/T3 Code (Alpha).app" "Nick Local Code Signing"
-ditto -c -k --keepParent "$tmp/T3 Code (Alpha).app" "release/T3-Code-<version>-arm64-signed.zip"
+ditto -x -k "release/Conn-<version>-arm64.zip" "$tmp"
+node scripts/sign-macos-local.ts "$tmp/Conn.app"   # or add an identity name as the second argument
+ditto -c -k --keepParent "$tmp/Conn.app" "release/Conn-<version>-arm64-signed.zip"
 ```
 
-Copy the signed zip to the target Mac, quit T3 Code, replace
-`/Applications/T3 Code (Alpha).app`, and open it. User data in `~/.t3` is
-untouched.
+Copy the signed zip to the target Mac, quit the old app, put `Conn.app` in
+`/Applications`, and open it. The first launch copies the old app's user data
+(see FORK.md, "Conn"). User data in `~/.t3` is untouched.
