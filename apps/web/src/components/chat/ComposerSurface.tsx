@@ -36,6 +36,8 @@ function Shell({
           // A fixed-extent backdrop here would stop short when the strip is a different height.
           "dark:before:hidden",
         ],
+        // The collapse tween paints the card through TweenGhost instead (dark only).
+        "data-[composer-tween=true]:before:hidden",
         className,
       )}
       {...props}
@@ -51,12 +53,57 @@ const outlineClasses =
 const contextSeamClasses =
   "group-data-with-context/composer-surface:after:[clip-path:polygon(0_0,100%_0,100%_100%,calc(100%-22px)_100%,calc(100%-22px)_calc(100%-2px),22px_calc(100%-2px),22px_100%,0_100%)] dark:group-data-with-context/composer-surface:after:[clip-path:none]";
 
-function Host({ className, ...props }: ComponentProps<"div">) {
+/**
+ * The ghost's static bottom band: one corner radius (the `rounded-3xl` radius)
+ * plus a pixel. The moving layer is clipped above it, so both ends of a card as
+ * short as two radii still show their rounded corners.
+ */
+const GHOST_CAP = "calc(var(--radius) + 13px)";
+
+/**
+ * Stand-in for the card's fill and outline while the composer collapses or
+ * expands in a dark theme. The real box commits its final height at once, so
+ * resizing it would repaint on every frame. The ghost instead paints a card
+ * that is as tall as the larger of the old and new heights: a layer whose top
+ * edge slides by `transform` behind a static clip window, and a static cap that
+ * carries the bottom corners and outline. The composer hook sizes the layer,
+ * animates it, and sets `data-composer-tween` on the shell, which hides the
+ * painters this replaces. Only opaque dark fills qualify; glass needs the real
+ * backdrop.
+ */
+function TweenGhost() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-1 hidden group-data-[composer-tween=true]/composer-surface:block"
+    >
+      <div
+        data-composer-tween-window
+        className="absolute inset-x-0 overflow-clip"
+        style={{ bottom: GHOST_CAP }}
+      >
+        <div
+          data-composer-tween-layer
+          className="absolute inset-x-0 rounded-3xl border border-white/7 border-t-white/10 bg-(--shell-raised)"
+          style={{ bottom: `calc(-1 * ${GHOST_CAP})` }}
+        />
+      </div>
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-b-3xl border border-t-0 border-white/7 bg-(--shell-raised)"
+        style={{ height: "calc(var(--radius) + 14px)" }}
+      />
+    </div>
+  );
+}
+
+function Host({ className, children, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="composer-host"
       className={cn(
         "relative z-10 w-full rounded-3xl shadow-composer after:z-1 dark:shadow-none",
+        // During the collapse tween TweenGhost paints the fill and outline.
+        "group-data-[composer-tween=true]/composer-surface:bg-transparent! group-data-[composer-tween=true]/composer-surface:after:hidden",
         // Dark with a strip: the composer fill follows the Host box, whatever the strip height.
         // With an attached banner, Main paints the fill instead.
         "dark:group-data-with-context/composer-surface:not-group-has-data-[composer-banner-surface=attached]/composer-surface:bg-(--shell-raised)",
@@ -66,7 +113,10 @@ function Host({ className, ...props }: ComponentProps<"div">) {
         className,
       )}
       {...props}
-    />
+    >
+      <TweenGhost />
+      {children}
+    </div>
   );
 }
 
